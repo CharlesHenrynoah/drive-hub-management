@@ -199,17 +199,18 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
                   </div>
                   
                   <FormItem>
-                    <FormLabel className="cursor-pointer">
-                      <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                    <FormLabel>
+                      <div className="flex items-center justify-center gap-2 text-sm text-primary cursor-pointer">
                         <Upload size={16} />
                         <span>Télécharger un logo</span>
+                        <Input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleFileChange}
+                          id="logo-upload"
+                        />
                       </div>
-                      <Input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
                     </FormLabel>
                     <FormMessage />
                   </FormItem>
