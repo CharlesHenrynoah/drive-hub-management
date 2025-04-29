@@ -28,7 +28,6 @@ import { Download } from "lucide-react";
 import { AddDriverForm } from "./AddDriverForm";
 import { DriverDetailModal } from "./DriverDetailModal";
 import { Driver } from "@/types/driver";
-import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -53,18 +52,16 @@ export function DriversManagement() {
 
   // Function to add a new driver
   const addDriver = (driver: Driver) => {
-    setDrivers([...drivers, driver]);
-  };
-
-  // Function to update a driver's availability
-  const updateDriverAvailability = (driverId: string, available: boolean) => {
-    setDrivers(
-      drivers.map(driver => 
-        driver.ID_Chauffeur === driverId 
-          ? { ...driver, Disponible: available } 
-          : driver
-      )
-    );
+    // Calculate availability based on missions
+    const isAvailable = !driver.Missions_Futures || driver.Missions_Futures.length === 0;
+    
+    // Set the driver's availability based on missions
+    const newDriver = {
+      ...driver,
+      Disponible: isAvailable
+    };
+    
+    setDrivers([...drivers, newDriver]);
   };
 
   // Calculate duration between date of activity start and today
@@ -223,14 +220,13 @@ export function DriversManagement() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Switch 
-                          checked={driver.Disponible} 
-                          onCheckedChange={(checked) => updateDriverAvailability(driver.ID_Chauffeur, checked)}
-                        />
+                      <div>
                         <span className={driver.Disponible ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
                           {driver.Disponible ? "Disponible" : "Indisponible"}
                         </span>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {driver.Disponible ? "Pas de mission planifiée" : "A des missions planifiées"}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>

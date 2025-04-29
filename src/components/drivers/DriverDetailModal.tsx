@@ -4,7 +4,6 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Driver } from "@/types/driver";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -54,11 +53,13 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
               {driver.ID_Chauffeur} - {entreprises[driver.ID_Entreprise as keyof typeof entreprises]}
             </DialogDescription>
           </div>
-          <div className="flex items-center space-x-2">
+          <div>
             <span className={driver.Disponible ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
               {driver.Disponible ? "Disponible" : "Indisponible"}
             </span>
-            <Switch checked={driver.Disponible} disabled />
+            <div className="text-xs text-muted-foreground mt-1">
+              {!driver.Disponible && "A des missions planifiées"}
+            </div>
           </div>
         </div>
       </DialogHeader>
