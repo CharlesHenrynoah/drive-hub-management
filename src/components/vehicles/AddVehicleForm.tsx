@@ -191,7 +191,7 @@ export function AddVehicleForm() {
       <DialogTrigger asChild>
         <Button>Ajouter un véhicule</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Ajouter un nouveau véhicule</DialogTitle>
           <DialogDescription>
@@ -200,190 +200,198 @@ export function AddVehicleForm() {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="marque"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Marque</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Renault, Mercedes..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="modele"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modèle</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Travego, Urbanway..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="immatriculation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Immatriculation</FormLabel>
-                  <FormControl>
-                    <Input placeholder="AB-123-CD" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="typeVehicule"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type de véhicule</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionnez un type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Mini Bus">Mini Bus</SelectItem>
-                        <SelectItem value="Bus">Bus</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="capacite"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Capacité (passagers)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} min={1} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="typeCarburant"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type de carburant</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Diesel">Diesel</SelectItem>
-                      <SelectItem value="Essence">Essence</SelectItem>
-                      <SelectItem value="Electrique">Électrique</SelectItem>
-                      <SelectItem value="Hybride">Hybride</SelectItem>
-                      <SelectItem value="GNV">GNV (Gaz Naturel)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="annee"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Année de fabrication</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Ex: 2022" 
-                        min={1990} 
-                        max={new Date().getFullYear()}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="emissions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Émissions CO2 (g/km)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Ex: 120" 
-                        min={0}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="entrepriseId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Entreprise</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez une entreprise" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="space-y-2">
-              <FormLabel>Score écologique</FormLabel>
-              <div className="flex items-center space-x-4">
-                <div className="flex-1">
-                  <Progress 
-                    value={ecologicalScore ?? 0} 
-                    max={100}
-                    className={`h-2 ${getScoreColorClass(ecologicalScore)}`} 
+            <div className="grid grid-cols-2 gap-6">
+              {/* Colonne de gauche */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="marque"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Marque</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Renault, Mercedes..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="modele"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modèle</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Travego, Urbanway..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div className="w-10 text-center font-medium">
-                  {isCalculating ? "..." : ecologicalScore ?? "-"}
+                
+                <FormField
+                  control={form.control}
+                  name="immatriculation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Immatriculation</FormLabel>
+                      <FormControl>
+                        <Input placeholder="AB-123-CD" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="typeVehicule"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type de véhicule</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionnez un type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Mini Bus">Mini Bus</SelectItem>
+                            <SelectItem value="Bus">Bus</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="capacite"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Capacité (passagers)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} min={1} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              {/* Colonne de droite */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="typeCarburant"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type de carburant</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionnez un type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Diesel">Diesel</SelectItem>
+                          <SelectItem value="Essence">Essence</SelectItem>
+                          <SelectItem value="Electrique">Électrique</SelectItem>
+                          <SelectItem value="Hybride">Hybride</SelectItem>
+                          <SelectItem value="GNV">GNV (Gaz Naturel)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="annee"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Année de fabrication</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="Ex: 2022" 
+                            min={1990} 
+                            max={new Date().getFullYear()}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="emissions"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Émissions CO2 (g/km)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="Ex: 120" 
+                            min={0}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="entrepriseId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Entreprise</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionnez une entreprise" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="space-y-2">
+                  <FormLabel>Score écologique</FormLabel>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-1">
+                      <Progress 
+                        value={ecologicalScore ?? 0} 
+                        max={100}
+                        className={`h-2 ${getScoreColorClass(ecologicalScore)}`} 
+                      />
+                    </div>
+                    <div className="w-10 text-center font-medium">
+                      {isCalculating ? "..." : ecologicalScore ?? "-"}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
