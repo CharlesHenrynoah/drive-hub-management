@@ -36,6 +36,13 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
     "E-005": "Société ABC",
   };
 
+  // Helper pour déterminer la classe de couleur selon le score écologique
+  const getScoreColorClass = (score: number) => {
+    if (score >= 80) return "bg-success";
+    if (score >= 60) return "bg-info";
+    return "bg-warning";
+  };
+
   return (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
@@ -107,7 +114,7 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
                   <Progress
                     value={vehicle.Score_Ecologique}
                     max={100}
-                    className={`h-2 ${vehicle.Score_Ecologique >= 80 ? "bg-success" : vehicle.Score_Ecologique >= 60 ? "bg-info" : "bg-warning"}`}
+                    className={`h-2 ${getScoreColorClass(vehicle.Score_Ecologique)}`}
                   />
                 </dd>
               </div>
@@ -147,6 +154,26 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
                   {new Date(new Date(vehicle.Entretien).setMonth(new Date(vehicle.Entretien).getMonth() + 6)).toISOString().split('T')[0]}
                 </dd>
               </div>
+              
+              {vehicle.Type_Vehicule === "Mini Bus" || vehicle.Type_Vehicule === "Bus" ? (
+                <>
+                  <div className="pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-1">Informations spécifiques {vehicle.Type_Vehicule}</h4>
+                    <div className="flex justify-between">
+                      <dt className="font-medium">Places assises</dt>
+                      <dd>{Math.floor(vehicle.Capacite * 0.9)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="font-medium">Places debout</dt>
+                      <dd>{Math.floor(vehicle.Capacite * 0.1)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="font-medium">Accessibilité PMR</dt>
+                      <dd>{vehicle.Type_Vehicule === "Bus" ? "Oui" : "Non"}</dd>
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </dl>
           </div>
         </div>

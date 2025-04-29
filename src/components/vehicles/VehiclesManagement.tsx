@@ -73,7 +73,7 @@ const vehicles = [
   },
   {
     ID_Vehicule: "V-003",
-    Type_Vehicule: "Minibus",
+    Type_Vehicule: "Mini Bus",
     Capacite: 9,
     Type_Carburant: "Diesel",
     Score_Ecologique: 55,
@@ -118,6 +118,38 @@ const vehicles = [
     Kilometrage: 15000,
     Photo: "https://images.unsplash.com/photo-1561580125-028ee3bd62eb?w=300&h=200&fit=crop",
     ID_Entreprise: "E-005",
+  },
+  {
+    ID_Vehicule: "V-006",
+    Type_Vehicule: "Bus",
+    Capacite: 45,
+    Type_Carburant: "Diesel",
+    Score_Ecologique: 50,
+    Note_Moyenne_Client: 82,
+    Entretien: "2023-10-05",
+    Immatriculation: "UV-678-WX",
+    Statut: "Disponible",
+    Marque: "Mercedes",
+    Modele: "Citaro",
+    Kilometrage: 75000,
+    Photo: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=300&h=200&fit=crop",
+    ID_Entreprise: "E-001",
+  },
+  {
+    ID_Vehicule: "V-007",
+    Type_Vehicule: "Bus",
+    Capacite: 50,
+    Type_Carburant: "Electrique",
+    Score_Ecologique: 90,
+    Note_Moyenne_Client: 95,
+    Entretien: "2023-11-20",
+    Immatriculation: "YZ-901-AB",
+    Statut: "Disponible",
+    Marque: "Volvo",
+    Modele: "7900 Electric",
+    Kilometrage: 32000,
+    Photo: "https://images.unsplash.com/photo-1597733153203-a54d0fbc47de?w=300&h=200&fit=crop",
+    ID_Entreprise: "E-003",
   },
 ];
 
@@ -208,6 +240,7 @@ export function VehiclesManagement() {
                 <TableHead>Marque / Modèle</TableHead>
                 <TableHead>Immatriculation</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Capacité</TableHead>
                 <TableHead>Carburant</TableHead>
                 <TableHead>Score Écologique</TableHead>
                 <TableHead>Note Moy. Client</TableHead>
@@ -231,6 +264,7 @@ export function VehiclesManagement() {
                   <TableCell>{v.Marque} {v.Modele}</TableCell>
                   <TableCell>{v.Immatriculation}</TableCell>
                   <TableCell>{v.Type_Vehicule}</TableCell>
+                  <TableCell>{v.Capacite} places</TableCell>
                   <TableCell>{v.Type_Carburant}</TableCell>
                   <TableCell>{v.Score_Ecologique}</TableCell>
                   <TableCell>{(v.Note_Moyenne_Client / 20).toFixed(1)}/5</TableCell>
