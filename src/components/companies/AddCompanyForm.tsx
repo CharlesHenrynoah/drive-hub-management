@@ -174,7 +174,7 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
       <DialogTrigger asChild>
         <Button>{buttonText}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[900px]">
+      <DialogContent className="sm:max-w-[750px]">
         <DialogHeader>
           <DialogTitle>Ajouter une nouvelle entreprise</DialogTitle>
           <DialogDescription>
@@ -183,18 +183,18 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-6">
               {/* Logo Upload Section - Left Column */}
-              <div className="flex flex-col items-center justify-center space-y-4 py-4 lg:border-r lg:pr-6">
+              <div className="flex flex-col items-center justify-start space-y-4 pt-2">
                 <div className="text-center">
-                  <div className="mx-auto bg-gray-100 rounded-full h-32 w-32 flex items-center justify-center mb-4">
+                  <div className="mx-auto bg-gray-100 rounded-full h-24 w-24 flex items-center justify-center mb-4">
                     {previewUrl ? (
-                      <Avatar className="h-32 w-32">
+                      <Avatar className="h-24 w-24">
                         <AvatarImage src={previewUrl} alt="Logo preview" />
-                        <AvatarFallback className="text-xl">Logo</AvatarFallback>
+                        <AvatarFallback className="text-lg">Logo</AvatarFallback>
                       </Avatar>
                     ) : (
-                      <div className="text-xl text-gray-400">Logo</div>
+                      <div className="text-lg text-gray-400">Logo</div>
                     )}
                   </div>
                   
@@ -233,53 +233,21 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
                     )}
                   />
                   
-                  <FormField
-                    control={form.control}
-                    name="adresse"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Adresse</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Adresse complète de l'entreprise" 
-                            className="min-h-[80px]" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="contactPrincipal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contact principal</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nom et prénom du contact" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="email"
+                      name="contactPrincipal"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Contact principal</FormLabel>
                           <FormControl>
-                            <Input placeholder="email@exemple.fr" type="email" {...field} />
+                            <Input placeholder="Nom et prénom du contact" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+                  
                     <FormField
                       control={form.control}
                       name="telephone"
@@ -294,6 +262,38 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
                       )}
                     />
                   </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="email@exemple.fr" type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="adresse"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adresse</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Adresse complète de l'entreprise" 
+                            className="min-h-[60px]" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
             </div>
