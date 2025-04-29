@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,6 +34,7 @@ import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle } from "./VehiclesManagement";
+import { Image, Upload } from "lucide-react";
 
 const formSchema = z.object({
   marque: z.string().min(2, {
@@ -77,7 +78,9 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [companies, setCompanies] = useState<{id: string, name: string}[]>([]);
-  const [photoInput, setPhotoInput] = useState("");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isEditing = !!vehicleToEdit;
   
@@ -117,7 +120,7 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
         annee: vehicleToEdit.year || undefined,
         photoUrl: vehicleToEdit.photo_url || "",
       });
-      setPhotoInput(vehicleToEdit.photo_url || "");
+      setPreviewImage(vehicleToEdit.photo_url || null);
       setEcologicalScore(vehicleToEdit.ecological_score || null);
     }
   }, [vehicleToEdit, form]);
@@ -187,7 +190,68 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
       // Reset form when dialog is closed, but only if we're not editing
       form.reset();
       setEcologicalScore(null);
-      setPhotoInput("");
+      setPreviewImage(null);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileChange(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileChange(e.target.files[0]);
+    }
+  };
+
+  const handleFileChange = (file: File) => {
+    // Check if file is an image
+    if (!file.type.match('image.*')) {
+      toast.error("Veuillez sélectionner une image");
+      return;
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 5MB");
+      return;
+    }
+
+    // Create object URL for preview
+    const url = URL.createObjectURL(file);
+    setPreviewImage(url);
+    
+    // For demo purposes, we're just using the URL
+    // In a real app, you would upload the file to storage
+    form.setValue("photoUrl", url);
+  };
+
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -195,6 +259,9 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
     setIsSaving(true);
     
     try {
+      // In a real application, you would upload the image to storage here
+      // and then save the URL to the database
+      
       if (isEditing && vehicleToEdit) {
         // Update existing vehicle
         const { error } = await supabase
@@ -375,33 +442,58 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
                   name="photoUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL de la photo</FormLabel>
+                      <FormLabel>Photo du véhicule</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="https://example.com/image.jpg" 
-                          value={photoInput}
-                          onChange={(e) => {
-                            setPhotoInput(e.target.value);
-                            field.onChange(e.target.value);
-                          }}
-                        />
+                        <div 
+                          className={`border-2 border-dashed rounded-md p-6 h-48 flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                            isDragging ? "border-primary bg-primary/10" : "border-gray-300 hover:border-primary"
+                          }`}
+                          onDragEnter={handleDragEnter}
+                          onDragLeave={handleDragLeave}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          onClick={handleBrowseClick}
+                        >
+                          {previewImage ? (
+                            <div className="relative w-full h-full">
+                              <img 
+                                src={previewImage} 
+                                alt="Aperçu du véhicule" 
+                                className="h-full w-full object-contain rounded-md"
+                                onError={() => {
+                                  setPreviewImage("https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop");
+                                }} 
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="h-10 w-10 text-gray-400 mb-2" />
+                              <p className="text-sm text-gray-600">
+                                Glissez et déposez une image ici, ou cliquez pour parcourir
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                PNG, JPG, GIF jusqu'à 5MB
+                              </p>
+                            </>
+                          )}
+                          <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            className="hidden" 
+                            accept="image/*" 
+                            onChange={handleFileInputChange}
+                            aria-label="Sélectionner une image"
+                          />
+                          <input 
+                            type="hidden" 
+                            {...field}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                {photoInput && (
-                  <div className="mt-2">
-                    <img 
-                      src={photoInput} 
-                      alt="Aperçu du véhicule" 
-                      className="h-32 w-full object-cover rounded-md"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop";
-                      }} 
-                    />
-                  </div>
-                )}
               </div>
               
               {/* Colonne de droite */}
