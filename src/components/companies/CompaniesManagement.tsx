@@ -21,6 +21,7 @@ import { CompanyDetailModal } from "./CompanyDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Types for companies
 export type Company = {
@@ -71,6 +72,7 @@ export function CompaniesManagement() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const isMobile = useIsMobile();
 
   // Fetch companies from Supabase
   useEffect(() => {
@@ -163,18 +165,18 @@ export function CompaniesManagement() {
       
       <div className="rounded-md border">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="w-full table-auto">
             <TableHeader>
               <TableRow>
-                <TableHead>Logo</TableHead>
-                <TableHead>Nom</TableHead>
-                <TableHead>Contact Principal</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Téléphone</TableHead>
-                <TableHead>Flottes</TableHead>
-                <TableHead>Véhicules</TableHead>
-                <TableHead>Chauffeurs</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="w-16">Logo</TableHead>
+                <TableHead className="w-48">Nom</TableHead>
+                <TableHead className="w-48">Contact Principal</TableHead>
+                <TableHead className="w-48">Email</TableHead>
+                <TableHead className="w-36">Téléphone</TableHead>
+                <TableHead className="w-24 text-center">Flottes</TableHead>
+                <TableHead className="w-24 text-center">Véhicules</TableHead>
+                <TableHead className="w-24 text-center">Chauffeurs</TableHead>
+                <TableHead className="w-24 text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -193,14 +195,14 @@ export function CompaniesManagement() {
                     <div className="flex flex-col items-center space-y-4">
                       <p className="text-lg font-medium">Aucune entreprise disponible</p>
                       <p className="text-muted-foreground">Ajoutez votre première entreprise pour démarrer</p>
-                      <AddCompanyForm onCompanyAdded={handleCompanyAdded} buttonText="Ajouter une entreprise" />
+                      <AddCompanyForm onCompanyAdded={handleCompanyAdded} />
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredCompanies.map((company) => (
-                  <TableRow key={company.id}>
-                    <TableCell>
+                  <TableRow key={company.id} className="h-16">
+                    <TableCell className="py-2">
                       <Avatar className="h-10 w-10">
                         {company.logo_url ? (
                           <AvatarImage src={company.logo_url} alt={company.name} />
@@ -209,29 +211,31 @@ export function CompaniesManagement() {
                         )}
                       </Avatar>
                     </TableCell>
-                    <TableCell>{company.name}</TableCell>
+                    <TableCell className="font-medium">{company.name}</TableCell>
                     <TableCell>{company.contact_name || '-'}</TableCell>
                     <TableCell>{company.email || '-'}</TableCell>
                     <TableCell>{company.phone || '-'}</TableCell>
-                    <TableCell>{company.fleet_count || 0}</TableCell>
-                    <TableCell>{company.vehicle_count || 0}</TableCell>
-                    <TableCell>{company.driver_count || 0}</TableCell>
+                    <TableCell className="text-center">{company.fleet_count || 0}</TableCell>
+                    <TableCell className="text-center">{company.vehicle_count || 0}</TableCell>
+                    <TableCell className="text-center">{company.driver_count || 0}</TableCell>
                     <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(company)}>
-                            Détails
-                          </Button>
-                        </DialogTrigger>
-                        {selectedCompany && selectedCompany.id === company.id && (
-                          <CompanyDetailModal 
-                            company={selectedCompany}
-                            fleets={getCompanyFleets(company.id)}
-                            vehicles={getCompanyVehicles(company.id)}
-                            drivers={getCompanyDrivers(company.id)}
-                          />
-                        )}
-                      </Dialog>
+                      <div className="flex justify-center">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(company)}>
+                              Détails
+                            </Button>
+                          </DialogTrigger>
+                          {selectedCompany && selectedCompany.id === company.id && (
+                            <CompanyDetailModal 
+                              company={selectedCompany}
+                              fleets={getCompanyFleets(company.id)}
+                              vehicles={getCompanyVehicles(company.id)}
+                              drivers={getCompanyDrivers(company.id)}
+                            />
+                          )}
+                        </Dialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
