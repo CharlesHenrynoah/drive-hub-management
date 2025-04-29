@@ -24,6 +24,16 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
 
   // Calculate note moyenne client display value
   const clientNote = ((vehicle.Note_Moyenne_Client || 85) / 20).toFixed(1);
+  
+  // Calculate seated and standing capacity based on the vehicle type
+  const seatedCapacity = Math.floor(vehicle.capacity * 0.9);
+  const standingCapacity = Math.floor(vehicle.capacity * 0.1);
+  
+  // Format dates for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Non défini";
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <DialogContent className="sm:max-w-[600px]">
@@ -137,12 +147,14 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Dernier entretien</dt>
-                <dd>{new Date(vehicle.last_maintenance || Date.now()).toLocaleDateString()}</dd>
+                <dd>{formatDate(vehicle.last_maintenance)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Prochain entretien</dt>
                 <dd>
-                  {new Date(new Date(vehicle.last_maintenance || Date.now()).setMonth(new Date(vehicle.last_maintenance || Date.now()).getMonth() + 6)).toLocaleDateString()}
+                  {vehicle.last_maintenance ? 
+                    formatDate(new Date(new Date(vehicle.last_maintenance).setMonth(new Date(vehicle.last_maintenance).getMonth() + 6)).toISOString()) : 
+                    formatDate(new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString())}
                 </dd>
               </div>
               
@@ -152,11 +164,11 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
                     <h4 className="text-xs font-semibold text-muted-foreground mb-1">Informations spécifiques {vehicle.type}</h4>
                     <div className="flex justify-between">
                       <dt className="font-medium">Places assises</dt>
-                      <dd>{Math.floor(vehicle.capacity * 0.9)}</dd>
+                      <dd>{seatedCapacity}</dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="font-medium">Places debout</dt>
-                      <dd>{Math.floor(vehicle.capacity * 0.1)}</dd>
+                      <dd>{standingCapacity}</dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="font-medium">Accessibilité PMR</dt>

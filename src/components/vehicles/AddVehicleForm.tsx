@@ -35,6 +35,8 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle } from "./VehiclesManagement";
 import { Image, Upload } from "lucide-react";
+import { DatePicker } from "../ui/date-picker";
+import { Switch } from "@/components/ui/switch";
 
 const formSchema = z.object({
   marque: z.string().min(2, {
@@ -58,11 +60,20 @@ const formSchema = z.object({
   capacite: z.coerce.number().min(1, {
     message: "La capacité doit être d'au moins 1 passager",
   }),
+  placesAssises: z.coerce.number().min(0, {
+    message: "Le nombre de places assises doit être positif",
+  }),
+  placesDebout: z.coerce.number().min(0, {
+    message: "Le nombre de places debout doit être positif",
+  }),
+  accessibilitePMR: z.boolean().default(false),
   annee: z.coerce.number().optional(),
   kilometrage: z.coerce.number().optional(),
   photoUrl: z.string({
     required_error: "Une photo du véhicule est obligatoire",
   }),
+  dernierEntretien: z.date().optional(),
+  prochainEntretien: z.date().optional(),
 });
 
 interface AddVehicleFormProps {
@@ -83,7 +94,7 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isEditing = !!vehicleToEdit;
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -94,11 +105,27 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
       typeCarburant: vehicleToEdit?.fuel_type || "",
       entrepriseId: vehicleToEdit?.company_id || "",
       capacite: vehicleToEdit?.capacity || 15,
+      placesAssises: Math.floor((vehicleToEdit?.capacity || 15) * 0.9) || 13,
+      placesDebout: Math.floor((vehicleToEdit?.capacity || 15) * 0.1) || 1,
+      accessibilitePMR: vehicleToEdit?.type === "Bus" || false,
       kilometrage: vehicleToEdit?.mileage || 0,
       annee: vehicleToEdit?.year || undefined,
       photoUrl: vehicleToEdit?.photo_url || "",
+      dernierEntretien: vehicleToEdit?.last_maintenance ? new Date(vehicleToEdit.last_maintenance) : new Date(),
+      prochainEntretien: vehicleToEdit?.last_maintenance ? 
+        new Date(new Date(vehicleToEdit.last_maintenance).setMonth(new Date(vehicleToEdit.last_maintenance).getMonth() + 6)) : 
+        new Date(new Date().setMonth(new Date().getMonth() + 6)),
     },
   });
+
+  // Function to update total capacity based on seated and standing
+  const updateCapacity = () => {
+    const values = form.getValues();
+    const totalCapacity = (values.placesAssises || 0) + (values.placesDebout || 0);
+    if (totalCapacity > 0) {
+      form.setValue("capacite", totalCapacity);
+    }
+  };
 
   useEffect(() => {
     if (isOpen !== undefined) {
@@ -108,6 +135,10 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
 
   useEffect(() => {
     if (vehicleToEdit) {
+      const lastMaintenance = vehicleToEdit.last_maintenance ? new Date(vehicleToEdit.last_maintenance) : new Date();
+      const nextMaintenance = new Date(lastMaintenance);
+      nextMaintenance.setMonth(nextMaintenance.getMonth() + 6);
+
       form.reset({
         marque: vehicleToEdit.brand,
         modele: vehicleToEdit.model,
@@ -116,9 +147,14 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
         typeCarburant: vehicleToEdit.fuel_type,
         entrepriseId: vehicleToEdit.company_id || "",
         capacite: vehicleToEdit.capacity,
+        placesAssises: Math.floor(vehicleToEdit.capacity * 0.9),
+        placesDebout: Math.floor(vehicleToEdit.capacity * 0.1),
+        accessibilitePMR: vehicleToEdit.type === "Bus",
         kilometrage: vehicleToEdit.mileage || 0,
         annee: vehicleToEdit.year || undefined,
         photoUrl: vehicleToEdit.photo_url || "",
+        dernierEntretien: lastMaintenance,
+        prochainEntretien: nextMaintenance,
       });
       setPreviewImage(vehicleToEdit.photo_url || null);
       setEcologicalScore(vehicleToEdit.ecological_score || null);
@@ -278,7 +314,10 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
             mileage: values.kilometrage || 0,
             ecological_score: ecologicalScore || vehicleToEdit.ecological_score || 50,
             photo_url: values.photoUrl,
+            last_maintenance: values.dernierEntretien?.toISOString().split('T')[0] || null,
             updated_at: new Date().toISOString(),
+            // Add custom properties for specific vehicle types as a JSON field in the database
+            // or use a normalized data model with separate tables in a real app
           })
           .eq('id', vehicleToEdit.id);
 
@@ -303,6 +342,7 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
             mileage: values.kilometrage || 0,
             ecological_score: ecologicalScore || 50,
             photo_url: values.photoUrl,
+            last_maintenance: values.dernierEntretien?.toISOString().split('T')[0] || null,
           })
           .select();
 
@@ -342,7 +382,7 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
           <Button>Ajouter un véhicule</Button>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Modifier le véhicule" : "Ajouter un nouveau véhicule"}</DialogTitle>
           <DialogDescription>
@@ -427,9 +467,9 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
                     name="capacite"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Capacité (passagers)</FormLabel>
+                        <FormLabel>Capacité totale (passagers)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} min={1} />
+                          <Input type="number" {...field} min={1} readOnly />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -494,6 +534,74 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
                     </FormItem>
                   )}
                 />
+
+                <div className="pt-3 border-t">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Spécifications du véhicule</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="placesAssises"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Places assises</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field} 
+                              min={0}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setTimeout(updateCapacity, 0);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="placesDebout"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Places debout</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field} 
+                              min={0}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setTimeout(updateCapacity, 0);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="accessibilitePMR"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-4 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Accessibilité PMR</FormLabel>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
               
               {/* Colonne de droite */}
@@ -558,6 +666,40 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
                             {...field} 
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="dernierEntretien"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dernier entretien</FormLabel>
+                        <DatePicker
+                          date={field.value}
+                          setDate={(date) => field.onChange(date)}
+                          placeholder="Sélectionnez une date"
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="prochainEntretien"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prochain entretien</FormLabel>
+                        <DatePicker
+                          date={field.value}
+                          setDate={(date) => field.onChange(date)}
+                          placeholder="Sélectionnez une date"
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
