@@ -57,7 +57,7 @@ const formSchema = z.object({
     message: "La capacité doit être d'au moins 1 passager",
   }),
   annee: z.coerce.number().optional(),
-  emissions: z.coerce.number().optional(),
+  kilometrage: z.coerce.number().optional(),
 });
 
 export function AddVehicleForm() {
@@ -77,6 +77,7 @@ export function AddVehicleForm() {
       typeCarburant: "",
       entrepriseId: "",
       capacite: 15,
+      kilometrage: 0,
     },
   });
 
@@ -104,7 +105,7 @@ export function AddVehicleForm() {
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       // Only recalculate when these specific fields change
-      if (["typeVehicule", "typeCarburant", "capacite", "annee", "emissions"].includes(name || "")) {
+      if (["typeVehicule", "typeCarburant", "capacite", "annee"].includes(name || "")) {
         calculateScore();
       }
     });
@@ -124,8 +125,7 @@ export function AddVehicleForm() {
           type: values.typeVehicule,
           fuel: values.typeCarburant,
           capacity: values.capacite,
-          year: values.annee,
-          emissions: values.emissions
+          year: values.annee
         });
         
         setEcologicalScore(score);
@@ -153,7 +153,7 @@ export function AddVehicleForm() {
           company_id: values.entrepriseId,
           capacity: values.capacite,
           year: values.annee || null,
-          emissions: values.emissions || null,
+          mileage: values.kilometrage || 0,
           ecological_score: ecologicalScore || 50,
         })
         .select();
@@ -335,14 +335,14 @@ export function AddVehicleForm() {
                   
                   <FormField
                     control={form.control}
-                    name="emissions"
+                    name="kilometrage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Émissions CO2 (g/km)</FormLabel>
+                        <FormLabel>Kilométrage parcouru</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
-                            placeholder="Ex: 120" 
+                            placeholder="Ex: 50000" 
                             min={0}
                             {...field} 
                           />

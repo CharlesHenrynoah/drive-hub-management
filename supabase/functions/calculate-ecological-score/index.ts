@@ -26,7 +26,6 @@ serve(async (req) => {
       - Fuel type: ${vehicleData.fuel}
       - Passenger capacity: ${vehicleData.capacity}
       ${vehicleData.year ? `- Year: ${vehicleData.year}` : ''}
-      ${vehicleData.emissions ? `- CO2 emissions (g/km): ${vehicleData.emissions}` : ''}
 
       Please provide ONLY a number between 0 and 100 representing the ecological score,
       where 100 is the most ecological (clean, efficient, sustainable) and 0 is the least ecological.
