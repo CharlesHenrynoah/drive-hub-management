@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -307,26 +306,8 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                   />
                 </div>
                 
-                <FormField
-                  control={form.control}
-                  name="disponible"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Disponibilité</FormLabel>
-                        <FormDescription>
-                          Définir si le chauffeur est disponible pour des missions
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+                {/* Removed the Switch FormField for disponible here */}
+                
               </div>
               
               {/* Colonne de droite - Photo */}
