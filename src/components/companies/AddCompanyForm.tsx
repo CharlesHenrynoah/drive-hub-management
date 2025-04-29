@@ -55,9 +55,10 @@ const formSchema = z.object({
 
 interface AddCompanyFormProps {
   onCompanyAdded?: () => void;
+  buttonText?: string; // Added new optional prop for button text
 }
 
-export function AddCompanyForm({ onCompanyAdded }: AddCompanyFormProps) {
+export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entreprise" }: AddCompanyFormProps) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -170,7 +171,7 @@ export function AddCompanyForm({ onCompanyAdded }: AddCompanyFormProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Ajouter une entreprise</Button>
+        <Button>{buttonText}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
