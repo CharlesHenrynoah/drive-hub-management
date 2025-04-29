@@ -39,6 +39,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -168,7 +169,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       <DialogTrigger asChild>
         <Button>{buttonText}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Ajouter un nouveau chauffeur</DialogTitle>
           <DialogDescription>
@@ -177,198 +178,211 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="nom"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Dupont" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="prenom"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prénom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Jean" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="jean.dupont@exemple.fr" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="telephone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Téléphone</FormLabel>
-                  <FormControl>
-                    <Input placeholder="06 12 34 56 78" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="dateDebutActivite"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Date de début d'activité</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Colonne de gauche - Informations personnelles */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="nom"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nom</FormLabel>
                         <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "dd/MM/yyyy", { locale: fr })
-                            ) : (
-                              <span>Sélectionner une date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
+                          <Input placeholder="Dupont" {...field} />
                         </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="entrepriseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Entreprise</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="prenom"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prénom</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Jean" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionnez une entreprise" />
-                        </SelectTrigger>
+                        <Input placeholder="jean.dupont@exemple.fr" type="email" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="E-001">Ville de Paris</SelectItem>
-                        <SelectItem value="E-002">Académie de Lyon</SelectItem>
-                        <SelectItem value="E-003">Transport Express</SelectItem>
-                        <SelectItem value="E-004">LogiMobile</SelectItem>
-                        <SelectItem value="E-005">Société ABC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="telephone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Téléphone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="06 12 34 56 78" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="dateDebutActivite"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Date de début d'activité</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "dd/MM/yyyy", { locale: fr })
+                                ) : (
+                                  <span>Sélectionner une date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date > new Date() || date < new Date("1900-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="entrepriseId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Entreprise</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionnez une entreprise" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="E-001">Ville de Paris</SelectItem>
+                            <SelectItem value="E-002">Académie de Lyon</SelectItem>
+                            <SelectItem value="E-003">Transport Express</SelectItem>
+                            <SelectItem value="E-004">LogiMobile</SelectItem>
+                            <SelectItem value="E-005">Société ABC</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="disponible"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Disponibilité</FormLabel>
+                        <FormDescription>
+                          Définir si le chauffeur est disponible pour des missions
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              {/* Colonne de droite - Photo */}
+              <div>
+                <FormField
+                  control={form.control}
+                  name="photo"
+                  render={({ field: { value, onChange, ...fieldProps } }) => (
+                    <FormItem>
+                      <FormLabel>Photo du chauffeur (format paysage)</FormLabel>
+                      <FormControl>
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors h-full flex flex-col justify-center">
+                          <Input
+                            id="photo"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileChange}
+                            {...fieldProps}
+                          />
+                          <label htmlFor="photo" className="cursor-pointer h-full">
+                            {photoPreview ? (
+                              <div className="flex justify-center">
+                                <AspectRatio ratio={16/9} className="w-full">
+                                  <img 
+                                    src={photoPreview} 
+                                    alt="Aperçu" 
+                                    className="object-cover w-full h-full rounded-md" 
+                                  />
+                                </AspectRatio>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center space-y-4 h-full justify-center py-10">
+                                <UploadCloud className="h-16 w-16 text-gray-400" />
+                                <span className="text-sm text-gray-500">
+                                  Glissez et déposez une image ou cliquez pour sélectionner
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  PNG, JPG, WEBP (max 5MB)
+                                </span>
+                                <span className="text-xs text-gray-400 mt-2">
+                                  Format paysage recommandé (16:9)
+                                </span>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
             
-            <FormField
-              control={form.control}
-              name="photo"
-              render={({ field: { value, onChange, ...fieldProps } }) => (
-                <FormItem>
-                  <FormLabel>Photo du chauffeur (format paysage)</FormLabel>
-                  <FormControl>
-                    <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
-                      <Input
-                        id="photo"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange}
-                        {...fieldProps}
-                      />
-                      <label htmlFor="photo" className="cursor-pointer">
-                        {photoPreview ? (
-                          <div className="flex justify-center">
-                            <img 
-                              src={photoPreview} 
-                              alt="Aperçu" 
-                              className="object-cover w-full h-40 rounded-md aspect-[16/9]" 
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center space-y-2">
-                            <UploadCloud className="h-10 w-10 text-gray-400" />
-                            <span className="text-sm text-gray-500">
-                              Glissez et déposez une image ou cliquez pour sélectionner
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              PNG, JPG, WEBP (max 5MB)
-                            </span>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="disponible"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Disponibilité</FormLabel>
-                    <FormDescription>
-                      Définir si le chauffeur est disponible pour des missions
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
+            <DialogFooter className="mt-6 pt-4 border-t">
               <Button variant="outline" type="button" onClick={() => setOpen(false)}>
                 Annuler
               </Button>
