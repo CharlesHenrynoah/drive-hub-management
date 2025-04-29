@@ -33,6 +33,7 @@ import { z } from "zod";
 import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { Vehicle } from "./VehiclesManagement";
 
 const formSchema = z.object({
   marque: z.string().min(2, {
@@ -58,28 +59,68 @@ const formSchema = z.object({
   }),
   annee: z.coerce.number().optional(),
   kilometrage: z.coerce.number().optional(),
+  photoUrl: z.string({
+    required_error: "Une photo du véhicule est obligatoire",
+  }),
 });
 
-export function AddVehicleForm() {
-  const [open, setOpen] = useState(false);
+interface AddVehicleFormProps {
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  vehicleToEdit?: Vehicle | null;
+  onSuccess?: () => void;
+}
+
+export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess }: AddVehicleFormProps) {
+  const [open, setOpen] = useState(isOpen || false);
   const [ecologicalScore, setEcologicalScore] = useState<number | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [companies, setCompanies] = useState<{id: string, name: string}[]>([]);
+  const [photoInput, setPhotoInput] = useState("");
+  
+  const isEditing = !!vehicleToEdit;
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      marque: "",
-      modele: "",
-      immatriculation: "",
-      typeVehicule: "Mini Bus",
-      typeCarburant: "",
-      entrepriseId: "",
-      capacite: 15,
-      kilometrage: 0,
+      marque: vehicleToEdit?.brand || "",
+      modele: vehicleToEdit?.model || "",
+      immatriculation: vehicleToEdit?.registration || "",
+      typeVehicule: (vehicleToEdit?.type as "Mini Bus" | "Bus") || "Mini Bus",
+      typeCarburant: vehicleToEdit?.fuel_type || "",
+      entrepriseId: vehicleToEdit?.company_id || "",
+      capacite: vehicleToEdit?.capacity || 15,
+      kilometrage: vehicleToEdit?.mileage || 0,
+      annee: vehicleToEdit?.year || undefined,
+      photoUrl: vehicleToEdit?.photo_url || "",
     },
   });
+
+  useEffect(() => {
+    if (isOpen !== undefined) {
+      setOpen(isOpen);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (vehicleToEdit) {
+      form.reset({
+        marque: vehicleToEdit.brand,
+        modele: vehicleToEdit.model,
+        immatriculation: vehicleToEdit.registration,
+        typeVehicule: vehicleToEdit.type as "Mini Bus" | "Bus",
+        typeCarburant: vehicleToEdit.fuel_type,
+        entrepriseId: vehicleToEdit.company_id || "",
+        capacite: vehicleToEdit.capacity,
+        kilometrage: vehicleToEdit.mileage || 0,
+        annee: vehicleToEdit.year || undefined,
+        photoUrl: vehicleToEdit.photo_url || "",
+      });
+      setPhotoInput(vehicleToEdit.photo_url || "");
+      setEcologicalScore(vehicleToEdit.ecological_score || null);
+    }
+  }, [vehicleToEdit, form]);
 
   useEffect(() => {
     // Fetch companies from Supabase
@@ -137,41 +178,82 @@ export function AddVehicleForm() {
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    }
+    if (!newOpen && !isEditing) {
+      // Reset form when dialog is closed, but only if we're not editing
+      form.reset();
+      setEcologicalScore(null);
+      setPhotoInput("");
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSaving(true);
     
     try {
-      // Save vehicle to Supabase
-      const { data, error } = await supabase
-        .from('vehicles')
-        .insert({
-          brand: values.marque,
-          model: values.modele,
-          registration: values.immatriculation,
-          type: values.typeVehicule,
-          fuel_type: values.typeCarburant,
-          company_id: values.entrepriseId,
-          capacity: values.capacite,
-          year: values.annee || null,
-          mileage: values.kilometrage || 0,
-          ecological_score: ecologicalScore || 50,
-        })
-        .select();
-      
-      if (error) {
-        throw error;
+      if (isEditing && vehicleToEdit) {
+        // Update existing vehicle
+        const { error } = await supabase
+          .from('vehicles')
+          .update({
+            brand: values.marque,
+            model: values.modele,
+            registration: values.immatriculation,
+            type: values.typeVehicule,
+            fuel_type: values.typeCarburant,
+            company_id: values.entrepriseId,
+            capacity: values.capacite,
+            year: values.annee || null,
+            mileage: values.kilometrage || 0,
+            ecological_score: ecologicalScore || vehicleToEdit.ecological_score || 50,
+            photo_url: values.photoUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', vehicleToEdit.id);
+
+        if (error) throw error;
+        
+        toast.success("Véhicule mis à jour avec succès", {
+          description: `${values.marque} ${values.modele} a été mis à jour.`,
+        });
+      } else {
+        // Add new vehicle
+        const { data, error } = await supabase
+          .from('vehicles')
+          .insert({
+            brand: values.marque,
+            model: values.modele,
+            registration: values.immatriculation,
+            type: values.typeVehicule,
+            fuel_type: values.typeCarburant,
+            company_id: values.entrepriseId,
+            capacity: values.capacite,
+            year: values.annee || null,
+            mileage: values.kilometrage || 0,
+            ecological_score: ecologicalScore || 50,
+            photo_url: values.photoUrl,
+          })
+          .select();
+
+        if (error) throw error;
+        
+        toast.success("Véhicule ajouté avec succès", {
+          description: `${values.marque} ${values.modele} a été ajouté à la flotte.`,
+        });
       }
       
-      toast.success("Véhicule ajouté avec succès", {
-        description: `${values.marque} ${values.modele} a été ajouté à la flotte.`,
-      });
+      if (onSuccess) {
+        onSuccess();
+      }
       
-      form.reset();
-      setEcologicalScore(null);
-      setOpen(false);
+      handleOpenChange(false);
     } catch (error) {
       console.error('Error saving vehicle:', error);
-      toast.error("Erreur lors de l'ajout du véhicule", {
+      toast.error(isEditing ? "Erreur lors de la mise à jour du véhicule" : "Erreur lors de l'ajout du véhicule", {
         description: "Veuillez réessayer ou contacter l'assistance.",
       });
     } finally {
@@ -187,15 +269,19 @@ export function AddVehicleForm() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Ajouter un véhicule</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {!isEditing && (
+        <DialogTrigger asChild>
+          <Button>Ajouter un véhicule</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>Ajouter un nouveau véhicule</DialogTitle>
+          <DialogTitle>{isEditing ? "Modifier le véhicule" : "Ajouter un nouveau véhicule"}</DialogTitle>
           <DialogDescription>
-            Entrez les informations du nouveau véhicule à ajouter à votre flotte.
+            {isEditing 
+              ? "Modifiez les informations du véhicule."
+              : "Entrez les informations du nouveau véhicule à ajouter à votre flotte."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -283,6 +369,39 @@ export function AddVehicleForm() {
                     )}
                   />
                 </div>
+                
+                <FormField
+                  control={form.control}
+                  name="photoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL de la photo</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="https://example.com/image.jpg" 
+                          value={photoInput}
+                          onChange={(e) => {
+                            setPhotoInput(e.target.value);
+                            field.onChange(e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {photoInput && (
+                  <div className="mt-2">
+                    <img 
+                      src={photoInput} 
+                      alt="Aperçu du véhicule" 
+                      className="h-32 w-full object-cover rounded-md"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop";
+                      }} 
+                    />
+                  </div>
+                )}
               </div>
               
               {/* Colonne de droite */}
@@ -397,11 +516,11 @@ export function AddVehicleForm() {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              <Button variant="outline" type="button" onClick={() => handleOpenChange(false)}>
                 Annuler
               </Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? "Enregistrement..." : "Ajouter"}
+                {isSaving ? (isEditing ? "Mise à jour..." : "Enregistrement...") : (isEditing ? "Mettre à jour" : "Ajouter")}
               </Button>
             </DialogFooter>
           </form>

@@ -43,6 +43,7 @@ export type Vehicle = {
   mileage: number;
   photo_url: string | null;
   company_id: string | null;
+  year?: number;
   Note_Moyenne_Client?: number; // Keeping for compatibility
 };
 
@@ -58,6 +59,9 @@ export function VehiclesManagement() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [companies, setCompanies] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     fetchVehicles();
@@ -112,14 +116,30 @@ export function VehiclesManagement() {
     }
   }
 
+  const handleVehicleClick = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleEditClick = () => {
+    setIsDetailModalOpen(false);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    fetchVehicles(); // Refresh the vehicles list
+    setIsEditModalOpen(false);
+    setSelectedVehicle(null);
+  };
+
   // Filtrage des véhicules
   const filteredVehicles = vehicles.filter((v) => {
     // 1. Recherche textuelle
     const matchesSearch =
-      v.id.includes(searchTerm) ||
-      v.registration.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.model.toLowerCase().includes(searchTerm.toLowerCase());
+      v.id?.includes(searchTerm) ||
+      v.registration?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.model?.toLowerCase().includes(searchTerm.toLowerCase());
 
     // 2. Filtre par type
     const matchesType = typeFilter === "Tous" || v.type === typeFilter;
@@ -180,7 +200,7 @@ export function VehiclesManagement() {
             Exporter
           </Button>
           
-          <AddVehicleForm />
+          <AddVehicleForm onSuccess={fetchVehicles} />
         </div>
       </div>
       
@@ -246,14 +266,9 @@ export function VehiclesManagement() {
                     <TableCell>{v.mileage?.toLocaleString() || "0"} km</TableCell>
                     <TableCell>{v.company_id ? companies[v.company_id] || "N/A" : "N/A"}</TableCell>
                     <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            Détails
-                          </Button>
-                        </DialogTrigger>
-                        <VehicleDetailModal vehicle={v} companyName={v.company_id ? companies[v.company_id] : undefined} />
-                      </Dialog>
+                      <Button variant="ghost" size="sm" onClick={() => handleVehicleClick(v)}>
+                        Détails
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -262,6 +277,27 @@ export function VehiclesManagement() {
           </Table>
         </div>
       </div>
+      
+      {/* Detail Modal */}
+      {selectedVehicle && (
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <VehicleDetailModal 
+            vehicle={selectedVehicle} 
+            companyName={selectedVehicle.company_id ? companies[selectedVehicle.company_id] : undefined} 
+            onEdit={handleEditClick}
+          />
+        </Dialog>
+      )}
+      
+      {/* Edit Modal */}
+      {selectedVehicle && (
+        <AddVehicleForm 
+          isOpen={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          vehicleToEdit={selectedVehicle}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </div>
   );
 }

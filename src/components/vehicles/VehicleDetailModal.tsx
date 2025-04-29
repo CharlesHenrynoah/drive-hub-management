@@ -4,14 +4,17 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Edit } from "lucide-react";
 import { Vehicle } from "./VehiclesManagement";
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle;
   companyName?: string;
+  onEdit: () => void;
 }
 
-export function VehicleDetailModal({ vehicle, companyName = "N/A" }: VehicleDetailModalProps) {
+export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: VehicleDetailModalProps) {
   // Helper pour déterminer la classe de couleur selon le score écologique
   const getScoreColorClass = (score: number) => {
     if (score >= 80) return "bg-success";
@@ -25,22 +28,28 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A" }: VehicleDeta
   return (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
-        <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
-          <Avatar className="h-16 w-16">
-            <AvatarImage 
-              src={vehicle.photo_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop"} 
-              alt={`${vehicle.brand} ${vehicle.model}`} 
-            />
-            <AvatarFallback>{vehicle.brand.substring(0, 2)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <DialogTitle className="text-xl">
-              {vehicle.brand} {vehicle.model}
-            </DialogTitle>
-            <DialogDescription>
-              {vehicle.id.substring(0, 8)}... - {vehicle.registration}
-            </DialogDescription>
+        <div className="flex items-start justify-between w-full">
+          <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
+            <Avatar className="h-16 w-16">
+              <AvatarImage 
+                src={vehicle.photo_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop"} 
+                alt={`${vehicle.brand} ${vehicle.model}`} 
+              />
+              <AvatarFallback>{vehicle.brand.substring(0, 2)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <DialogTitle className="text-xl">
+                {vehicle.brand} {vehicle.model}
+              </DialogTitle>
+              <DialogDescription>
+                {vehicle.id.substring(0, 8)}... - {vehicle.registration}
+              </DialogDescription>
+            </div>
           </div>
+          <Button variant="outline" size="sm" onClick={onEdit} className="flex items-center gap-1">
+            <Edit className="h-4 w-4" />
+            Modifier
+          </Button>
         </div>
       </DialogHeader>
       
