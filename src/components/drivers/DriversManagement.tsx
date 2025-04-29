@@ -28,8 +28,9 @@ import { Download } from "lucide-react";
 import { AddDriverForm } from "./AddDriverForm";
 import { DriverDetailModal } from "./DriverDetailModal";
 import { Driver } from "@/types/driver";
-import { Toggle } from "@/components/ui/toggle";
 import { Switch } from "@/components/ui/switch";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 // Données mockées des entreprises
 const entreprises = {
@@ -45,7 +46,7 @@ const initialDrivers: Driver[] = [];
 
 export function DriversManagement() {
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [experienceFilter, setExperienceFilter] = useState<string>("Tous");
+  const [durationFilter, setDurationFilter] = useState<string>("Tous");
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("Tous");
@@ -66,6 +67,36 @@ export function DriversManagement() {
     );
   };
 
+  // Calculate duration between date of activity start and today
+  const calculateActivityDuration = (dateDebut: Date | string): number => {
+    const startDate = dateDebut instanceof Date 
+      ? dateDebut 
+      : new Date(dateDebut);
+    
+    const today = new Date();
+    const diffYears = today.getFullYear() - startDate.getFullYear();
+    const isBirthdayPassed = 
+      today.getMonth() > startDate.getMonth() || 
+      (today.getMonth() === startDate.getMonth() && today.getDate() >= startDate.getDate());
+    
+    return isBirthdayPassed ? diffYears : diffYears - 1;
+  };
+
+  // Format date if it's a string
+  const formatDate = (date: Date | string) => {
+    if (date instanceof Date) {
+      return format(date, "dd/MM/yyyy", { locale: fr });
+    } else if (typeof date === 'string') {
+      // If it's an ISO string, convert to date first
+      try {
+        return format(new Date(date), "dd/MM/yyyy", { locale: fr });
+      } catch (e) {
+        return date; // Return as is if not a valid date
+      }
+    }
+    return "Date inconnue";
+  };
+
   // Filtrage des chauffeurs
   const filteredDrivers = drivers.filter((driver) => {
     // Recherche par Nom, Prénom ou ID
@@ -74,14 +105,16 @@ export function DriversManagement() {
       driver.Prénom.toLowerCase().includes(searchTerm.toLowerCase()) ||
       driver.ID_Chauffeur.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filtre par tranche d'expérience
-    let matchesExperience = true;
-    if (experienceFilter === "0-5") {
-      matchesExperience = driver.Expérience >= 0 && driver.Expérience <= 5;
-    } else if (experienceFilter === "6-10") {
-      matchesExperience = driver.Expérience >= 6 && driver.Expérience <= 10;
-    } else if (experienceFilter === "10+") {
-      matchesExperience = driver.Expérience > 10;
+    // Filtre par durée d'activité
+    let matchesDuration = true;
+    const activityDuration = calculateActivityDuration(driver.Date_Debut_Activité);
+    
+    if (durationFilter === "0-5") {
+      matchesDuration = activityDuration >= 0 && activityDuration <= 5;
+    } else if (durationFilter === "6-10") {
+      matchesDuration = activityDuration >= 6 && activityDuration <= 10;
+    } else if (durationFilter === "10+") {
+      matchesDuration = activityDuration > 10;
     }
 
     // Filtre par disponibilité
@@ -92,7 +125,7 @@ export function DriversManagement() {
       matchesAvailability = driver.Disponible === false;
     }
 
-    return matchesSearch && matchesExperience && matchesAvailability;
+    return matchesSearch && matchesDuration && matchesAvailability;
   });
 
   return (
@@ -106,12 +139,12 @@ export function DriversManagement() {
             className="w-full sm:w-64"
           />
           
-          <Select value={experienceFilter} onValueChange={setExperienceFilter}>
+          <Select value={durationFilter} onValueChange={setDurationFilter}>
             <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="Expérience" />
+              <SelectValue placeholder="Durée d'activité" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Tous">Toutes les expériences</SelectItem>
+              <SelectItem value="Tous">Toutes les durées</SelectItem>
               <SelectItem value="0-5">0-5 ans</SelectItem>
               <SelectItem value="6-10">6-10 ans</SelectItem>
               <SelectItem value="10+">10+ ans</SelectItem>
@@ -158,7 +191,8 @@ export function DriversManagement() {
                   <TableHead>ID</TableHead>
                   <TableHead>Nom</TableHead>
                   <TableHead>Prénom</TableHead>
-                  <TableHead>Expérience (années)</TableHead>
+                  <TableHead>Date de début</TableHead>
+                  <TableHead>Durée d'activité</TableHead>
                   <TableHead>Entreprise</TableHead>
                   <TableHead>Note</TableHead>
                   <TableHead>Disponibilité</TableHead>
@@ -178,7 +212,8 @@ export function DriversManagement() {
                     <TableCell>{driver.ID_Chauffeur}</TableCell>
                     <TableCell>{driver.Nom}</TableCell>
                     <TableCell>{driver.Prénom}</TableCell>
-                    <TableCell>{driver.Expérience} ans</TableCell>
+                    <TableCell>{formatDate(driver.Date_Debut_Activité)}</TableCell>
+                    <TableCell>{calculateActivityDuration(driver.Date_Debut_Activité)} ans</TableCell>
                     <TableCell>{entreprises[driver.ID_Entreprise as keyof typeof entreprises]}</TableCell>
                     <TableCell>
                       {driver.Note_Chauffeur === 0 ? (

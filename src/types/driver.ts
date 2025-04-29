@@ -8,7 +8,7 @@ export interface Driver {
   Pièce_Identité: string;
   Certificat_Médical: string;
   Justificatif_Domicile: string;
-  Expérience: number;
+  Date_Debut_Activité: Date | string;
   Note_Chauffeur: number;
   Missions_Futures: string[];
   Photo: string;

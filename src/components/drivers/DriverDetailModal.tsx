@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Driver } from "@/types/driver";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -19,6 +21,21 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
     "E-003": "Transport Express",
     "E-004": "LogiMobile",
     "E-005": "Société ABC",
+  };
+
+  // Format date if it's a string
+  const formatDate = (date: Date | string) => {
+    if (date instanceof Date) {
+      return format(date, "dd/MM/yyyy", { locale: fr });
+    } else if (typeof date === 'string') {
+      // If it's an ISO string, convert to date first
+      try {
+        return format(new Date(date), "dd/MM/yyyy", { locale: fr });
+      } catch (e) {
+        return date; // Return as is if not a valid date
+      }
+    }
+    return "Date inconnue";
   };
 
   return (
@@ -46,6 +63,14 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
         </div>
       </DialogHeader>
       
+      <div className="mt-4">
+        <img 
+          src={driver.Photo} 
+          alt={`${driver.Prénom} ${driver.Nom}`}
+          className="rounded-md w-full object-cover h-48 aspect-[16/9]" 
+        />
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
         <div className="space-y-4">
           <div>
@@ -61,8 +86,8 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
                 <dd>{driver.Téléphone}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-medium">Expérience</dt>
-                <dd>{driver.Expérience} ans</dd>
+                <dt className="font-medium">Date de début d'activité</dt>
+                <dd>{formatDate(driver.Date_Debut_Activité)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Entreprise</dt>
