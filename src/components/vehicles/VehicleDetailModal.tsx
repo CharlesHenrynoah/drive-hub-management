@@ -4,38 +4,14 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-
-interface Vehicle {
-  ID_Vehicule: string;
-  Type_Vehicule: string;
-  Capacite: number;
-  Type_Carburant: string;
-  Score_Ecologique: number;
-  Note_Moyenne_Client: number;
-  Entretien: string;
-  Immatriculation: string;
-  Statut: string;
-  Marque: string;
-  Modele: string;
-  Kilometrage: number;
-  Photo: string;
-  ID_Entreprise: string;
-}
+import { Vehicle } from "./VehiclesManagement";
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle;
+  companyName?: string;
 }
 
-export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
-  // Map des entreprises
-  const entreprises = {
-    "E-001": "Ville de Paris",
-    "E-002": "Académie de Lyon",
-    "E-003": "Transport Express",
-    "E-004": "LogiMobile",
-    "E-005": "Société ABC",
-  };
-
+export function VehicleDetailModal({ vehicle, companyName = "N/A" }: VehicleDetailModalProps) {
   // Helper pour déterminer la classe de couleur selon le score écologique
   const getScoreColorClass = (score: number) => {
     if (score >= 80) return "bg-success";
@@ -43,20 +19,26 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
     return "bg-warning";
   };
 
+  // Calculate note moyenne client display value
+  const clientNote = ((vehicle.Note_Moyenne_Client || 85) / 20).toFixed(1);
+
   return (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
         <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
           <Avatar className="h-16 w-16">
-            <AvatarImage src={vehicle.Photo} alt={`${vehicle.Marque} ${vehicle.Modele}`} />
-            <AvatarFallback>{vehicle.Marque.substring(0, 2)}</AvatarFallback>
+            <AvatarImage 
+              src={vehicle.photo_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop"} 
+              alt={`${vehicle.brand} ${vehicle.model}`} 
+            />
+            <AvatarFallback>{vehicle.brand.substring(0, 2)}</AvatarFallback>
           </Avatar>
           <div>
             <DialogTitle className="text-xl">
-              {vehicle.Marque} {vehicle.Modele}
+              {vehicle.brand} {vehicle.model}
             </DialogTitle>
             <DialogDescription>
-              {vehicle.ID_Vehicule} - {vehicle.Immatriculation}
+              {vehicle.id.substring(0, 8)}... - {vehicle.registration}
             </DialogDescription>
           </div>
         </div>
@@ -74,29 +56,29 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
                   <Badge
                     variant="outline"
                     className={`
-                      ${vehicle.Statut === "Disponible" ? "bg-success text-success-foreground" : ""}
-                      ${vehicle.Statut === "En maintenance" ? "bg-warning text-warning-foreground" : ""}
+                      ${vehicle.status === "Disponible" ? "bg-success text-success-foreground" : ""}
+                      ${vehicle.status === "En maintenance" ? "bg-warning text-warning-foreground" : ""}
                     `}
                   >
-                    {vehicle.Statut}
+                    {vehicle.status}
                   </Badge>
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Type</dt>
-                <dd>{vehicle.Type_Vehicule}</dd>
+                <dd>{vehicle.type}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Carburant</dt>
-                <dd>{vehicle.Type_Carburant}</dd>
+                <dd>{vehicle.fuel_type}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Capacité</dt>
-                <dd>{vehicle.Capacite} passagers</dd>
+                <dd>{vehicle.capacity} passagers</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Entreprise</dt>
-                <dd>{entreprises[vehicle.ID_Entreprise as keyof typeof entreprises]}</dd>
+                <dd>{companyName}</dd>
               </div>
             </dl>
           </div>
@@ -108,24 +90,24 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
               <div>
                 <dt className="flex justify-between mb-1">
                   <span>Score écologique</span>
-                  <span>{vehicle.Score_Ecologique}/100</span>
+                  <span>{vehicle.ecological_score}/100</span>
                 </dt>
                 <dd>
                   <Progress
-                    value={vehicle.Score_Ecologique}
+                    value={vehicle.ecological_score}
                     max={100}
-                    className={`h-2 ${getScoreColorClass(vehicle.Score_Ecologique)}`}
+                    className={`h-2 ${getScoreColorClass(vehicle.ecological_score)}`}
                   />
                 </dd>
               </div>
               <div>
                 <dt className="flex justify-between mb-1">
                   <span>Note moyenne client</span>
-                  <span>{(vehicle.Note_Moyenne_Client / 20).toFixed(1)}/5</span>
+                  <span>{clientNote}/5</span>
                 </dt>
                 <dd>
                   <Progress
-                    value={vehicle.Note_Moyenne_Client}
+                    value={vehicle.Note_Moyenne_Client || 85}
                     max={100}
                     className="h-2 bg-primary"
                   />
@@ -142,34 +124,34 @@ export function VehicleDetailModal({ vehicle }: VehicleDetailModalProps) {
             <dl className="space-y-2">
               <div className="flex justify-between">
                 <dt className="font-medium">Kilométrage</dt>
-                <dd>{vehicle.Kilometrage.toLocaleString()} km</dd>
+                <dd>{vehicle.mileage?.toLocaleString() || "0"} km</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Dernier entretien</dt>
-                <dd>{vehicle.Entretien}</dd>
+                <dd>{new Date(vehicle.last_maintenance || Date.now()).toLocaleDateString()}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Prochain entretien</dt>
                 <dd>
-                  {new Date(new Date(vehicle.Entretien).setMonth(new Date(vehicle.Entretien).getMonth() + 6)).toISOString().split('T')[0]}
+                  {new Date(new Date(vehicle.last_maintenance || Date.now()).setMonth(new Date(vehicle.last_maintenance || Date.now()).getMonth() + 6)).toLocaleDateString()}
                 </dd>
               </div>
               
-              {vehicle.Type_Vehicule === "Mini Bus" || vehicle.Type_Vehicule === "Bus" ? (
+              {vehicle.type === "Mini Bus" || vehicle.type === "Bus" ? (
                 <>
                   <div className="pt-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground mb-1">Informations spécifiques {vehicle.Type_Vehicule}</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-1">Informations spécifiques {vehicle.type}</h4>
                     <div className="flex justify-between">
                       <dt className="font-medium">Places assises</dt>
-                      <dd>{Math.floor(vehicle.Capacite * 0.9)}</dd>
+                      <dd>{Math.floor(vehicle.capacity * 0.9)}</dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="font-medium">Places debout</dt>
-                      <dd>{Math.floor(vehicle.Capacite * 0.1)}</dd>
+                      <dd>{Math.floor(vehicle.capacity * 0.1)}</dd>
                     </div>
                     <div className="flex justify-between">
                       <dt className="font-medium">Accessibilité PMR</dt>
-                      <dd>{vehicle.Type_Vehicule === "Bus" ? "Oui" : "Non"}</dd>
+                      <dd>{vehicle.type === "Bus" ? "Oui" : "Non"}</dd>
                     </div>
                   </div>
                 </>

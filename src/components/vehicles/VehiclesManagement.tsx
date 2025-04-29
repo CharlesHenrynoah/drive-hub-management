@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -27,160 +27,114 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Download } from "lucide-react";
 import { AddVehicleForm } from "./AddVehicleForm";
 import { VehicleDetailModal } from "./VehicleDetailModal";
+import { supabase } from "@/integrations/supabase/client";
 
-// Données mockées des entreprises
-const entreprises = {
-  "E-001": "Ville de Paris",
-  "E-002": "Académie de Lyon",
-  "E-003": "Transport Express",
-  "E-004": "LogiMobile",
-  "E-005": "Société ABC",
+export type Vehicle = {
+  id: string;
+  type: string;
+  capacity: number;
+  fuel_type: string;
+  ecological_score: number;
+  last_maintenance: string;
+  registration: string;
+  status: string;
+  brand: string;
+  model: string;
+  mileage: number;
+  photo_url: string | null;
+  company_id: string | null;
+  Note_Moyenne_Client?: number; // Keeping for compatibility
 };
 
-// Données mockées des véhicules
-const vehicles = [
-  {
-    ID_Vehicule: "V-001",
-    Type_Vehicule: "Utilitaire",
-    Capacite: 3,
-    Type_Carburant: "Diesel",
-    Score_Ecologique: 65,
-    Note_Moyenne_Client: 86,
-    Entretien: "2023-05-15",
-    Immatriculation: "AB-123-CD",
-    Statut: "Disponible",
-    Marque: "Renault",
-    Modele: "Master",
-    Kilometrage: 45000,
-    Photo: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-001",
-  },
-  {
-    ID_Vehicule: "V-002",
-    Type_Vehicule: "Berline",
-    Capacite: 4,
-    Type_Carburant: "Essence",
-    Score_Ecologique: 70,
-    Note_Moyenne_Client: 90,
-    Entretien: "2023-06-20",
-    Immatriculation: "EF-456-GH",
-    Statut: "En maintenance",
-    Marque: "Peugeot",
-    Modele: "508",
-    Kilometrage: 32000,
-    Photo: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-003",
-  },
-  {
-    ID_Vehicule: "V-003",
-    Type_Vehicule: "Mini Bus",
-    Capacite: 9,
-    Type_Carburant: "Diesel",
-    Score_Ecologique: 55,
-    Note_Moyenne_Client: 85,
-    Entretien: "2023-07-10",
-    Immatriculation: "IJ-789-KL",
-    Statut: "Disponible",
-    Marque: "Mercedes",
-    Modele: "Vito",
-    Kilometrage: 58000,
-    Photo: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-002",
-  },
-  {
-    ID_Vehicule: "V-004",
-    Type_Vehicule: "SUV",
-    Capacite: 5,
-    Type_Carburant: "Hybride",
-    Score_Ecologique: 85,
-    Note_Moyenne_Client: 92,
-    Entretien: "2023-08-05",
-    Immatriculation: "MN-012-OP",
-    Statut: "Disponible",
-    Marque: "Toyota",
-    Modele: "RAV4",
-    Kilometrage: 28000,
-    Photo: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-004",
-  },
-  {
-    ID_Vehicule: "V-005",
-    Type_Vehicule: "Berline",
-    Capacite: 4,
-    Type_Carburant: "Electrique",
-    Score_Ecologique: 95,
-    Note_Moyenne_Client: 94,
-    Entretien: "2023-09-15",
-    Immatriculation: "QR-345-ST",
-    Statut: "Disponible",
-    Marque: "Tesla",
-    Modele: "Model 3",
-    Kilometrage: 15000,
-    Photo: "https://images.unsplash.com/photo-1561580125-028ee3bd62eb?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-005",
-  },
-  {
-    ID_Vehicule: "V-006",
-    Type_Vehicule: "Bus",
-    Capacite: 45,
-    Type_Carburant: "Diesel",
-    Score_Ecologique: 50,
-    Note_Moyenne_Client: 82,
-    Entretien: "2023-10-05",
-    Immatriculation: "UV-678-WX",
-    Statut: "Disponible",
-    Marque: "Mercedes",
-    Modele: "Citaro",
-    Kilometrage: 75000,
-    Photo: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-001",
-  },
-  {
-    ID_Vehicule: "V-007",
-    Type_Vehicule: "Bus",
-    Capacite: 50,
-    Type_Carburant: "Electrique",
-    Score_Ecologique: 90,
-    Note_Moyenne_Client: 95,
-    Entretien: "2023-11-20",
-    Immatriculation: "YZ-901-AB",
-    Statut: "Disponible",
-    Marque: "Volvo",
-    Modele: "7900 Electric",
-    Kilometrage: 32000,
-    Photo: "https://images.unsplash.com/photo-1597733153203-a54d0fbc47de?w=300&h=200&fit=crop",
-    ID_Entreprise: "E-003",
-  },
-];
+export type Company = {
+  id: string;
+  name: string;
+};
 
 export function VehiclesManagement() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("Tous");
   const [statusFilter, setStatusFilter] = useState<string>("Tous");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [companies, setCompanies] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchVehicles();
+    fetchCompanies();
+  }, []);
+
+  async function fetchVehicles() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Add client-side mock data for now
+        const enhancedData = data.map(v => ({
+          ...v,
+          Note_Moyenne_Client: Math.floor(Math.random() * 20) + 80 // Random score between 80-100
+        }));
+        setVehicles(enhancedData);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchCompanies() {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        const companyMap: Record<string, string> = {};
+        data.forEach(company => {
+          companyMap[company.id] = company.name;
+        });
+        setCompanies(companyMap);
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+    }
+  }
 
   // Filtrage des véhicules
   const filteredVehicles = vehicles.filter((v) => {
     // 1. Recherche textuelle
     const matchesSearch =
-      v.ID_Vehicule.includes(searchTerm) ||
-      v.Immatriculation.includes(searchTerm) ||
-      v.Marque.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.Modele.toLowerCase().includes(searchTerm.toLowerCase());
+      v.id.includes(searchTerm) ||
+      v.registration.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.model.toLowerCase().includes(searchTerm.toLowerCase());
 
     // 2. Filtre par type
-    const matchesType = typeFilter === "Tous" || v.Type_Vehicule === typeFilter;
+    const matchesType = typeFilter === "Tous" || v.type === typeFilter;
 
     // 3. Filtre par statut
-    const matchesStatus = statusFilter === "Tous" || v.Statut === statusFilter;
+    const matchesStatus = statusFilter === "Tous" || v.status === statusFilter;
 
     return matchesSearch && matchesType && matchesStatus;
   });
 
   // Types de véhicules uniques pour le filtre
-  const vehicleTypes = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.Type_Vehicule)))];
+  const vehicleTypes = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.type)))];
   
   // Statuts de véhicules uniques pour le filtre
-  const vehicleStatuses = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.Statut)))];
+  const vehicleStatuses = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.status)))];
 
   return (
     <div className="space-y-4">
@@ -252,48 +206,58 @@ export function VehiclesManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredVehicles.map((v) => (
-                <TableRow key={v.ID_Vehicule}>
-                  <TableCell>
-                    <Avatar>
-                      <AvatarImage src={v.Photo} alt={`${v.Marque} ${v.Modele}`} />
-                      <AvatarFallback>{v.Marque.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
-                  </TableCell>
-                  <TableCell>{v.ID_Vehicule}</TableCell>
-                  <TableCell>{v.Marque} {v.Modele}</TableCell>
-                  <TableCell>{v.Immatriculation}</TableCell>
-                  <TableCell>{v.Type_Vehicule}</TableCell>
-                  <TableCell>{v.Capacite} places</TableCell>
-                  <TableCell>{v.Type_Carburant}</TableCell>
-                  <TableCell>{v.Score_Ecologique}</TableCell>
-                  <TableCell>{(v.Note_Moyenne_Client / 20).toFixed(1)}/5</TableCell>
-                  <TableCell>{v.Entretien}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`
-                        ${v.Statut === "Disponible" ? "bg-success text-success-foreground" : ""}
-                        ${v.Statut === "En maintenance" ? "bg-warning text-warning-foreground" : ""}
-                      `}
-                    >
-                      {v.Statut}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{v.Kilometrage.toLocaleString()} km</TableCell>
-                  <TableCell>{entreprises[v.ID_Entreprise as keyof typeof entreprises]}</TableCell>
-                  <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          Détails
-                        </Button>
-                      </DialogTrigger>
-                      <VehicleDetailModal vehicle={v} />
-                    </Dialog>
-                  </TableCell>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={14} className="text-center py-6">Chargement des données...</TableCell>
                 </TableRow>
-              ))}
+              ) : filteredVehicles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={14} className="text-center py-6">Aucun véhicule trouvé</TableCell>
+                </TableRow>
+              ) : (
+                filteredVehicles.map((v) => (
+                  <TableRow key={v.id}>
+                    <TableCell>
+                      <Avatar>
+                        <AvatarImage src={v.photo_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop"} alt={`${v.brand} ${v.model}`} />
+                        <AvatarFallback>{v.brand.substring(0, 2)}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell>{v.id.substring(0, 8)}...</TableCell>
+                    <TableCell>{v.brand} {v.model}</TableCell>
+                    <TableCell>{v.registration}</TableCell>
+                    <TableCell>{v.type}</TableCell>
+                    <TableCell>{v.capacity} places</TableCell>
+                    <TableCell>{v.fuel_type}</TableCell>
+                    <TableCell>{v.ecological_score}</TableCell>
+                    <TableCell>{((v.Note_Moyenne_Client || 85) / 20).toFixed(1)}/5</TableCell>
+                    <TableCell>{new Date(v.last_maintenance || Date.now()).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`
+                          ${v.status === "Disponible" ? "bg-success text-success-foreground" : ""}
+                          ${v.status === "En maintenance" ? "bg-warning text-warning-foreground" : ""}
+                        `}
+                      >
+                        {v.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{v.mileage?.toLocaleString() || "0"} km</TableCell>
+                    <TableCell>{v.company_id ? companies[v.company_id] || "N/A" : "N/A"}</TableCell>
+                    <TableCell>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            Détails
+                          </Button>
+                        </DialogTrigger>
+                        <VehicleDetailModal vehicle={v} companyName={v.company_id ? companies[v.company_id] : undefined} />
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

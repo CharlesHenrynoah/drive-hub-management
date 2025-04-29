@@ -9,7 +9,84 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          brand: string
+          capacity: number
+          company_id: string | null
+          created_at: string
+          ecological_score: number | null
+          emissions: number | null
+          fuel_type: string
+          id: string
+          last_maintenance: string | null
+          mileage: number | null
+          model: string
+          photo_url: string | null
+          registration: string
+          status: string | null
+          type: string
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          brand: string
+          capacity: number
+          company_id?: string | null
+          created_at?: string
+          ecological_score?: number | null
+          emissions?: number | null
+          fuel_type: string
+          id?: string
+          last_maintenance?: string | null
+          mileage?: number | null
+          model: string
+          photo_url?: string | null
+          registration: string
+          status?: string | null
+          type: string
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          brand?: string
+          capacity?: number
+          company_id?: string | null
+          created_at?: string
+          ecological_score?: number | null
+          emissions?: number | null
+          fuel_type?: string
+          id?: string
+          last_maintenance?: string | null
+          mileage?: number | null
+          model?: string
+          photo_url?: string | null
+          registration?: string
+          status?: string | null
+          type?: string
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

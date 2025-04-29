@@ -32,6 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   marque: z.string().min(2, {
@@ -63,6 +64,8 @@ export function AddVehicleForm() {
   const [open, setOpen] = useState(false);
   const [ecologicalScore, setEcologicalScore] = useState<number | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [companies, setCompanies] = useState<{id: string, name: string}[]>([]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -76,6 +79,26 @@ export function AddVehicleForm() {
       capacite: 15,
     },
   });
+
+  useEffect(() => {
+    // Fetch companies from Supabase
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name');
+      
+      if (error) {
+        console.error('Error fetching companies:', error);
+        return;
+      }
+      
+      if (data) {
+        setCompanies(data);
+      }
+    };
+    
+    fetchCompanies();
+  }, []);
 
   // Calculate ecological score when relevant form values change
   useEffect(() => {
@@ -114,17 +137,46 @@ export function AddVehicleForm() {
     }
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Ici vous enverriez normalement les données à votre API
-    console.log({...values, scoreEcologique: ecologicalScore});
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSaving(true);
     
-    toast.success("Véhicule ajouté avec succès", {
-      description: `${values.marque} ${values.modele} a été ajouté à la flotte.`,
-    });
-    
-    form.reset();
-    setEcologicalScore(null);
-    setOpen(false);
+    try {
+      // Save vehicle to Supabase
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert({
+          brand: values.marque,
+          model: values.modele,
+          registration: values.immatriculation,
+          type: values.typeVehicule,
+          fuel_type: values.typeCarburant,
+          company_id: values.entrepriseId,
+          capacity: values.capacite,
+          year: values.annee || null,
+          emissions: values.emissions || null,
+          ecological_score: ecologicalScore || 50,
+        })
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success("Véhicule ajouté avec succès", {
+        description: `${values.marque} ${values.modele} a été ajouté à la flotte.`,
+      });
+      
+      form.reset();
+      setEcologicalScore(null);
+      setOpen(false);
+    } catch (error) {
+      console.error('Error saving vehicle:', error);
+      toast.error("Erreur lors de l'ajout du véhicule", {
+        description: "Veuillez réessayer ou contacter l'assistance.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const getScoreColorClass = (score: number | null) => {
@@ -308,11 +360,11 @@ export function AddVehicleForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="E-001">Ville de Paris</SelectItem>
-                      <SelectItem value="E-002">Académie de Lyon</SelectItem>
-                      <SelectItem value="E-003">Transport Express</SelectItem>
-                      <SelectItem value="E-004">LogiMobile</SelectItem>
-                      <SelectItem value="E-005">Société ABC</SelectItem>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -340,7 +392,9 @@ export function AddVehicleForm() {
               <Button variant="outline" type="button" onClick={() => setOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit">Ajouter</Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Enregistrement..." : "Ajouter"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
