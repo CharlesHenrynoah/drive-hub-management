@@ -27,6 +27,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -55,7 +56,7 @@ const formSchema = z.object({
 
 interface AddCompanyFormProps {
   onCompanyAdded?: () => void;
-  buttonText?: string; // Added new optional prop for button text
+  buttonText?: string;
 }
 
 export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entreprise" }: AddCompanyFormProps) {
@@ -173,7 +174,7 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
       <DialogTrigger asChild>
         <Button>{buttonText}</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>Ajouter une nouvelle entreprise</DialogTitle>
           <DialogDescription>
@@ -181,108 +182,120 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Logo Upload */}
-            <div className="flex flex-col items-center space-y-3 py-4">
-              <Avatar className="h-24 w-24">
-                {previewUrl ? (
-                  <AvatarImage src={previewUrl} alt="Logo preview" />
-                ) : (
-                  <AvatarFallback className="text-xl">Logo</AvatarFallback>
-                )}
-              </Avatar>
-              
-              <FormItem>
-                <FormLabel className="cursor-pointer">
-                  <div className="flex items-center justify-center gap-2 text-sm text-primary">
-                    <Upload size={16} />
-                    <span>Télécharger un logo</span>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Logo Upload Section - Left Column */}
+              <div className="flex flex-col items-center justify-center space-y-4 py-4 lg:border-r lg:pr-6">
+                <div className="text-center">
+                  <div className="mx-auto bg-gray-100 rounded-full h-32 w-32 flex items-center justify-center mb-4">
+                    {previewUrl ? (
+                      <Avatar className="h-32 w-32">
+                        <AvatarImage src={previewUrl} alt="Logo preview" />
+                        <AvatarFallback className="text-xl">Logo</AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <div className="text-xl text-gray-400">Logo</div>
+                    )}
                   </div>
-                  <Input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </FormLabel>
-                <FormMessage />
-              </FormItem>
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="nom"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom de l'entreprise</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nom de l'entreprise" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="adresse"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Adresse</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Adresse complète de l'entreprise" 
-                      className="min-h-[80px]" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="contactPrincipal"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contact principal</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nom et prénom du contact" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
+                  
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="email@exemple.fr" type="email" {...field} />
-                    </FormControl>
+                    <FormLabel className="cursor-pointer">
+                      <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                        <Upload size={16} />
+                        <span>Télécharger un logo</span>
+                      </div>
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+                    </FormLabel>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+                </div>
+              </div>
               
-              <FormField
-                control={form.control}
-                name="telephone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Téléphone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="01 23 45 67 89" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Company Information - Middle and Right Columns */}
+              <div className="col-span-2">
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="nom"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nom de l'entreprise</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nom de l'entreprise" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="adresse"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adresse</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Adresse complète de l'entreprise" 
+                            className="min-h-[80px]" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="contactPrincipal"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contact principal</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nom et prénom du contact" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="email@exemple.fr" type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="telephone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Téléphone</FormLabel>
+                          <FormControl>
+                            <Input placeholder="01 23 45 67 89" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
             
             <DialogFooter>
