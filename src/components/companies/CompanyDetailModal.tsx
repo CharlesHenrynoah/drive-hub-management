@@ -5,18 +5,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface Company {
-  ID_Entreprise: string;
-  Nom: string;
-  Adresse: string;
-  Contact_Principal: string;
-  Email: string;
-  Téléphone: string;
-  Date_Creation: string;
-  Nombre_Flottes: number;
-  Nombre_Vehicules: number;
-  Nombre_Chauffeurs: number;
+  id: string;
+  name: string;
+  address?: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  created_at?: string;
+  logo_url?: string | null;
+  fleet_count?: number;
+  vehicle_count?: number;
+  driver_count?: number;
 }
 
 interface Fleet {
@@ -49,10 +51,21 @@ export function CompanyDetailModal({ company, fleets, vehicles, drivers }: Compa
   return (
     <DialogContent className="sm:max-w-[700px]">
       <DialogHeader>
-        <DialogTitle className="text-xl">{company.Nom}</DialogTitle>
-        <DialogDescription>
-          {company.ID_Entreprise} - Entreprise créée le {company.Date_Creation}
-        </DialogDescription>
+        <div className="flex items-center gap-4">
+          <Avatar className="h-14 w-14">
+            {company.logo_url ? (
+              <AvatarImage src={company.logo_url} alt={company.name} />
+            ) : (
+              <AvatarFallback>{company.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+            )}
+          </Avatar>
+          <div>
+            <DialogTitle className="text-xl">{company.name}</DialogTitle>
+            <DialogDescription>
+              {company.id} {company.created_at ? ` - Entreprise créée le ${new Date(company.created_at).toLocaleDateString()}` : ''}
+            </DialogDescription>
+          </div>
+        </div>
       </DialogHeader>
       
       <Tabs defaultValue="details" className="mt-2">
@@ -69,19 +82,19 @@ export function CompanyDetailModal({ company, fleets, vehicles, drivers }: Compa
             <dl className="space-y-2">
               <div>
                 <dt className="font-medium">Contact principal</dt>
-                <dd>{company.Contact_Principal}</dd>
+                <dd>{company.contact_name || '-'}</dd>
               </div>
               <div>
                 <dt className="font-medium">Adresse</dt>
-                <dd>{company.Adresse}</dd>
+                <dd>{company.address || '-'}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Email</dt>
-                <dd>{company.Email}</dd>
+                <dd>{company.email || '-'}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Téléphone</dt>
-                <dd>{company.Téléphone}</dd>
+                <dd>{company.phone || '-'}</dd>
               </div>
             </dl>
           </div>
@@ -92,15 +105,15 @@ export function CompanyDetailModal({ company, fleets, vehicles, drivers }: Compa
             <dl className="grid grid-cols-3 gap-4 text-center">
               <div className="rounded-lg border p-3">
                 <dt className="text-muted-foreground text-xs">Flottes</dt>
-                <dd className="text-2xl font-semibold mt-1">{company.Nombre_Flottes}</dd>
+                <dd className="text-2xl font-semibold mt-1">{company.fleet_count || 0}</dd>
               </div>
               <div className="rounded-lg border p-3">
                 <dt className="text-muted-foreground text-xs">Véhicules</dt>
-                <dd className="text-2xl font-semibold mt-1">{company.Nombre_Vehicules}</dd>
+                <dd className="text-2xl font-semibold mt-1">{company.vehicle_count || 0}</dd>
               </div>
               <div className="rounded-lg border p-3">
                 <dt className="text-muted-foreground text-xs">Chauffeurs</dt>
-                <dd className="text-2xl font-semibold mt-1">{company.Nombre_Chauffeurs}</dd>
+                <dd className="text-2xl font-semibold mt-1">{company.driver_count || 0}</dd>
               </div>
             </dl>
           </div>
@@ -137,7 +150,7 @@ export function CompanyDetailModal({ company, fleets, vehicles, drivers }: Compa
         
         <TabsContent value="ressources" className="space-y-6 pt-4">
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Véhicules ({company.Nombre_Vehicules})</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Véhicules ({company.vehicle_count || 0})</h3>
             
             {vehicles.length > 0 ? (
               <div className="rounded-md border overflow-hidden">
@@ -170,7 +183,7 @@ export function CompanyDetailModal({ company, fleets, vehicles, drivers }: Compa
           </div>
           
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Chauffeurs ({company.Nombre_Chauffeurs})</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Chauffeurs ({company.driver_count || 0})</h3>
             
             {drivers.length > 0 ? (
               <div className="rounded-md border overflow-hidden">

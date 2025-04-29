@@ -15,23 +15,26 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { AddCompanyForm } from "./AddCompanyForm";
 import { CompanyDetailModal } from "./CompanyDetailModal";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 // Types for companies
 export type Company = {
-  ID_Entreprise: string;
-  Nom: string;
-  Adresse: string;
-  Contact_Principal: string;
-  Email: string;
-  Téléphone: string;
-  Date_Creation: string;
-  Nombre_Flottes: number;
-  Nombre_Vehicules: number;
-  Nombre_Chauffeurs: number;
+  id: string;
+  name: string;
+  address?: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  created_at?: string;
+  logo_url?: string | null;
+  fleet_count?: number;
+  vehicle_count?: number;
+  driver_count?: number;
 };
 
 // Type definition for fleets
@@ -67,22 +70,54 @@ export function CompaniesManagement() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Fetch companies from Supabase
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*');
+
+        if (error) {
+          console.error('Error fetching companies:', error);
+          toast.error('Erreur lors du chargement des entreprises');
+        } else {
+          // Transform data to match the Company type
+          const transformedData = data.map(company => ({
+            id: company.id,
+            name: company.name,
+            logo_url: company.logo_url,
+            // Default values for now, these would come from related tables in a real implementation
+            fleet_count: 0,
+            vehicle_count: 0,
+            driver_count: 0
+          }));
+          
+          setCompanies(transformedData);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        toast.error('Une erreur inattendue est survenue');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCompanies();
+  }, [refreshTrigger]);
 
   // Empty arrays for fleets, vehicles, and drivers
   const fleets: Fleet[] = [];
   const vehicles: Vehicle[] = [];
   const drivers: Driver[] = [];
 
-  useEffect(() => {
-    // In the future, this would fetch real company data from Supabase
-    // For now, we're just setting the loading state to false
-    setLoading(false);
-  }, []);
-
   // Filtrage des entreprises
   const filteredCompanies = companies.filter((company) =>
-    company.Nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.Contact_Principal.toLowerCase().includes(searchTerm.toLowerCase())
+    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (company.contact_name && company.contact_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // Récupération des flottes d'une entreprise
@@ -98,6 +133,12 @@ export function CompaniesManagement() {
   // Récupération des chauffeurs d'une entreprise
   const getCompanyDrivers = (companyId: string) => {
     return drivers.filter((driver) => driver.ID_Entreprise === companyId);
+  };
+
+  // Function to handle company addition
+  const handleCompanyAdded = () => {
+    setRefreshTrigger(prev => prev + 1);
+    toast.success('Entreprise ajoutée avec succès');
   };
 
   return (
@@ -116,7 +157,7 @@ export function CompaniesManagement() {
             Exporter
           </Button>
           
-          <AddCompanyForm />
+          <AddCompanyForm onCompanyAdded={handleCompanyAdded} />
         </div>
       </div>
       
@@ -125,7 +166,7 @@ export function CompaniesManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
+                <TableHead>Logo</TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Contact Principal</TableHead>
                 <TableHead>Email</TableHead>
@@ -139,7 +180,12 @@ export function CompaniesManagement() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-6">Chargement des données...</TableCell>
+                  <TableCell colSpan={9} className="text-center py-6">
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      Chargement des données...
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : filteredCompanies.length === 0 ? (
                 <TableRow>
@@ -147,15 +193,23 @@ export function CompaniesManagement() {
                 </TableRow>
               ) : (
                 filteredCompanies.map((company) => (
-                  <TableRow key={company.ID_Entreprise}>
-                    <TableCell>{company.ID_Entreprise}</TableCell>
-                    <TableCell>{company.Nom}</TableCell>
-                    <TableCell>{company.Contact_Principal}</TableCell>
-                    <TableCell>{company.Email}</TableCell>
-                    <TableCell>{company.Téléphone}</TableCell>
-                    <TableCell>{company.Nombre_Flottes}</TableCell>
-                    <TableCell>{company.Nombre_Vehicules}</TableCell>
-                    <TableCell>{company.Nombre_Chauffeurs}</TableCell>
+                  <TableRow key={company.id}>
+                    <TableCell>
+                      <Avatar className="h-10 w-10">
+                        {company.logo_url ? (
+                          <AvatarImage src={company.logo_url} alt={company.name} />
+                        ) : (
+                          <AvatarFallback>{company.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        )}
+                      </Avatar>
+                    </TableCell>
+                    <TableCell>{company.name}</TableCell>
+                    <TableCell>{company.contact_name || '-'}</TableCell>
+                    <TableCell>{company.email || '-'}</TableCell>
+                    <TableCell>{company.phone || '-'}</TableCell>
+                    <TableCell>{company.fleet_count || 0}</TableCell>
+                    <TableCell>{company.vehicle_count || 0}</TableCell>
+                    <TableCell>{company.driver_count || 0}</TableCell>
                     <TableCell>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -163,12 +217,12 @@ export function CompaniesManagement() {
                             Détails
                           </Button>
                         </DialogTrigger>
-                        {selectedCompany && selectedCompany.ID_Entreprise === company.ID_Entreprise && (
+                        {selectedCompany && selectedCompany.id === company.id && (
                           <CompanyDetailModal 
                             company={selectedCompany}
-                            fleets={getCompanyFleets(company.ID_Entreprise)}
-                            vehicles={getCompanyVehicles(company.ID_Entreprise)}
-                            drivers={getCompanyDrivers(company.ID_Entreprise)}
+                            fleets={getCompanyFleets(company.id)}
+                            vehicles={getCompanyVehicles(company.id)}
+                            drivers={getCompanyDrivers(company.id)}
                           />
                         )}
                       </Dialog>
