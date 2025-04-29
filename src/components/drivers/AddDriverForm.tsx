@@ -17,6 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,10 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Driver } from "@/types/driver";
 
 const formSchema = z.object({
   nom: z.string().min(2, {
@@ -50,9 +53,15 @@ const formSchema = z.object({
   entrepriseId: z.string({
     required_error: "Veuillez sélectionner une entreprise",
   }),
+  disponible: z.boolean().default(true),
 });
 
-export function AddDriverForm() {
+interface AddDriverFormProps {
+  onDriverAdded?: (driver: Driver) => void;
+  buttonText?: string;
+}
+
+export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeur" }: AddDriverFormProps) {
   const [open, setOpen] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -64,12 +73,36 @@ export function AddDriverForm() {
       telephone: "",
       experience: "",
       entrepriseId: "",
+      disponible: true,
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    // Ici vous enverriez normalement les données à votre API
-    console.log(values);
+    // Création d'un nouvel ID chauffeur (dans un vrai système, cela serait géré par la base de données)
+    const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    // Création du nouvel objet chauffeur
+    const newDriver: Driver = {
+      ID_Chauffeur: newDriverId,
+      Nom: values.nom,
+      Prénom: values.prenom,
+      Email: values.email,
+      Téléphone: values.telephone,
+      Pièce_Identité: `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
+      Certificat_Médical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
+      Justificatif_Domicile: `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
+      Expérience: parseInt(values.experience),
+      Note_Chauffeur: 0, // Pas encore noté
+      Missions_Futures: [],
+      Photo: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop", // Photo par défaut
+      ID_Entreprise: values.entrepriseId,
+      Disponible: values.disponible,
+    };
+    
+    // Appel de la callback pour ajouter le chauffeur
+    if (onDriverAdded) {
+      onDriverAdded(newDriver);
+    }
     
     toast.success("Chauffeur ajouté avec succès", {
       description: `${values.prenom} ${values.nom} a été ajouté à l'équipe.`,
@@ -82,7 +115,7 @@ export function AddDriverForm() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Ajouter un chauffeur</Button>
+        <Button>{buttonText}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
@@ -190,6 +223,27 @@ export function AddDriverForm() {
                 )}
               />
             </div>
+            
+            <FormField
+              control={form.control}
+              name="disponible"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Disponibilité</FormLabel>
+                    <FormDescription>
+                      Définir si le chauffeur est disponible pour des missions
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
             
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => setOpen(false)}>

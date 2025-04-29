@@ -4,22 +4,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-
-interface Driver {
-  ID_Chauffeur: string;
-  Nom: string;
-  Prénom: string;
-  Email: string;
-  Téléphone: string;
-  Pièce_Identité: string;
-  Certificat_Médical: string;
-  Justificatif_Domicile: string;
-  Expérience: number;
-  Note_Chauffeur: number;
-  Missions_Futures: string[];
-  Photo: string;
-  ID_Entreprise: string;
-}
+import { Switch } from "@/components/ui/switch";
+import { Driver } from "@/types/driver";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -43,13 +29,19 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
             <AvatarImage src={driver.Photo} alt={`${driver.Prénom} ${driver.Nom}`} />
             <AvatarFallback>{driver.Prénom.charAt(0)}{driver.Nom.charAt(0)}</AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1">
             <DialogTitle className="text-xl">
               {driver.Prénom} {driver.Nom}
             </DialogTitle>
             <DialogDescription>
               {driver.ID_Chauffeur} - {entreprises[driver.ID_Entreprise as keyof typeof entreprises]}
             </DialogDescription>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className={driver.Disponible ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+              {driver.Disponible ? "Disponible" : "Indisponible"}
+            </span>
+            <Switch checked={driver.Disponible} disabled />
           </div>
         </div>
       </DialogHeader>
@@ -123,7 +115,7 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">Missions futures</h3>
             <Separator className="my-2" />
-            {driver.Missions_Futures.length > 0 ? (
+            {driver.Missions_Futures && driver.Missions_Futures.length > 0 ? (
               <ul className="space-y-2">
                 {driver.Missions_Futures.map((mission, index) => (
                   <li key={index} className="flex items-center justify-between px-3 py-2 bg-secondary/50 rounded-md">
