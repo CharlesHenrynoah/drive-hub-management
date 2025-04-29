@@ -19,63 +19,16 @@ import { Download } from "lucide-react";
 import { AddFleetForm } from "./AddFleetForm";
 import { FleetDetailModal } from "./FleetDetailModal";
 
-// Données mockées des entreprises
-const entreprises = {
-  "E-001": "Ville de Paris",
-  "E-002": "Académie de Lyon",
-  "E-003": "Transport Express",
-  "E-004": "LogiMobile",
-  "E-005": "Société ABC",
-};
-
-// Données mockées des flottes
-const fleets = [
-  {
-    ID_Flotte: "F-001",
-    Nom_Flotte: "Flotte urbaine",
-    ID_Entreprise: "E-001",
-    Liste_Vehicules: ["V-001", "V-006", "V-009", "V-013"],
-    Date_Creation: "2023-01-15",
-    Derniere_Modification: "2023-09-20",
-    Description: "Flotte de véhicules pour déplacements urbains",
-  },
-  {
-    ID_Flotte: "F-002",
-    Nom_Flotte: "Flotte scolaire",
-    ID_Entreprise: "E-002",
-    Liste_Vehicules: ["V-003", "V-008", "V-012"],
-    Date_Creation: "2023-02-10",
-    Derniere_Modification: "2023-08-25",
-    Description: "Flotte dédiée au transport scolaire",
-  },
-  {
-    ID_Flotte: "F-003",
-    Nom_Flotte: "Flotte express",
-    ID_Entreprise: "E-003",
-    Liste_Vehicules: ["V-002", "V-007", "V-010", "V-014", "V-018"],
-    Date_Creation: "2023-03-05",
-    Derniere_Modification: "2023-10-10",
-    Description: "Flotte pour livraisons et transports express",
-  },
-  {
-    ID_Flotte: "F-004",
-    Nom_Flotte: "Flotte Premium",
-    ID_Entreprise: "E-004",
-    Liste_Vehicules: ["V-004", "V-015", "V-016", "V-017"],
-    Date_Creation: "2023-04-20",
-    Derniere_Modification: "2023-09-15",
-    Description: "Véhicules haut de gamme pour transport VIP",
-  },
-  {
-    ID_Flotte: "F-005",
-    Nom_Flotte: "Flotte corporate",
-    ID_Entreprise: "E-005",
-    Liste_Vehicules: ["V-005", "V-011", "V-019", "V-020"],
-    Date_Creation: "2023-05-12",
-    Derniere_Modification: "2023-10-05",
-    Description: "Flotte dédiée aux besoins des entreprises",
-  },
-];
+// Données des flottes
+const fleets: Array<{
+  ID_Flotte: string;
+  Nom_Flotte: string;
+  ID_Entreprise: string;
+  Liste_Vehicules: string[];
+  Date_Creation: string;
+  Derniere_Modification: string;
+  Description: string;
+}> = [];
 
 type Fleet = typeof fleets[0];
 
@@ -85,17 +38,14 @@ export function FleetsManagement() {
 
   // Filtrage des flottes
   const filteredFleets = fleets.filter((fleet) =>
-    fleet.Nom_Flotte.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entreprises[fleet.ID_Entreprise as keyof typeof entreprises]
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
+    fleet.Nom_Flotte.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <Input
-          placeholder="Rechercher par nom ou entreprise..."
+          placeholder="Rechercher par nom..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full sm:w-64"
@@ -126,28 +76,40 @@ export function FleetsManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFleets.map((fleet) => (
-                <TableRow key={fleet.ID_Flotte}>
-                  <TableCell>{fleet.ID_Flotte}</TableCell>
-                  <TableCell>{fleet.Nom_Flotte}</TableCell>
-                  <TableCell>{entreprises[fleet.ID_Entreprise as keyof typeof entreprises]}</TableCell>
-                  <TableCell>{fleet.Liste_Vehicules.length}</TableCell>
-                  <TableCell>{fleet.Date_Creation}</TableCell>
-                  <TableCell>{fleet.Derniere_Modification}</TableCell>
-                  <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedFleet(fleet)}>
-                          Détails
-                        </Button>
-                      </DialogTrigger>
-                      {selectedFleet && selectedFleet.ID_Flotte === fleet.ID_Flotte && (
-                        <FleetDetailModal fleet={selectedFleet} />
-                      )}
-                    </Dialog>
+              {filteredFleets.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10">
+                    <div className="flex flex-col items-center space-y-4">
+                      <p className="text-lg font-medium">Aucune flotte disponible</p>
+                      <p className="text-muted-foreground">Ajoutez votre première flotte pour démarrer</p>
+                      <AddFleetForm />
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredFleets.map((fleet) => (
+                  <TableRow key={fleet.ID_Flotte}>
+                    <TableCell>{fleet.ID_Flotte}</TableCell>
+                    <TableCell>{fleet.Nom_Flotte}</TableCell>
+                    <TableCell>{fleet.ID_Entreprise}</TableCell>
+                    <TableCell>{fleet.Liste_Vehicules.length}</TableCell>
+                    <TableCell>{fleet.Date_Creation}</TableCell>
+                    <TableCell>{fleet.Derniere_Modification}</TableCell>
+                    <TableCell>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedFleet(fleet)}>
+                            Détails
+                          </Button>
+                        </DialogTrigger>
+                        {selectedFleet && selectedFleet.ID_Flotte === fleet.ID_Flotte && (
+                          <FleetDetailModal fleet={selectedFleet} />
+                        )}
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

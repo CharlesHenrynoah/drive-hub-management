@@ -2,6 +2,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { CompaniesManagement } from "@/components/companies/CompaniesManagement";
 import { AuthProvider } from "@/hooks/useAuth";
+import { Toaster } from "sonner";
 
 export default function CompaniesPage() {
   return (
@@ -9,6 +10,7 @@ export default function CompaniesPage() {
       <DashboardLayout>
         <CompaniesManagement />
       </DashboardLayout>
+      <Toaster />
     </AuthProvider>
   );
 }

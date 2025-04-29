@@ -15,7 +15,7 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Plus } from "lucide-react";
 import { AddCompanyForm } from "./AddCompanyForm";
 import { CompanyDetailModal } from "./CompanyDetailModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -189,7 +189,13 @@ export function CompaniesManagement() {
                 </TableRow>
               ) : filteredCompanies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-6">Aucune entreprise trouvée</TableCell>
+                  <TableCell colSpan={9} className="text-center py-10">
+                    <div className="flex flex-col items-center space-y-4">
+                      <p className="text-lg font-medium">Aucune entreprise disponible</p>
+                      <p className="text-muted-foreground">Ajoutez votre première entreprise pour démarrer</p>
+                      <AddCompanyForm onCompanyAdded={handleCompanyAdded} buttonText="Ajouter une entreprise" />
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : (
                 filteredCompanies.map((company) => (
