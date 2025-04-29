@@ -1,16 +1,14 @@
 
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Overview } from "@/components/dashboard/Overview";
+import { CompaniesManagement } from "@/components/companies/CompaniesManagement";
 import { AuthProvider } from "@/hooks/useAuth";
 
-const Index = () => {
+export default function CompaniesPage() {
   return (
     <AuthProvider>
       <DashboardLayout>
-        <Overview />
+        <CompaniesManagement />
       </DashboardLayout>
     </AuthProvider>
   );
-};
-
-export default Index;
+}

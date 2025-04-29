@@ -1,16 +1,14 @@
 
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Overview } from "@/components/dashboard/Overview";
+import { DriversManagement } from "@/components/drivers/DriversManagement";
 import { AuthProvider } from "@/hooks/useAuth";
 
-const Index = () => {
+export default function DriversPage() {
   return (
     <AuthProvider>
       <DashboardLayout>
-        <Overview />
+        <DriversManagement />
       </DashboardLayout>
     </AuthProvider>
   );
-};
-
-export default Index;
+}
