@@ -127,7 +127,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
     setIsSubmitting(true);
     
     try {
-      // Création d'un nouvel ID chauffeur (dans un vrai système, cela serait géré par la base de données)
+      // Création d'un nouvel ID chauffeur
       const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
       
       let photoUrl = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop"; // Photo par défaut
@@ -138,23 +138,28 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         const fileExt = file.name.split('.').pop();
         const fileName = `${newDriverId}-${Date.now()}.${fileExt}`;
         
-        // Téléchargement de la photo sur Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('drivers_photos')
-          .upload(fileName, file);
-        
-        if (uploadError) {
-          console.error("Erreur lors du téléchargement de la photo:", uploadError);
-          toast.error("Impossible de télécharger la photo");
-        } else if (uploadData) {
-          // Récupérer l'URL publique de la photo
-          const { data: urlData } = supabase.storage
+        try {
+          // Téléchargement de la photo sur Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
             .from('drivers_photos')
-            .getPublicUrl(fileName);
+            .upload(fileName, file);
           
-          if (urlData) {
-            photoUrl = urlData.publicUrl;
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement de la photo:", uploadError);
+            toast.error("Impossible de télécharger la photo");
+          } else if (uploadData) {
+            // Récupérer l'URL publique de la photo
+            const { data: urlData } = supabase.storage
+              .from('drivers_photos')
+              .getPublicUrl(fileName);
+            
+            if (urlData) {
+              photoUrl = urlData.publicUrl;
+            }
           }
+        } catch (error) {
+          console.error("Exception lors du téléchargement de la photo:", error);
+          toast.error("Erreur lors du téléchargement de la photo");
         }
       }
       
@@ -174,6 +179,8 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         id_entreprise: values.entrepriseId,
         disponible: values.disponible,
       };
+      
+      console.log("Insertion du chauffeur:", driverData);
       
       // Insérer le chauffeur dans la base de données
       const { error: insertError } = await supabase
