@@ -30,6 +30,60 @@ export type Database = {
         }
         Relationships: []
       }
+      drivers: {
+        Row: {
+          certificat_medical: string
+          created_at: string
+          date_debut_activite: string
+          disponible: boolean
+          email: string
+          id: string
+          id_chauffeur: string
+          id_entreprise: string
+          justificatif_domicile: string
+          nom: string
+          note_chauffeur: number
+          photo: string | null
+          piece_identite: string
+          prenom: string
+          telephone: string
+        }
+        Insert: {
+          certificat_medical: string
+          created_at?: string
+          date_debut_activite: string
+          disponible?: boolean
+          email: string
+          id?: string
+          id_chauffeur: string
+          id_entreprise: string
+          justificatif_domicile: string
+          nom: string
+          note_chauffeur?: number
+          photo?: string | null
+          piece_identite: string
+          prenom: string
+          telephone: string
+        }
+        Update: {
+          certificat_medical?: string
+          created_at?: string
+          date_debut_activite?: string
+          disponible?: boolean
+          email?: string
+          id?: string
+          id_chauffeur?: string
+          id_entreprise?: string
+          justificatif_domicile?: string
+          nom?: string
+          note_chauffeur?: number
+          photo?: string | null
+          piece_identite?: string
+          prenom?: string
+          telephone?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           brand: string

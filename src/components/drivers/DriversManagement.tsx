@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -24,12 +24,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { AddDriverForm } from "./AddDriverForm";
 import { DriverDetailModal } from "./DriverDetailModal";
 import { Driver } from "@/types/driver";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Données mockées des entreprises
 const entreprises = {
@@ -40,28 +42,73 @@ const entreprises = {
   "E-005": "Société ABC",
 };
 
-// Initial empty array for drivers - no more fake data
-const initialDrivers: Driver[] = [];
-
 export function DriversManagement() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [durationFilter, setDurationFilter] = useState<string>("Tous");
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>(initialDrivers);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("Tous");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Fonction pour charger les chauffeurs depuis Supabase
+  const loadDrivers = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Erreur lors du chargement des chauffeurs:", error);
+        toast.error("Impossible de charger les chauffeurs");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data) {
+        // Transformer les données pour correspondre à notre structure Driver
+        const transformedDrivers: Driver[] = data.map(driver => ({
+          ID_Chauffeur: driver.id_chauffeur,
+          Nom: driver.nom,
+          Prénom: driver.prenom,
+          Email: driver.email,
+          Téléphone: driver.telephone,
+          Pièce_Identité: driver.piece_identite,
+          Certificat_Médical: driver.certificat_medical,
+          Justificatif_Domicile: driver.justificatif_domicile,
+          Date_Debut_Activité: new Date(driver.date_debut_activite),
+          Note_Chauffeur: driver.note_chauffeur,
+          Missions_Futures: [], // Nous n'avons pas ce champ dans la base de données pour l'instant
+          Photo: driver.photo || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop",
+          ID_Entreprise: driver.id_entreprise,
+          Disponible: driver.disponible,
+        }));
+        
+        setDrivers(transformedDrivers);
+      }
+    } catch (error) {
+      console.error("Erreur inattendue:", error);
+      toast.error("Une erreur est survenue lors du chargement des chauffeurs");
+    }
+    setIsLoading(false);
+  };
+
+  // Charger les chauffeurs au chargement du composant
+  useEffect(() => {
+    loadDrivers();
+  }, []);
 
   // Function to add a new driver
   const addDriver = (driver: Driver) => {
-    // Calculate availability based on missions
-    const isAvailable = !driver.Missions_Futures || driver.Missions_Futures.length === 0;
-    
-    // Set the driver's availability based on missions
+    // Set the driver's availability
     const newDriver = {
       ...driver,
-      Disponible: isAvailable
+      Disponible: !driver.Missions_Futures || driver.Missions_Futures.length === 0
     };
     
-    setDrivers([...drivers, newDriver]);
+    // Ajouter le chauffeur à notre état local et à Supabase
+    setDrivers(prevDrivers => [newDriver, ...prevDrivers]);
   };
 
   // Calculate duration between date of activity start and today
@@ -170,7 +217,12 @@ export function DriversManagement() {
         </div>
       </div>
       
-      {drivers.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center p-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-lg">Chargement des chauffeurs...</span>
+        </div>
+      ) : drivers.length === 0 ? (
         <div className="text-center p-10 border rounded-md">
           <h3 className="text-xl font-semibold mb-2">Aucun chauffeur</h3>
           <p className="text-muted-foreground mb-4">

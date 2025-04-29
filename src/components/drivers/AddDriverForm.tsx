@@ -33,12 +33,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Driver } from "@/types/driver";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, UploadCloud } from "lucide-react";
+import { CalendarIcon, Loader2, UploadCloud } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { supabase } from "@/integrations/supabase/client";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -82,6 +83,7 @@ interface AddDriverFormProps {
 export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeur" }: AddDriverFormProps) {
   const [open, setOpen] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -121,46 +123,106 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
     }
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Création d'un nouvel ID chauffeur (dans un vrai système, cela serait géré par la base de données)
-    const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
     
-    let photoUrl = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop"; // Photo par défaut
-    
-    if (photoPreview) {
-      photoUrl = photoPreview;
+    try {
+      // Création d'un nouvel ID chauffeur (dans un vrai système, cela serait géré par la base de données)
+      const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
+      
+      let photoUrl = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop"; // Photo par défaut
+      
+      // Télécharger la photo si disponible
+      if (values.photo) {
+        const file = values.photo;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${newDriverId}-${Date.now()}.${fileExt}`;
+        
+        // Téléchargement de la photo sur Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('drivers_photos')
+          .upload(fileName, file);
+        
+        if (uploadError) {
+          console.error("Erreur lors du téléchargement de la photo:", uploadError);
+          toast.error("Impossible de télécharger la photo");
+        } else if (uploadData) {
+          // Récupérer l'URL publique de la photo
+          const { data: urlData } = supabase.storage
+            .from('drivers_photos')
+            .getPublicUrl(fileName);
+          
+          if (urlData) {
+            photoUrl = urlData.publicUrl;
+          }
+        }
+      }
+      
+      // Préparation des données du chauffeur pour l'insertion dans la base de données
+      const driverData = {
+        id_chauffeur: newDriverId,
+        nom: values.nom,
+        prenom: values.prenom,
+        email: values.email,
+        telephone: values.telephone,
+        piece_identite: `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
+        certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
+        justificatif_domicile: `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
+        date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0],
+        note_chauffeur: 0,
+        photo: photoUrl,
+        id_entreprise: values.entrepriseId,
+        disponible: values.disponible,
+      };
+      
+      // Insérer le chauffeur dans la base de données
+      const { error: insertError } = await supabase
+        .from('drivers')
+        .insert(driverData);
+      
+      if (insertError) {
+        console.error("Erreur lors de l'insertion du chauffeur:", insertError);
+        toast.error("Impossible d'ajouter le chauffeur à la base de données");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Création du nouvel objet chauffeur pour l'interface
+      const newDriver: Driver = {
+        ID_Chauffeur: newDriverId,
+        Nom: values.nom,
+        Prénom: values.prenom,
+        Email: values.email,
+        Téléphone: values.telephone,
+        Pièce_Identité: `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
+        Certificat_Médical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
+        Justificatif_Domicile: `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
+        Date_Debut_Activité: values.dateDebutActivite,
+        Note_Chauffeur: 0, // Pas encore noté
+        Missions_Futures: [],
+        Photo: photoUrl,
+        ID_Entreprise: values.entrepriseId,
+        Disponible: values.disponible,
+      };
+      
+      // Appel de la callback pour ajouter le chauffeur
+      if (onDriverAdded) {
+        onDriverAdded(newDriver);
+      }
+      
+      toast.success("Chauffeur ajouté avec succès", {
+        description: `${values.prenom} ${values.nom} a été ajouté à l'équipe.`,
+      });
+      
+      setPhotoPreview(null);
+      form.reset();
+      setOpen(false);
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du chauffeur:", error);
+      toast.error("Une erreur est survenue lors de l'ajout du chauffeur");
     }
     
-    // Création du nouvel objet chauffeur
-    const newDriver: Driver = {
-      ID_Chauffeur: newDriverId,
-      Nom: values.nom,
-      Prénom: values.prenom,
-      Email: values.email,
-      Téléphone: values.telephone,
-      Pièce_Identité: `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
-      Certificat_Médical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
-      Justificatif_Domicile: `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
-      Date_Debut_Activité: values.dateDebutActivite,
-      Note_Chauffeur: 0, // Pas encore noté
-      Missions_Futures: [],
-      Photo: photoUrl,
-      ID_Entreprise: values.entrepriseId,
-      Disponible: values.disponible,
-    };
-    
-    // Appel de la callback pour ajouter le chauffeur
-    if (onDriverAdded) {
-      onDriverAdded(newDriver);
-    }
-    
-    toast.success("Chauffeur ajouté avec succès", {
-      description: `${values.prenom} ${values.nom} a été ajouté à l'équipe.`,
-    });
-    
-    setPhotoPreview(null);
-    form.reset();
-    setOpen(false);
+    setIsSubmitting(false);
   }
 
   return (
@@ -305,9 +367,6 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                     )}
                   />
                 </div>
-                
-                {/* Removed the Switch FormField for disponible here */}
-                
               </div>
               
               {/* Colonne de droite - Photo */}
@@ -364,10 +423,19 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
             </div>
             
             <DialogFooter className="mt-6 pt-4 border-t">
-              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+              <Button variant="outline" type="button" onClick={() => setOpen(false)} disabled={isSubmitting}>
                 Annuler
               </Button>
-              <Button type="submit">Ajouter</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Ajout en cours...
+                  </>
+                ) : (
+                  "Ajouter"
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
