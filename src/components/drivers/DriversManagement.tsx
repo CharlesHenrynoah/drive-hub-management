@@ -194,6 +194,11 @@ export function DriversManagement() {
     setDrivers(prevDrivers => [newDriver, ...prevDrivers]);
   };
 
+  // Fonction pour mettre à jour la liste après modification d'un chauffeur
+  const handleDriverUpdated = () => {
+    loadDrivers();
+  };
+
   // Calculate duration between date of activity start and today
   const calculateActivityDuration = (dateDebut: Date | string): number => {
     const startDate = dateDebut instanceof Date 
@@ -389,11 +394,15 @@ export function DriversManagement() {
                           <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={() => setSelectedDriver(driver)}>
                               <Edit className="h-4 w-4" />
-                              Modifier
+                              Voir
                             </Button>
                           </DialogTrigger>
                           {selectedDriver && selectedDriver.ID_Chauffeur === driver.ID_Chauffeur && (
-                            <DriverDetailModal driver={selectedDriver} companies={companies} />
+                            <DriverDetailModal 
+                              driver={selectedDriver} 
+                              companies={companies} 
+                              onDriverUpdated={handleDriverUpdated}
+                            />
                           )}
                         </Dialog>
                         

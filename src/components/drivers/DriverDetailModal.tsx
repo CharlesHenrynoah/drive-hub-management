@@ -1,19 +1,26 @@
 
+import { useState } from "react";
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { Driver } from "@/types/driver";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { EditDriverForm } from "./EditDriverForm";
+import { pencil } from "lucide-react";
 
 interface DriverDetailModalProps {
   driver: Driver;
   companies?: Record<string, string>;
+  onDriverUpdated?: () => void;
 }
 
-export function DriverDetailModal({ driver, companies = {} }: DriverDetailModalProps) {
+export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: DriverDetailModalProps) {
+  const [isEditing, setIsEditing] = useState(false);
+
   // Format date if it's a string
   const formatDate = (date: Date | string) => {
     if (date instanceof Date) {
@@ -33,6 +40,32 @@ export function DriverDetailModal({ driver, companies = {} }: DriverDetailModalP
   const getCompanyName = (id: string): string => {
     return companies[id] || "Entreprise inconnue";
   };
+
+  const handleEditSuccess = () => {
+    setIsEditing(false);
+    if (onDriverUpdated) {
+      onDriverUpdated();
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <DialogContent className="sm:max-w-[700px]">
+        <DialogHeader>
+          <DialogTitle>Modifier le chauffeur</DialogTitle>
+          <DialogDescription>
+            Modifiez les informations du chauffeur {driver.Prénom} {driver.Nom}
+          </DialogDescription>
+        </DialogHeader>
+        <EditDriverForm 
+          driver={driver} 
+          companies={companies} 
+          onSuccess={handleEditSuccess} 
+          onCancel={() => setIsEditing(false)} 
+        />
+      </DialogContent>
+    );
+  }
 
   return (
     <DialogContent className="sm:max-w-[600px]">
@@ -60,6 +93,18 @@ export function DriverDetailModal({ driver, companies = {} }: DriverDetailModalP
           </div>
         </div>
       </DialogHeader>
+      
+      <div className="flex justify-end">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setIsEditing(true)}
+          className="flex items-center gap-1"
+        >
+          <pencil className="h-4 w-4" />
+          Modifier
+        </Button>
+      </div>
       
       <div className="mt-4">
         <img 
