@@ -38,34 +38,6 @@ export type Company = {
   driver_count?: number;
 };
 
-// Type definition for fleets
-export type Fleet = {
-  ID_Flotte: string;
-  Nom_Flotte: string;
-  ID_Entreprise: string;
-  Liste_Vehicules: string[];
-  Date_Creation: string;
-  Derniere_Modification: string;
-  Description: string;
-};
-
-// Type definition for vehicles
-export type Vehicle = {
-  ID_Vehicule: string;
-  Type_Vehicule: string;
-  Marque: string;
-  Modele: string;
-  ID_Entreprise: string;
-};
-
-// Type definition for drivers
-export type Driver = {
-  ID_Chauffeur: string;
-  Nom: string;
-  Prénom: string;
-  ID_Entreprise: string;
-};
-
 export function CompaniesManagement() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -74,32 +46,86 @@ export function CompaniesManagement() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const isMobile = useIsMobile();
 
-  // Fetch companies from Supabase
+  // Fetch companies from Supabase with related counts
   useEffect(() => {
     async function fetchCompanies() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        
+        // Fetch basic company data
+        const { data: companyData, error: companyError } = await supabase
           .from('companies')
           .select('*');
 
-        if (error) {
-          console.error('Error fetching companies:', error);
+        if (companyError) {
+          console.error('Error fetching companies:', companyError);
           toast.error('Erreur lors du chargement des entreprises');
-        } else {
-          // Transform data to match the Company type
-          const transformedData = data.map(company => ({
-            id: company.id,
-            name: company.name,
-            logo_url: company.logo_url,
-            // Default values for now, these would come from related tables in a real implementation
-            fleet_count: 0,
-            vehicle_count: 0,
-            driver_count: 0
-          }));
-          
-          setCompanies(transformedData);
+          return;
         }
+        
+        // Transform and enhance company data with counts
+        const enhancedCompanies = await Promise.all(companyData.map(async (company) => {
+          // Count fleets for this company
+          const { count: fleetCount, error: fleetError } = await supabase
+            .from('fleets')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', company.id);
+            
+          if (fleetError) {
+            console.error(`Error counting fleets for company ${company.id}:`, fleetError);
+          }
+          
+          // Get all fleet IDs for this company to count related vehicles and drivers
+          const { data: fleetIds, error: fleetIdsError } = await supabase
+            .from('fleets')
+            .select('id')
+            .eq('company_id', company.id);
+            
+          if (fleetIdsError) {
+            console.error(`Error fetching fleet IDs for company ${company.id}:`, fleetIdsError);
+          }
+          
+          let vehicleCount = 0;
+          let driverCount = 0;
+          
+          if (fleetIds && fleetIds.length > 0) {
+            // Extract just the IDs
+            const ids = fleetIds.map(f => f.id);
+            
+            // Count vehicles associated with these fleets
+            const { count: vCount, error: vError } = await supabase
+              .from('fleet_vehicles')
+              .select('*', { count: 'exact', head: true })
+              .in('fleet_id', ids);
+              
+            if (vError) {
+              console.error(`Error counting vehicles for company ${company.id}:`, vError);
+            } else {
+              vehicleCount = vCount || 0;
+            }
+            
+            // Count drivers associated with these fleets
+            const { count: dCount, error: dError } = await supabase
+              .from('fleet_drivers')
+              .select('*', { count: 'exact', head: true })
+              .in('fleet_id', ids);
+              
+            if (dError) {
+              console.error(`Error counting drivers for company ${company.id}:`, dError);
+            } else {
+              driverCount = dCount || 0;
+            }
+          }
+          
+          return {
+            ...company,
+            fleet_count: fleetCount || 0,
+            vehicle_count: vehicleCount,
+            driver_count: driverCount
+          };
+        }));
+        
+        setCompanies(enhancedCompanies);
       } catch (err) {
         console.error('Unexpected error:', err);
         toast.error('Une erreur inattendue est survenue');
@@ -109,33 +135,85 @@ export function CompaniesManagement() {
     }
 
     fetchCompanies();
-  }, [refreshTrigger]);
+    
+    // Set up real-time subscription for companies table
+    const companiesChannel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'companies' 
+        }, 
+        () => {
+          console.log('Companies table changed, refreshing data...');
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe();
+      
+    // Set up real-time subscription for fleets table  
+    const fleetsChannel = supabase
+      .channel('fleets-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'fleets' 
+        }, 
+        () => {
+          console.log('Fleets table changed, refreshing data...');
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe();
+      
+    // Set up real-time subscription for fleet_vehicles table
+    const fleetVehiclesChannel = supabase
+      .channel('fleet-vehicles-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'fleet_vehicles' 
+        }, 
+        () => {
+          console.log('Fleet vehicles changed, refreshing data...');
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe();
+      
+    // Set up real-time subscription for fleet_drivers table  
+    const fleetDriversChannel = supabase
+      .channel('fleet-drivers-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'fleet_drivers' 
+        }, 
+        () => {
+          console.log('Fleet drivers changed, refreshing data...');
+          setRefreshTrigger(prev => prev + 1);
+        }
+      )
+      .subscribe();
 
-  // Empty arrays for fleets, vehicles, and drivers
-  const fleets: Fleet[] = [];
-  const vehicles: Vehicle[] = [];
-  const drivers: Driver[] = [];
+    // Cleanup function to remove subscriptions
+    return () => {
+      supabase.removeChannel(companiesChannel);
+      supabase.removeChannel(fleetsChannel);
+      supabase.removeChannel(fleetVehiclesChannel);
+      supabase.removeChannel(fleetDriversChannel);
+    };
+  }, [refreshTrigger]);
 
   // Filtrage des entreprises
   const filteredCompanies = companies.filter((company) =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (company.contact_name && company.contact_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
-
-  // Récupération des flottes d'une entreprise
-  const getCompanyFleets = (companyId: string) => {
-    return fleets.filter((fleet) => fleet.ID_Entreprise === companyId);
-  };
-
-  // Récupération des véhicules d'une entreprise
-  const getCompanyVehicles = (companyId: string) => {
-    return vehicles.filter((vehicle) => vehicle.ID_Entreprise === companyId);
-  };
-
-  // Récupération des chauffeurs d'une entreprise
-  const getCompanyDrivers = (companyId: string) => {
-    return drivers.filter((driver) => driver.ID_Entreprise === companyId);
-  };
 
   // Function to handle company addition
   const handleCompanyAdded = () => {
@@ -229,9 +307,7 @@ export function CompaniesManagement() {
                           {selectedCompany && selectedCompany.id === company.id && (
                             <CompanyDetailModal 
                               company={selectedCompany}
-                              fleets={getCompanyFleets(company.id)}
-                              vehicles={getCompanyVehicles(company.id)}
-                              drivers={getCompanyDrivers(company.id)}
+                              onUpdate={() => setRefreshTrigger(prev => prev + 1)}
                             />
                           )}
                         </Dialog>
