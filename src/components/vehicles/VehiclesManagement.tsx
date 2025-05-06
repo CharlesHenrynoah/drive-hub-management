@@ -22,12 +22,25 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Download } from "lucide-react";
+import { Download, Edit, Trash2 } from "lucide-react";
 import { AddVehicleForm } from "./AddVehicleForm";
 import { VehicleDetailModal } from "./VehicleDetailModal";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export type Vehicle = {
   id: string;
@@ -62,6 +75,7 @@ export function VehiclesManagement() {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchVehicles();
@@ -121,7 +135,10 @@ export function VehiclesManagement() {
     setIsDetailModalOpen(true);
   };
 
-  const handleEditClick = () => {
+  const handleEditClick = (vehicle?: Vehicle) => {
+    if (vehicle) {
+      setSelectedVehicle(vehicle);
+    }
     setIsDetailModalOpen(false);
     setIsEditModalOpen(true);
   };
@@ -130,6 +147,52 @@ export function VehiclesManagement() {
     fetchVehicles(); // Refresh the vehicles list
     setIsEditModalOpen(false);
     setSelectedVehicle(null);
+    toast.success("Véhicule modifié avec succès");
+  };
+
+  const handleDeleteClick = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedVehicle) return;
+    
+    try {
+      // First check if the vehicle is used in any fleet
+      const { data: fleetVehicles, error: fleetCheckError } = await supabase
+        .from('fleet_vehicles')
+        .select('*')
+        .eq('vehicle_id', selectedVehicle.id);
+      
+      if (fleetCheckError) {
+        throw fleetCheckError;
+      }
+      
+      if (fleetVehicles && fleetVehicles.length > 0) {
+        toast.error("Ce véhicule est utilisé dans une ou plusieurs flottes et ne peut pas être supprimé");
+        setIsDeleteDialogOpen(false);
+        return;
+      }
+      
+      // Proceed with deletion
+      const { error: deleteError } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', selectedVehicle.id);
+      
+      if (deleteError) {
+        throw deleteError;
+      }
+      
+      toast.success("Véhicule supprimé avec succès");
+      setIsDeleteDialogOpen(false);
+      setSelectedVehicle(null);
+      fetchVehicles(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      toast.error("Erreur lors de la suppression du véhicule");
+    }
   };
 
   // Filtrage des véhicules
@@ -266,9 +329,17 @@ export function VehiclesManagement() {
                     <TableCell>{v.mileage?.toLocaleString() || "0"} km</TableCell>
                     <TableCell>{v.company_id ? companies[v.company_id] || "N/A" : "N/A"}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => handleVehicleClick(v)}>
-                        Détails
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleVehicleClick(v)}>
+                          Détails
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(v)} className="text-blue-500">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(v)} className="text-red-500">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -298,6 +369,24 @@ export function VehiclesManagement() {
           onSuccess={handleEditSuccess}
         />
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce véhicule ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action ne peut pas être annulée. Le véhicule {selectedVehicle?.brand} {selectedVehicle?.model} ({selectedVehicle?.registration}) sera définitivement supprimé.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
