@@ -15,11 +15,22 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Edit, Loader2, Trash2 } from "lucide-react";
 import { AddFleetForm } from "./AddFleetForm";
 import { FleetDetailModal } from "./FleetDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { EditFleetForm } from "./EditFleetForm";
 
 // Type for fleets from the database
 export type Fleet = {
@@ -48,6 +59,11 @@ export function FleetsManagement() {
   const [companies, setCompanies] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [fleetToDelete, setFleetToDelete] = useState<Fleet | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [fleetToEdit, setFleetToEdit] = useState<Fleet | null>(null);
 
   // Fetch data from Supabase
   useEffect(() => {
@@ -121,6 +137,74 @@ export function FleetsManagement() {
   const handleFleetChange = () => {
     setRefreshTrigger(prev => prev + 1);
     toast.success('Les données des flottes ont été mises à jour');
+  };
+
+  // Handle delete confirmation
+  const handleDeleteClick = (fleet: Fleet, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFleetToDelete(fleet);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete action
+  const handleDelete = async () => {
+    if (!fleetToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      
+      // First delete all fleet_vehicles and fleet_drivers associations
+      const { error: vehicleError } = await supabase
+        .from('fleet_vehicles')
+        .delete()
+        .eq('fleet_id', fleetToDelete.id);
+        
+      if (vehicleError) {
+        console.error('Error deleting fleet vehicles:', vehicleError);
+        toast.error("Erreur lors de la suppression des véhicules associés");
+        return;
+      }
+      
+      const { error: driverError } = await supabase
+        .from('fleet_drivers')
+        .delete()
+        .eq('fleet_id', fleetToDelete.id);
+        
+      if (driverError) {
+        console.error('Error deleting fleet drivers:', driverError);
+        toast.error("Erreur lors de la suppression des chauffeurs associés");
+        return;
+      }
+      
+      // Then delete the fleet itself
+      const { error } = await supabase
+        .from('fleets')
+        .delete()
+        .eq('id', fleetToDelete.id);
+        
+      if (error) {
+        console.error('Error deleting fleet:', error);
+        toast.error("Erreur lors de la suppression de la flotte");
+        return;
+      }
+      
+      toast.success("Flotte supprimée avec succès");
+      handleFleetChange();
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast.error("Une erreur est survenue lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setFleetToDelete(null);
+    }
+  };
+
+  // Handle edit click
+  const handleEditClick = (fleet: Fleet, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFleetToEdit(fleet);
+    setEditMode(true);
   };
 
   // Filtrage des flottes
@@ -199,20 +283,39 @@ export function FleetsManagement() {
                     <TableCell>{new Date(fleet.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>{new Date(fleet.updated_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedFleet(fleet)}>
-                            Détails
-                          </Button>
-                        </DialogTrigger>
-                        {selectedFleet && selectedFleet.id === fleet.id && (
-                          <FleetDetailModal 
-                            fleet={selectedFleet} 
-                            companies={companies}
-                            onUpdate={handleFleetChange}
-                          />
-                        )}
-                      </Dialog>
+                      <div className="flex items-center gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedFleet(fleet)}>
+                              Détails
+                            </Button>
+                          </DialogTrigger>
+                          {selectedFleet && selectedFleet.id === fleet.id && (
+                            <FleetDetailModal 
+                              fleet={selectedFleet} 
+                              companies={companies}
+                              onUpdate={handleFleetChange}
+                            />
+                          )}
+                        </Dialog>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => handleEditClick(fleet, e)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Modifier
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => handleDeleteClick(fleet, e)} 
+                          className="text-destructive hover:text-destructive/80"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Supprimer
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -221,6 +324,60 @@ export function FleetsManagement() {
           </Table>
         </div>
       </div>
+
+      {/* Edit Fleet Dialog */}
+      {editMode && fleetToEdit && (
+        <Dialog open={editMode} onOpenChange={setEditMode}>
+          <EditFleetForm 
+            fleet={fleetToEdit}
+            companies={companies}
+            onFleetUpdated={() => {
+              handleFleetChange();
+              setEditMode(false);
+              setFleetToEdit(null);
+            }}
+            onCancel={() => {
+              setEditMode(false);
+              setFleetToEdit(null);
+            }}
+          />
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette flotte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement la flotte "{fleetToDelete?.name}" et toutes ses associations avec les véhicules et chauffeurs.
+              Les véhicules et chauffeurs ne seront pas supprimés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setFleetToDelete(null);
+            }}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
