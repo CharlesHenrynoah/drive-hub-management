@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -80,10 +80,47 @@ interface AddDriverFormProps {
   buttonText?: string;
 }
 
+// Interface pour les entreprises
+interface Company {
+  id: string;
+  name: string;
+}
+
 export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeur" }: AddDriverFormProps) {
   const [open, setOpen] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  
+  // Chargement des entreprises depuis Supabase
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setIsLoadingCompanies(true);
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .order('name');
+        
+        if (error) {
+          console.error("Erreur lors du chargement des entreprises:", error);
+          toast.error("Impossible de charger la liste des entreprises");
+        } else {
+          setCompanies(data || []);
+        }
+      } catch (err) {
+        console.error("Exception lors du chargement des entreprises:", err);
+        toast.error("Erreur lors du chargement des entreprises");
+      } finally {
+        setIsLoadingCompanies(false);
+      }
+    };
+    
+    if (open) {
+      fetchCompanies();
+    }
+  }, [open]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -139,10 +176,22 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         const fileName = `${newDriverId}-${Date.now()}.${fileExt}`;
         
         try {
+          // Création du bucket s'il n'existe pas déjà
+          const { error: bucketError } = await supabase.storage.createBucket('drivers_photos', {
+            public: true
+          });
+          
+          if (bucketError && bucketError.message !== "Bucket already exists") {
+            console.error("Erreur lors de la création du bucket:", bucketError);
+          }
+          
           // Téléchargement de la photo sur Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('drivers_photos')
-            .upload(fileName, file);
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
           
           if (uploadError) {
             console.error("Erreur lors du téléchargement de la photo:", uploadError);
@@ -362,11 +411,22 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="E-001">Ville de Paris</SelectItem>
-                            <SelectItem value="E-002">Académie de Lyon</SelectItem>
-                            <SelectItem value="E-003">Transport Express</SelectItem>
-                            <SelectItem value="E-004">LogiMobile</SelectItem>
-                            <SelectItem value="E-005">Société ABC</SelectItem>
+                            {isLoadingCompanies ? (
+                              <div className="flex items-center justify-center p-2">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" /> 
+                                Chargement...
+                              </div>
+                            ) : companies.length === 0 ? (
+                              <div className="p-2 text-center text-sm text-muted-foreground">
+                                Aucune entreprise disponible
+                              </div>
+                            ) : (
+                              companies.map((company) => (
+                                <SelectItem key={company.id} value={company.id}>
+                                  {company.name}
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                         <FormMessage />
