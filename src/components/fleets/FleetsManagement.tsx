@@ -32,6 +32,7 @@ export type Fleet = {
   vehicles?: { id: string; registration: string }[];
   drivers?: { id: string; nom: string; prenom: string }[];
   companyName?: string;
+  vehicleCount?: number;
 };
 
 // Type for companies
