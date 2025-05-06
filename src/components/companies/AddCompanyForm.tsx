@@ -116,16 +116,24 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
       // Upload logo if provided
       if (values.logoFile) {
         const fileExt = values.logoFile.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
         const filePath = `${fileName}`;
+        
+        console.log("Uploading file to path:", filePath);
         
         const { error: uploadError, data } = await supabase.storage
           .from('company_logos')
-          .upload(filePath, values.logoFile);
+          .upload(filePath, values.logoFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
           
         if (uploadError) {
+          console.error("Upload error:", uploadError);
           throw new Error(`Erreur lors du téléchargement du logo: ${uploadError.message}`);
         }
+        
+        console.log("Upload successful:", data);
         
         // Get public URL for the uploaded file
         const { data: { publicUrl } } = supabase.storage
@@ -133,6 +141,7 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
           .getPublicUrl(filePath);
           
         logoUrl = publicUrl;
+        console.log("Logo URL:", logoUrl);
       }
       
       // Insert company data into Supabase
@@ -145,6 +154,7 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
         });
         
       if (error) {
+        console.error("Insert error:", error);
         throw new Error(`Erreur lors de l'ajout de l'entreprise: ${error.message}`);
       }
       
