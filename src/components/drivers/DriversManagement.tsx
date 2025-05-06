@@ -22,9 +22,13 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Edit, Trash2 } from "lucide-react";
 import { AddDriverForm } from "./AddDriverForm";
 import { DriverDetailModal } from "./DriverDetailModal";
 import { Driver } from "@/types/driver";
@@ -48,6 +52,9 @@ export function DriversManagement() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [companies, setCompanies] = useState<Record<string, string>>({});
   const [isLoadingCompanies, setIsLoadingCompanies] = useState<boolean>(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Fonction pour charger les entreprises depuis Supabase
   const loadCompanies = async () => {
@@ -118,6 +125,69 @@ export function DriversManagement() {
       toast.error("Une erreur est survenue lors du chargement des chauffeurs");
     }
     setIsLoading(false);
+  };
+
+  // Vérifier si le chauffeur est utilisé dans des flottes
+  const checkDriverInFleets = async (driverId: string) => {
+    try {
+      const { data, error, count } = await supabase
+        .from('fleet_drivers')
+        .select('*', { count: 'exact' })
+        .eq('driver_id', driverId);
+      
+      if (error) {
+        console.error("Erreur lors de la vérification des flottes:", error);
+        return true; // En cas d'erreur, on considère que le chauffeur est utilisé par sécurité
+      }
+      
+      return count !== null && count > 0;
+    } catch (error) {
+      console.error("Erreur inattendue:", error);
+      return true; // En cas d'erreur, on considère que le chauffeur est utilisé par sécurité
+    }
+  };
+
+  // Fonction pour supprimer un chauffeur
+  const deleteDriver = async () => {
+    if (!driverToDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Vérifier si le chauffeur est utilisé dans des flottes
+      const isUsedInFleets = await checkDriverInFleets(driverToDelete.ID_Chauffeur);
+      
+      if (isUsedInFleets) {
+        toast.error("Impossible de supprimer ce chauffeur car il fait partie d'une ou plusieurs flottes.");
+        setIsDeleting(false);
+        setIsDeleteDialogOpen(false);
+        return;
+      }
+      
+      // Supprimer le chauffeur de la base de données
+      const { error } = await supabase
+        .from('drivers')
+        .delete()
+        .eq('id_chauffeur', driverToDelete.ID_Chauffeur);
+      
+      if (error) {
+        console.error("Erreur lors de la suppression du chauffeur:", error);
+        toast.error("Impossible de supprimer le chauffeur");
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Supprimer le chauffeur de notre état local
+      setDrivers(prevDrivers => prevDrivers.filter(driver => driver.ID_Chauffeur !== driverToDelete.ID_Chauffeur));
+      toast.success("Chauffeur supprimé avec succès");
+    } catch (error) {
+      console.error("Erreur inattendue:", error);
+      toast.error("Une erreur est survenue lors de la suppression du chauffeur");
+    }
+    
+    setIsDeleting(false);
+    setIsDeleteDialogOpen(false);
+    setDriverToDelete(null);
   };
 
   // Charger les entreprises et les chauffeurs au chargement du composant
@@ -328,16 +398,32 @@ export function DriversManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedDriver(driver)}>
-                            Détails
-                          </Button>
-                        </DialogTrigger>
-                        {selectedDriver && selectedDriver.ID_Chauffeur === driver.ID_Chauffeur && (
-                          <DriverDetailModal driver={selectedDriver} companies={companies} />
-                        )}
-                      </Dialog>
+                      <div className="flex items-center gap-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={() => setSelectedDriver(driver)}>
+                              <Edit className="h-4 w-4" />
+                              Modifier
+                            </Button>
+                          </DialogTrigger>
+                          {selectedDriver && selectedDriver.ID_Chauffeur === driver.ID_Chauffeur && (
+                            <DriverDetailModal driver={selectedDriver} companies={companies} />
+                          )}
+                        </Dialog>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex items-center gap-1 text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            setDriverToDelete(driver);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -346,6 +432,43 @@ export function DriversManagement() {
           </div>
         </div>
       )}
+      
+      {/* Dialog de confirmation de suppression */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer {driverToDelete?.Prénom} {driverToDelete?.Nom} ({driverToDelete?.ID_Chauffeur}) ?
+              <br />
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={deleteDriver}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
