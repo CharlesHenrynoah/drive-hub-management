@@ -84,6 +84,105 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_drivers: {
+        Row: {
+          created_at: string
+          driver_id: string
+          fleet_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          fleet_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          fleet_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fleet_drivers_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fleet_drivers_fleet_id_fkey"
+            columns: ["fleet_id"]
+            isOneToOne: false
+            referencedRelation: "fleets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fleet_vehicles: {
+        Row: {
+          created_at: string
+          fleet_id: string
+          id: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          fleet_id: string
+          id?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          fleet_id?: string
+          id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fleet_vehicles_fleet_id_fkey"
+            columns: ["fleet_id"]
+            isOneToOne: false
+            referencedRelation: "fleets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fleet_vehicles_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fleets: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           brand: string
