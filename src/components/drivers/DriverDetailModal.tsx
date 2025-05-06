@@ -10,7 +10,7 @@ import { Driver } from "@/types/driver";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { EditDriverForm } from "./EditDriverForm";
-import { pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -101,7 +101,7 @@ export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: D
           onClick={() => setIsEditing(true)}
           className="flex items-center gap-1"
         >
-          <pencil className="h-4 w-4" />
+          <Pencil className="h-4 w-4" />
           Modifier
         </Button>
       </div>
