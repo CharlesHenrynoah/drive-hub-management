@@ -10,18 +10,10 @@ import { fr } from "date-fns/locale";
 
 interface DriverDetailModalProps {
   driver: Driver;
+  companies?: Record<string, string>;
 }
 
-export function DriverDetailModal({ driver }: DriverDetailModalProps) {
-  // Map des entreprises
-  const entreprises = {
-    "E-001": "Ville de Paris",
-    "E-002": "Académie de Lyon",
-    "E-003": "Transport Express",
-    "E-004": "LogiMobile",
-    "E-005": "Société ABC",
-  };
-
+export function DriverDetailModal({ driver, companies = {} }: DriverDetailModalProps) {
   // Format date if it's a string
   const formatDate = (date: Date | string) => {
     if (date instanceof Date) {
@@ -37,6 +29,11 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
     return "Date inconnue";
   };
 
+  // Obtenir le nom de l'entreprise à partir de son ID
+  const getCompanyName = (id: string): string => {
+    return companies[id] || "Entreprise inconnue";
+  };
+
   return (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
@@ -50,7 +47,7 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
               {driver.Prénom} {driver.Nom}
             </DialogTitle>
             <DialogDescription>
-              {driver.ID_Chauffeur} - {entreprises[driver.ID_Entreprise as keyof typeof entreprises]}
+              {driver.ID_Chauffeur} - {getCompanyName(driver.ID_Entreprise)}
             </DialogDescription>
           </div>
           <div>
@@ -92,7 +89,7 @@ export function DriverDetailModal({ driver }: DriverDetailModalProps) {
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Entreprise</dt>
-                <dd>{entreprises[driver.ID_Entreprise as keyof typeof entreprises]}</dd>
+                <dd>{getCompanyName(driver.ID_Entreprise)}</dd>
               </div>
             </dl>
           </div>

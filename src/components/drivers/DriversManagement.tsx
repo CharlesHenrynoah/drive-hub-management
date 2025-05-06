@@ -33,14 +33,11 @@ import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Données mockées des entreprises
-const entreprises = {
-  "E-001": "Ville de Paris",
-  "E-002": "Académie de Lyon",
-  "E-003": "Transport Express",
-  "E-004": "LogiMobile",
-  "E-005": "Société ABC",
-};
+// Interface pour les entreprises
+interface Company {
+  id: string;
+  name: string;
+}
 
 export function DriversManagement() {
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -49,6 +46,35 @@ export function DriversManagement() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [availabilityFilter, setAvailabilityFilter] = useState<string>("Tous");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [companies, setCompanies] = useState<Record<string, string>>({});
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState<boolean>(true);
+
+  // Fonction pour charger les entreprises depuis Supabase
+  const loadCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name');
+      
+      if (error) {
+        console.error("Erreur lors du chargement des entreprises:", error);
+        toast.error("Impossible de charger les entreprises");
+        return;
+      }
+
+      if (data) {
+        // Convertir le tableau en objet pour un accès facile
+        const companiesMap: Record<string, string> = {};
+        data.forEach((company: Company) => {
+          companiesMap[company.id] = company.name;
+        });
+        setCompanies(companiesMap);
+      }
+    } catch (error) {
+      console.error("Erreur inattendue:", error);
+    }
+    setIsLoadingCompanies(false);
+  };
 
   // Fonction pour charger les chauffeurs depuis Supabase
   const loadDrivers = async () => {
@@ -94,8 +120,9 @@ export function DriversManagement() {
     setIsLoading(false);
   };
 
-  // Charger les chauffeurs au chargement du composant
+  // Charger les entreprises et les chauffeurs au chargement du composant
   useEffect(() => {
+    loadCompanies();
     loadDrivers();
   }, []);
 
@@ -139,6 +166,12 @@ export function DriversManagement() {
       }
     }
     return "Date inconnue";
+  };
+
+  // Obtenir le nom de l'entreprise à partir de son ID
+  const getCompanyName = (id: string): string => {
+    if (isLoadingCompanies) return "Chargement...";
+    return companies[id] || "Entreprise inconnue";
   };
 
   // Filtrage des chauffeurs
@@ -263,7 +296,7 @@ export function DriversManagement() {
                     <TableCell>{driver.Prénom}</TableCell>
                     <TableCell>{formatDate(driver.Date_Debut_Activité)}</TableCell>
                     <TableCell>{calculateActivityDuration(driver.Date_Debut_Activité)} ans</TableCell>
-                    <TableCell>{entreprises[driver.ID_Entreprise as keyof typeof entreprises]}</TableCell>
+                    <TableCell>{getCompanyName(driver.ID_Entreprise)}</TableCell>
                     <TableCell>
                       {driver.Note_Chauffeur === 0 ? (
                         "Pas encore noté"
@@ -302,7 +335,7 @@ export function DriversManagement() {
                           </Button>
                         </DialogTrigger>
                         {selectedDriver && selectedDriver.ID_Chauffeur === driver.ID_Chauffeur && (
-                          <DriverDetailModal driver={selectedDriver} />
+                          <DriverDetailModal driver={selectedDriver} companies={companies} />
                         )}
                       </Dialog>
                     </TableCell>
