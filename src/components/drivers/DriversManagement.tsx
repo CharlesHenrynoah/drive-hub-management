@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -127,27 +126,6 @@ export function DriversManagement() {
     setIsLoading(false);
   };
 
-  // Vérifier si le chauffeur est utilisé dans des flottes
-  const checkDriverInFleets = async (driverId: string) => {
-    try {
-      // Query by the driver's ID (not UUID) if the fleet_drivers table uses it
-      const { data, error, count } = await supabase
-        .from('fleet_drivers')
-        .select('*', { count: 'exact' })
-        .eq('driver_id', driverId);
-      
-      if (error) {
-        console.error("Erreur lors de la vérification des flottes:", error);
-        return true; // En cas d'erreur, on considère que le chauffeur est utilisé par sécurité
-      }
-      
-      return count !== null && count > 0;
-    } catch (error) {
-      console.error("Erreur inattendue:", error);
-      return true; // En cas d'erreur, on considère que le chauffeur est utilisé par sécurité
-    }
-  };
-
   // Fonction pour supprimer un chauffeur
   const deleteDriver = async () => {
     if (!driverToDelete) return;
@@ -155,16 +133,6 @@ export function DriversManagement() {
     setIsDeleting(true);
     
     try {
-      // Vérifier si le chauffeur est utilisé dans des flottes
-      const isUsedInFleets = await checkDriverInFleets(driverToDelete.ID_Chauffeur);
-      
-      if (isUsedInFleets) {
-        toast.error("Impossible de supprimer ce chauffeur car il fait partie d'une ou plusieurs flottes.");
-        setIsDeleting(false);
-        setIsDeleteDialogOpen(false);
-        return;
-      }
-      
       // Supprimer le chauffeur de la base de données
       // Use the id field (UUID) instead of id_chauffeur for the deletion
       const { data, error } = await supabase
