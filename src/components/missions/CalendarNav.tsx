@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
-import { addMonths, subMonths } from "date-fns";
+import { addMonths, format, subMonths } from "date-fns";
+import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarNavProps {
@@ -27,7 +28,7 @@ export function CalendarNav({ currentDate, setCurrentDate }: CalendarNavProps) {
         <ChevronLeft className="h-4 w-4" />
       </Button>
       <Button variant="outline" onClick={goToToday}>
-        Aujourd'hui
+        {format(currentDate, 'MMMM', { locale: fr })}
       </Button>
       <Button variant="outline" size="icon" onClick={goToNextMonth}>
         <ChevronRight className="h-4 w-4" />
