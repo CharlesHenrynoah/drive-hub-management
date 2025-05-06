@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,7 +27,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Card } from "@/components/ui/card";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -63,6 +62,7 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,6 +74,12 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
       telephone: "",
     },
   });
+
+  const handleFileClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -198,22 +204,20 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
                     )}
                   </div>
                   
-                  <FormItem>
-                    <FormLabel>
-                      <div className="flex items-center justify-center gap-2 text-sm text-primary cursor-pointer">
-                        <Upload size={16} />
-                        <span>Télécharger un logo</span>
-                        <Input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={handleFileChange}
-                          id="logo-upload"
-                        />
-                      </div>
-                    </FormLabel>
-                    <FormMessage />
-                  </FormItem>
+                  <div onClick={handleFileClick} className="cursor-pointer">
+                    <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                      <Upload size={16} />
+                      <span>Télécharger un logo</span>
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleFileChange}
+                        ref={fileInputRef}
+                      />
+                    </div>
+                  </div>
+                  <FormMessage />
                 </div>
               </div>
               
