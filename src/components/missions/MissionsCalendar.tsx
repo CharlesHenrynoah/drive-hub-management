@@ -20,6 +20,10 @@ interface Mission {
   description?: string;
   startLocation?: string;
   endLocation?: string;
+  client?: string;
+  arrivalDate?: Date;
+  passengers?: number;
+  additionalDetails?: string;
 }
 
 // Sample data (to be replaced with actual data from Supabase)
@@ -34,7 +38,11 @@ const sampleMissions: Mission[] = [
     status: "pending",
     description: "Transport d'un client VIP depuis l'aéroport jusqu'à l'hôtel.",
     startLocation: "Aéroport CDG",
-    endLocation: "Hôtel Le Meurice"
+    endLocation: "Hôtel Le Meurice",
+    client: "Richard Martin",
+    arrivalDate: new Date(2025, 4, 10, 11, 0),
+    passengers: 1,
+    additionalDetails: "Client VIP - directeur de Total Énergies. Prévoir bouteille d'eau et journaux du jour."
   },
   {
     id: "2",
@@ -44,7 +52,11 @@ const sampleMissions: Mission[] = [
     vehicle: "Renault Kangoo",
     company: "TransCorp",
     status: "completed",
-    description: "Livraison de documents confidentiels."
+    description: "Livraison de documents confidentiels.",
+    startLocation: "Siège TransCorp",
+    endLocation: "Cabinet d'avocats Legrand",
+    arrivalDate: new Date(2025, 4, 15, 15, 30),
+    client: "TransCorp Legal"
   },
   {
     id: "3",
@@ -54,7 +66,13 @@ const sampleMissions: Mission[] = [
     vehicle: "Mercedes Sprinter",
     company: "EduTrans",
     status: "pending",
-    description: "Transport d'élèves pour une sortie scolaire."
+    description: "Transport d'élèves pour une sortie scolaire.",
+    startLocation: "École Jules Ferry",
+    endLocation: "Musée du Louvre",
+    arrivalDate: new Date(2025, 4, 18, 9, 0),
+    passengers: 22,
+    client: "École Jules Ferry",
+    additionalDetails: "Groupe de 20 élèves et 2 accompagnateurs. Prévoir siège enfant."
   },
   {
     id: "4",
@@ -64,7 +82,12 @@ const sampleMissions: Mission[] = [
     vehicle: "Iveco Daily",
     company: "MoveIt",
     status: "pending",
-    description: "Déménagement d'un appartement à une maison."
+    description: "Déménagement d'un appartement à une maison.",
+    startLocation: "15 rue de la Paix, Paris",
+    endLocation: "8 avenue des Champs, Neuilly",
+    arrivalDate: new Date(2025, 4, 22, 17, 0),
+    client: "Famille Bernard",
+    passengers: 3
   },
   {
     id: "5",
@@ -74,7 +97,11 @@ const sampleMissions: Mission[] = [
     vehicle: "Ford Transit",
     company: "MediMove",
     status: "cancelled",
-    description: "Transport de matériel médical entre deux hôpitaux."
+    description: "Transport de matériel médical entre deux hôpitaux.",
+    startLocation: "Hôpital Saint-Louis",
+    endLocation: "Clinique des Lilas",
+    arrivalDate: new Date(2025, 4, 5, 9, 45),
+    client: "Groupe Hospitalier Est"
   }
 ];
 
