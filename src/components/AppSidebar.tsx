@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Home, Car, User, Users, Map, Building2 } from "lucide-react";
+import { Home, Car, User, Users, Map, Building2, Calendar } from "lucide-react";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -65,6 +65,14 @@ export function AppSidebar() {
               <Link to="/entreprises" className={location.pathname === "/entreprises" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
                 <Building2 className="h-5 w-5" />
                 <span>Entreprises</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link to="/missions" className={location.pathname === "/missions" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+                <Calendar className="h-5 w-5" />
+                <span>Missions</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
