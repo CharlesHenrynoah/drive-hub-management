@@ -53,6 +53,7 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
     async function fetchFleetDetails() {
       try {
         setLoading(true);
+        console.log("Fetching details for fleet ID:", fleet.id);
         
         // Fetch vehicles for this fleet
         const { data: fleetVehiclesData, error: fleetVehiclesError } = await supabase
@@ -65,8 +66,11 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           return;
         }
         
+        console.log("Fleet vehicles data:", fleetVehiclesData);
+        
         if (fleetVehiclesData && fleetVehiclesData.length > 0) {
           const vehicleIds = fleetVehiclesData.map(item => item.vehicle_id);
+          console.log("Vehicle IDs:", vehicleIds);
           
           const { data: vehiclesData, error: vehiclesError } = await supabase
             .from('vehicles')
@@ -76,8 +80,11 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           if (vehiclesError) {
             console.error('Error fetching vehicles:', vehiclesError);
           } else {
+            console.log("Vehicles data:", vehiclesData);
             setVehicles(vehiclesData || []);
           }
+        } else {
+          console.log("No vehicles found for this fleet");
         }
         
         // Fetch drivers for this fleet
@@ -91,8 +98,11 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           return;
         }
         
+        console.log("Fleet drivers data:", fleetDriversData);
+        
         if (fleetDriversData && fleetDriversData.length > 0) {
           const driverIds = fleetDriversData.map(item => item.driver_id);
+          console.log("Driver IDs:", driverIds);
           
           const { data: driversData, error: driversError } = await supabase
             .from('drivers')
@@ -102,8 +112,11 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           if (driversError) {
             console.error('Error fetching drivers:', driversError);
           } else {
+            console.log("Drivers data:", driversData);
             setDrivers(driversData || []);
           }
+        } else {
+          console.log("No drivers found for this fleet");
         }
       } catch (err) {
         console.error('Unexpected error:', err);
@@ -187,7 +200,7 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
   }
 
   return (
-    <DialogContent className="sm:max-w-[600px]">
+    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle className="text-xl">{fleet.name}</DialogTitle>
         <DialogDescription>
@@ -252,7 +265,7 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           </div>
           
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Liste des véhicules</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Liste des véhicules ({vehicles.length})</h3>
             <Separator className="my-2" />
             {vehicles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -273,7 +286,7 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           </div>
           
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Liste des chauffeurs</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Liste des chauffeurs ({drivers.length})</h3>
             <Separator className="my-2" />
             {drivers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
