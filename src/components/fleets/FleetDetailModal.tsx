@@ -1,12 +1,25 @@
 
 import { useEffect, useState } from "react";
-import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription, Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { Fleet } from "./FleetsManagement";
+import { EditFleetForm } from "./EditFleetForm";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface Vehicle {
   id: string;
@@ -32,6 +45,9 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function fetchFleetDetails() {
@@ -99,10 +115,76 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
     fetchFleetDetails();
   }, [fleet.id]);
 
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      
+      // First delete all fleet_vehicles and fleet_drivers associations
+      const { error: vehicleError } = await supabase
+        .from('fleet_vehicles')
+        .delete()
+        .eq('fleet_id', fleet.id);
+        
+      if (vehicleError) {
+        console.error('Error deleting fleet vehicles:', vehicleError);
+        toast.error("Erreur lors de la suppression des véhicules associés");
+        return;
+      }
+      
+      const { error: driverError } = await supabase
+        .from('fleet_drivers')
+        .delete()
+        .eq('fleet_id', fleet.id);
+        
+      if (driverError) {
+        console.error('Error deleting fleet drivers:', driverError);
+        toast.error("Erreur lors de la suppression des chauffeurs associés");
+        return;
+      }
+      
+      // Then delete the fleet itself
+      const { error } = await supabase
+        .from('fleets')
+        .delete()
+        .eq('id', fleet.id);
+        
+      if (error) {
+        console.error('Error deleting fleet:', error);
+        toast.error("Erreur lors de la suppression de la flotte");
+        return;
+      }
+      
+      toast.success("Flotte supprimée avec succès");
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast.error("Une erreur est survenue lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   // Format dates for display
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  if (isEditing) {
+    return (
+      <EditFleetForm 
+        fleet={fleet} 
+        companies={companies} 
+        onFleetUpdated={() => {
+          setIsEditing(false);
+          if (onUpdate) onUpdate();
+        }}
+        onCancel={() => setIsEditing(false)}
+      />
+    );
+  }
 
   return (
     <DialogContent className="sm:max-w-[600px]">
@@ -112,6 +194,28 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           {fleet.id.substring(0, 8)}... - {companies[fleet.company_id] || fleet.company_id}
         </DialogDescription>
       </DialogHeader>
+      
+      <div className="flex justify-end gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsEditing(true)}
+          className="flex items-center gap-1"
+        >
+          <Pencil className="h-4 w-4" />
+          Modifier
+        </Button>
+        
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setShowDeleteConfirm(true)}
+          className="flex items-center gap-1"
+        >
+          <Trash2 className="h-4 w-4" />
+          Supprimer
+        </Button>
+      </div>
       
       {loading ? (
         <div className="flex justify-center items-center py-12">
@@ -190,6 +294,35 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           </div>
         </div>
       )}
+      
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette flotte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement la flotte "{fleet.name}" et toutes ses associations avec les véhicules et chauffeurs.
+              Les véhicules et chauffeurs ne seront pas supprimés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   );
 }
