@@ -85,6 +85,7 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           }
         } else {
           console.log("No vehicles found for this fleet");
+          setVehicles([]);
         }
         
         // Fetch drivers for this fleet
@@ -117,6 +118,7 @@ export function FleetDetailModal({ fleet, companies, onUpdate }: FleetDetailModa
           }
         } else {
           console.log("No drivers found for this fleet");
+          setDrivers([]);
         }
       } catch (err) {
         console.error('Unexpected error:', err);
