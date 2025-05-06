@@ -130,6 +130,7 @@ export function DriversManagement() {
   // Vérifier si le chauffeur est utilisé dans des flottes
   const checkDriverInFleets = async (driverId: string) => {
     try {
+      // Query by the driver's ID (not UUID) if the fleet_drivers table uses it
       const { data, error, count } = await supabase
         .from('fleet_drivers')
         .select('*', { count: 'exact' })
@@ -165,21 +166,38 @@ export function DriversManagement() {
       }
       
       // Supprimer le chauffeur de la base de données
-      const { error } = await supabase
+      // Use the id field (UUID) instead of id_chauffeur for the deletion
+      const { data, error } = await supabase
         .from('drivers')
-        .delete()
-        .eq('id_chauffeur', driverToDelete.ID_Chauffeur);
+        .select('id, id_chauffeur')
+        .eq('id_chauffeur', driverToDelete.ID_Chauffeur)
+        .single();
       
       if (error) {
-        console.error("Erreur lors de la suppression du chauffeur:", error);
-        toast.error("Impossible de supprimer le chauffeur");
+        console.error("Erreur lors de la recherche du chauffeur:", error);
+        toast.error("Impossible de trouver le chauffeur à supprimer");
         setIsDeleting(false);
         return;
       }
       
-      // Supprimer le chauffeur de notre état local
-      setDrivers(prevDrivers => prevDrivers.filter(driver => driver.ID_Chauffeur !== driverToDelete.ID_Chauffeur));
-      toast.success("Chauffeur supprimé avec succès");
+      if (data) {
+        // Now delete using the UUID
+        const { error: deleteError } = await supabase
+          .from('drivers')
+          .delete()
+          .eq('id', data.id);
+        
+        if (deleteError) {
+          console.error("Erreur lors de la suppression du chauffeur:", deleteError);
+          toast.error("Impossible de supprimer le chauffeur");
+          setIsDeleting(false);
+          return;
+        }
+        
+        // Supprimer le chauffeur de notre état local
+        setDrivers(prevDrivers => prevDrivers.filter(driver => driver.ID_Chauffeur !== driverToDelete.ID_Chauffeur));
+        toast.success("Chauffeur supprimé avec succès");
+      }
     } catch (error) {
       console.error("Erreur inattendue:", error);
       toast.error("Une erreur est survenue lors de la suppression du chauffeur");
