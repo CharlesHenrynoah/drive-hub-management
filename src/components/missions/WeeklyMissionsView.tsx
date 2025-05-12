@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
