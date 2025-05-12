@@ -1,3 +1,4 @@
+
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -79,7 +80,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="px-4 py-4">
         <div className="text-xs text-sidebar-foreground/60">
-          <p className="font-medium">DriveHub Management</p>
+          {/* DriveHub Management text removed */}
         </div>
       </SidebarFooter>
       {/* Repositioned sidebar trigger button to bottom left */}
