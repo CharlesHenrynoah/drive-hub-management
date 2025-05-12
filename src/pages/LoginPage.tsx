@@ -7,13 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("jean.dupont@exemple.fr");
   const [password, setPassword] = useState("password123");
   const [isLoading, setIsLoading] = useState(false);
-  const [isSigningUp, setIsSigningUp] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
 
@@ -22,31 +20,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      if (isSigningUp) {
-        // Create a new user
-        const { error } = await supabase.auth.signUp({ 
-          email, 
-          password,
-          options: {
-            data: {
-              name: "Jean Dupont",
-              role: "manager"
-            }
-          }
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Compte créé avec succès",
-          description: "Vous pouvez maintenant vous connecter",
-        });
-        
-        setIsSigningUp(false);
-      } else {
-        // Log in an existing user
-        await login(email, password);
-      }
+      // Log in an existing user
+      await login(email, password);
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast({
@@ -70,7 +45,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">DriveHub</CardTitle>
           <CardDescription>
-            {isSigningUp ? "Créez votre compte" : "Connectez-vous à votre compte"}
+            Connectez-vous à votre compte
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleAuth}>
@@ -97,18 +72,9 @@ export default function LoginPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-2">
+          <CardFooter>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Chargement..." : isSigningUp ? "Créer un compte" : "Se connecter"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsSigningUp(!isSigningUp)}
-              disabled={isLoading}
-            >
-              {isSigningUp ? "Déjà un compte ? Se connecter" : "Pas de compte ? S'inscrire"}
+              {isLoading ? "Chargement..." : "Se connecter"}
             </Button>
           </CardFooter>
         </form>
