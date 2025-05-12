@@ -84,8 +84,8 @@ export function AppSidebar() {
           <p>Version 1.0.0</p>
         </div>
       </SidebarFooter>
-      {/* Repositioned sidebar trigger button */}
-      <SidebarTrigger className="fixed top-4 left-4 z-50 h-10 w-10 bg-white dark:bg-gray-800 shadow-md rounded-full flex items-center justify-center" />
+      {/* Repositioned sidebar trigger button to bottom left */}
+      <SidebarTrigger className="fixed bottom-4 left-4 z-50 h-10 w-10 bg-white dark:bg-gray-800 shadow-md rounded-full flex items-center justify-center" />
     </Sidebar>
   );
 }

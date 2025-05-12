@@ -1,3 +1,4 @@
+
 #root {
   width: 100%;
   max-width: 100vw;
@@ -37,7 +38,7 @@
   overflow-x: auto;
 }
 
-/* Style for sidebar trigger button to ensure it's always visible */
+/* Style for sidebar trigger button to ensure it's always visible, now positioned at bottom-left */
 [data-sidebar="trigger"] {
   visibility: visible !important;
   opacity: 1 !important;
@@ -46,6 +47,9 @@
   border-radius: 50% !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
   transition: transform 0.2s ease-in-out !important;
+  position: fixed !important;
+  bottom: 1rem !important;
+  left: 1rem !important;
 }
 
 [data-sidebar="trigger"]:hover {
