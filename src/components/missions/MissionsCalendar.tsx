@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays, parseISO, isSameDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays, parseISO, isSameDay, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { MissionDetailModal } from "./MissionDetailModal";
@@ -10,8 +10,9 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { WeeklyMissionsView } from "./WeeklyMissionsView";
 
 // Mission type
 export interface Mission {
@@ -34,7 +35,11 @@ export interface Mission {
   additional_details?: string;
 }
 
-export function MissionsCalendar() {
+interface MissionsCalendarProps {
+  displayMode?: "month" | "week";
+}
+
+export function MissionsCalendar({ displayMode = "month" }: MissionsCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [missionToEdit, setMissionToEdit] = useState<Mission | null>(null);
@@ -44,9 +49,15 @@ export function MissionsCalendar() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const deleteAlertRef = useRef<HTMLButtonElement>(null);
 
-  const startDate = startOfMonth(currentDate);
-  const endDate = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate });
+  const startDate = displayMode === "month" 
+    ? startOfMonth(currentDate)
+    : startOfWeek(currentDate, { weekStartsOn: 1 });
+    
+  const endDate = displayMode === "month" 
+    ? endOfMonth(currentDate)
+    : endOfWeek(currentDate, { weekStartsOn: 1 });
+    
+  const daysInInterval = eachDayOfInterval({ start: startDate, end: endDate });
 
   // Fetch missions from Supabase
   const fetchMissions = async () => {
@@ -97,6 +108,63 @@ export function MissionsCalendar() {
     queryKey: ['missions'],
     queryFn: fetchMissions,
   });
+
+  // Si nous sommes en mode semaine, afficher le composant WeeklyMissionsView
+  if (displayMode === "week") {
+    const handleMissionClick = (mission: Mission) => {
+      setSelectedMission(mission);
+      setIsDetailModalOpen(true);
+    };
+    
+    return (
+      <>
+        <WeeklyMissionsView 
+          missions={missions} 
+          isLoading={isLoading} 
+          onMissionClick={handleMissionClick}
+        />
+        
+        {selectedMission && (
+          <MissionDetailModal
+            mission={selectedMission}
+            isOpen={isDetailModalOpen}
+            onClose={() => setIsDetailModalOpen(false)}
+            onEdit={() => handleEditMission(selectedMission)}
+            onDelete={() => handleDeleteMission(selectedMission)}
+          />
+        )}
+
+        {missionToEdit && (
+          <EditMissionModal
+            mission={missionToEdit}
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSuccess={() => {
+              refetch();
+              setIsEditModalOpen(false);
+            }}
+          />
+        )}
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette mission ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Cette action ne peut pas être annulée. La mission sera définitivement supprimée.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteMission} className="bg-destructive text-destructive-foreground">
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
 
   // Get the day names in French
   const dayNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -217,7 +285,7 @@ export function MissionsCalendar() {
               ))}
               
               {/* Actual days of the month */}
-              {daysInMonth.map((day) => {
+              {daysInInterval.map((day) => {
                 const dayMissions = getMissionsForDay(day);
                 const isToday = isSameDay(day, new Date());
                 
