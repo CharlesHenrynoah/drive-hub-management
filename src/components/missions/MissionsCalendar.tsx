@@ -1,12 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { MissionDetailModal } from "./MissionDetailModal";
 import { CalendarNav } from "./CalendarNav";
-import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 
 // Temporary mission type until we create a proper database schema
 interface Mission {
@@ -155,12 +153,7 @@ export function MissionsCalendar() {
           <CalendarIcon className="h-5 w-5" />
           <h2 className="text-xl font-semibold">{format(currentDate, 'MMMM yyyy', { locale: fr })}</h2>
         </div>
-        <div className="flex gap-4 items-center">
-          <CalendarNav currentDate={currentDate} setCurrentDate={setCurrentDate} />
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> Nouvelle mission
-          </Button>
-        </div>
+        <CalendarNav currentDate={currentDate} setCurrentDate={setCurrentDate} />
       </div>
 
       <Card>
