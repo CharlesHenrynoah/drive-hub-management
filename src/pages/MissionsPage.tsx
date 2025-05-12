@@ -23,7 +23,7 @@ export default function MissionsPage() {
   return (
     <AuthProvider>
       <DashboardLayout>
-        <div className="container mx-auto p-6">
+        <div className="w-full max-w-full overflow-x-hidden">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h1 className="text-2xl font-bold">Calendrier des missions</h1>
             
@@ -41,7 +41,7 @@ export default function MissionsPage() {
             </div>
           </div>
           
-          <div>
+          <div className="w-full overflow-x-hidden">
             {activeView === "month" ? (
               <MissionsCalendar key={`missions-calendar-${refreshTrigger}`} />
             ) : (

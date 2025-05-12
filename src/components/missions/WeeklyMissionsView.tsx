@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Mission } from "./MissionsCalendar";
 import { Loader2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface WeeklyMissionsViewProps {
   missions: Mission[];
@@ -52,7 +53,7 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full overflow-x-hidden">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5" />
@@ -80,63 +81,65 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
           <span className="ml-2 text-lg">Chargement des missions...</span>
         </div>
       ) : (
-        <Card>
+        <Card className="w-full overflow-hidden">
           <CardContent className="p-0">
-            <div className="grid grid-cols-7">
-              {/* En-têtes des jours */}
-              {daysInWeek.map((day, index) => {
-                const isToday = isSameDay(day, new Date());
-                return (
-                  <div 
-                    key={`header-${index}`}
-                    className={`p-2 border-b text-center font-medium ${isToday ? 'bg-accent text-accent-foreground' : ''}`}
-                  >
-                    <div>{format(day, 'EEEE', { locale: fr })}</div>
-                    <div className="text-sm">{format(day, 'd MMMM', { locale: fr })}</div>
-                  </div>
-                );
-              })}
-              
-              {/* Conteneurs des missions pour chaque jour */}
-              {daysInWeek.map((day, index) => {
-                const dayMissions = getMissionsForDay(day);
-                const isToday = isSameDay(day, new Date());
-                
-                return (
-                  <div 
-                    key={`day-${index}`}
-                    className={`min-h-[300px] border border-muted/20 p-2 ${isToday ? 'bg-accent/20' : ''}`}
-                  >
-                    <div className="space-y-2 max-h-[280px] overflow-y-auto">
-                      {dayMissions.length === 0 ? (
-                        <div className="text-sm text-muted-foreground h-full flex items-center justify-center">
-                          Pas de mission
-                        </div>
-                      ) : (
-                        dayMissions.map(mission => (
-                          <div
-                            key={mission.id}
-                            onClick={() => onMissionClick(mission)}
-                            className={`p-2 rounded cursor-pointer ${getStatusColor(mission.status)} hover:opacity-90`}
-                          >
-                            <div className="font-medium">{format(mission.date, 'HH:mm')}</div>
-                            <div className="truncate">{mission.title}</div>
-                            <div className="text-xs truncate">
-                              {mission.driver || "Chauffeur non assigné"}
-                            </div>
-                            {mission.start_location && (
-                              <div className="text-xs truncate">
-                                de: {mission.start_location}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
+            <ScrollArea className="w-full">
+              <div className="grid grid-cols-7 min-w-max">
+                {/* En-têtes des jours */}
+                {daysInWeek.map((day, index) => {
+                  const isToday = isSameDay(day, new Date());
+                  return (
+                    <div 
+                      key={`header-${index}`}
+                      className={`p-2 border-b text-center font-medium ${isToday ? 'bg-accent text-accent-foreground' : ''}`}
+                    >
+                      <div className="truncate">{format(day, 'EEEE', { locale: fr })}</div>
+                      <div className="text-sm truncate">{format(day, 'd MMMM', { locale: fr })}</div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+                
+                {/* Conteneurs des missions pour chaque jour */}
+                {daysInWeek.map((day, index) => {
+                  const dayMissions = getMissionsForDay(day);
+                  const isToday = isSameDay(day, new Date());
+                  
+                  return (
+                    <div 
+                      key={`day-${index}`}
+                      className={`min-h-[300px] border border-muted/20 p-2 ${isToday ? 'bg-accent/20' : ''}`}
+                    >
+                      <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                        {dayMissions.length === 0 ? (
+                          <div className="text-sm text-muted-foreground h-full flex items-center justify-center">
+                            Pas de mission
+                          </div>
+                        ) : (
+                          dayMissions.map(mission => (
+                            <div
+                              key={mission.id}
+                              onClick={() => onMissionClick(mission)}
+                              className={`p-2 rounded cursor-pointer ${getStatusColor(mission.status)} hover:opacity-90`}
+                            >
+                              <div className="font-medium">{format(mission.date, 'HH:mm')}</div>
+                              <div className="truncate">{mission.title}</div>
+                              <div className="text-xs truncate">
+                                {mission.driver || "Chauffeur non assigné"}
+                              </div>
+                              {mission.start_location && (
+                                <div className="text-xs truncate">
+                                  de: {mission.start_location}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
       )}
