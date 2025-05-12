@@ -7,15 +7,9 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-
-// Données mockées
-const data = [
-  { type: "Berline", valeur: 30 },
-  { type: "SUV", valeur: 20 },
-  { type: "Utilitaire", valeur: 25 },
-  { type: "Minibus", valeur: 15 },
-  { type: "Autre", valeur: 10 },
-];
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 // Couleurs pour les types de véhicules
 const COLORS = [
@@ -39,6 +33,51 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function VehicleTypeChart() {
+  const [data, setData] = useState<Array<{ type: string; valeur: number }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVehicleTypes = async () => {
+      setIsLoading(true);
+      try {
+        const { data: vehicles, error } = await supabase
+          .from('vehicles')
+          .select('type');
+
+        if (error) throw error;
+
+        // Regrouper les véhicules par type
+        const typeCount: Record<string, number> = {};
+        vehicles.forEach(vehicle => {
+          const type = vehicle.type || "Autre";
+          typeCount[type] = (typeCount[type] || 0) + 1;
+        });
+
+        const chartData = Object.entries(typeCount).map(([type, count]) => ({
+          type,
+          valeur: count
+        }));
+
+        setData(chartData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des types de véhicules:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVehicleTypes();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+        <p>Chargement des données...</p>
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
