@@ -183,6 +183,85 @@ export type Database = {
         }
         Relationships: []
       }
+      missions: {
+        Row: {
+          additional_details: string | null
+          arrival_date: string | null
+          client: string | null
+          company_id: string | null
+          created_at: string
+          date: string
+          description: string | null
+          driver_id: string | null
+          end_location: string | null
+          id: string
+          passengers: number | null
+          start_location: string | null
+          status: string
+          title: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          additional_details?: string | null
+          arrival_date?: string | null
+          client?: string | null
+          company_id?: string | null
+          created_at?: string
+          date: string
+          description?: string | null
+          driver_id?: string | null
+          end_location?: string | null
+          id?: string
+          passengers?: number | null
+          start_location?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          additional_details?: string | null
+          arrival_date?: string | null
+          client?: string | null
+          company_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          driver_id?: string | null
+          end_location?: string | null
+          id?: string
+          passengers?: number | null
+          start_location?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missions_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           brand: string

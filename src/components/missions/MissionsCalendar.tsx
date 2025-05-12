@@ -1,117 +1,102 @@
-import { useState, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays } from "date-fns";
+
+import { useState, useEffect, useRef } from "react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays, parseISO, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { MissionDetailModal } from "./MissionDetailModal";
+import { EditMissionModal } from "./EditMissionModal";
 import { CalendarNav } from "./CalendarNav";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
-// Temporary mission type until we create a proper database schema
-interface Mission {
+// Mission type
+export interface Mission {
   id: string;
   title: string;
   date: Date;
-  driver: string;
-  vehicle: string;
-  company: string;
-  status: "pending" | "completed" | "cancelled";
+  driver_id?: string;
+  driver?: string;
+  vehicle_id?: string;
+  vehicle?: string;
+  company_id?: string;
+  company?: string;
+  status: "en_cours" | "terminee" | "annulee";
   description?: string;
-  startLocation?: string;
-  endLocation?: string;
+  start_location?: string;
+  end_location?: string;
   client?: string;
-  arrivalDate?: Date;
+  arrival_date?: Date;
   passengers?: number;
-  additionalDetails?: string;
+  additional_details?: string;
 }
-
-// Sample data (to be replaced with actual data from Supabase)
-const sampleMissions: Mission[] = [
-  {
-    id: "1",
-    title: "Transport client VIP",
-    date: new Date(2025, 4, 10, 9, 30),
-    driver: "Jean Dupont",
-    vehicle: "Tesla Model S",
-    company: "DriveHub",
-    status: "pending",
-    description: "Transport d'un client VIP depuis l'aéroport jusqu'à l'hôtel.",
-    startLocation: "Aéroport CDG",
-    endLocation: "Hôtel Le Meurice",
-    client: "Richard Martin",
-    arrivalDate: new Date(2025, 4, 10, 11, 0),
-    passengers: 1,
-    additionalDetails: "Client VIP - directeur de Total Énergies. Prévoir bouteille d'eau et journaux du jour."
-  },
-  {
-    id: "2",
-    title: "Livraison urgente",
-    date: new Date(2025, 4, 15, 14, 0),
-    driver: "Marie Lambert",
-    vehicle: "Renault Kangoo",
-    company: "TransCorp",
-    status: "completed",
-    description: "Livraison de documents confidentiels.",
-    startLocation: "Siège TransCorp",
-    endLocation: "Cabinet d'avocats Legrand",
-    arrivalDate: new Date(2025, 4, 15, 15, 30),
-    client: "TransCorp Legal"
-  },
-  {
-    id: "3",
-    title: "Transport scolaire",
-    date: new Date(2025, 4, 18, 7, 45),
-    driver: "Philippe Martin",
-    vehicle: "Mercedes Sprinter",
-    company: "EduTrans",
-    status: "pending",
-    description: "Transport d'élèves pour une sortie scolaire.",
-    startLocation: "École Jules Ferry",
-    endLocation: "Musée du Louvre",
-    arrivalDate: new Date(2025, 4, 18, 9, 0),
-    passengers: 22,
-    client: "École Jules Ferry",
-    additionalDetails: "Groupe de 20 élèves et 2 accompagnateurs. Prévoir siège enfant."
-  },
-  {
-    id: "4",
-    title: "Déménagement",
-    date: new Date(2025, 4, 22, 10, 0),
-    driver: "Sophie Dubois",
-    vehicle: "Iveco Daily",
-    company: "MoveIt",
-    status: "pending",
-    description: "Déménagement d'un appartement à une maison.",
-    startLocation: "15 rue de la Paix, Paris",
-    endLocation: "8 avenue des Champs, Neuilly",
-    arrivalDate: new Date(2025, 4, 22, 17, 0),
-    client: "Famille Bernard",
-    passengers: 3
-  },
-  {
-    id: "5",
-    title: "Transfert matériel médical",
-    date: new Date(2025, 4, 5, 8, 15),
-    driver: "Lucas Bernard",
-    vehicle: "Ford Transit",
-    company: "MediMove",
-    status: "cancelled",
-    description: "Transport de matériel médical entre deux hôpitaux.",
-    startLocation: "Hôpital Saint-Louis",
-    endLocation: "Clinique des Lilas",
-    arrivalDate: new Date(2025, 4, 5, 9, 45),
-    client: "Groupe Hospitalier Est"
-  }
-];
 
 export function MissionsCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
+  const [missionToEdit, setMissionToEdit] = useState<Mission | null>(null);
+  const [missionToDelete, setMissionToDelete] = useState<Mission | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [missions, setMissions] = useState<Mission[]>(sampleMissions);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const deleteAlertRef = useRef<HTMLButtonElement>(null);
 
   const startDate = startOfMonth(currentDate);
   const endDate = endOfMonth(currentDate);
   const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate });
+
+  // Fetch missions from Supabase
+  const fetchMissions = async () => {
+    try {
+      // Récupérer toutes les missions
+      const { data: missionsData, error: missionsError } = await supabase
+        .from('missions')
+        .select(`
+          *,
+          drivers:driver_id (prenom, nom),
+          vehicles:vehicle_id (brand, model, registration),
+          companies:company_id (name)
+        `);
+
+      if (missionsError) throw missionsError;
+
+      // Transformer les données en objets Mission
+      const missions: Mission[] = (missionsData || []).map(mission => ({
+        id: mission.id,
+        title: mission.title,
+        date: parseISO(mission.date),
+        driver_id: mission.driver_id,
+        driver: mission.drivers ? `${mission.drivers.prenom} ${mission.drivers.nom}` : undefined,
+        vehicle_id: mission.vehicle_id,
+        vehicle: mission.vehicles ? `${mission.vehicles.brand} ${mission.vehicles.model} (${mission.vehicles.registration})` : undefined,
+        company_id: mission.company_id,
+        company: mission.companies?.name,
+        status: mission.status as "en_cours" | "terminee" | "annulee",
+        description: mission.description,
+        start_location: mission.start_location,
+        end_location: mission.end_location,
+        client: mission.client,
+        arrival_date: mission.arrival_date ? parseISO(mission.arrival_date) : undefined,
+        passengers: mission.passengers,
+        additional_details: mission.additional_details
+      }));
+
+      return missions;
+    } catch (error: any) {
+      console.error('Erreur lors du chargement des missions:', error);
+      toast.error(`Erreur: ${error.message}`);
+      return [];
+    }
+  };
+
+  // Query for missions with TanStack Query
+  const { data: missions = [], isLoading, refetch } = useQuery({
+    queryKey: ['missions'],
+    queryFn: fetchMissions,
+  });
 
   // Get the day names in French
   const dayNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -129,21 +114,70 @@ export function MissionsCalendar() {
     setIsDetailModalOpen(true);
   };
 
+  const handleEditMission = (mission: Mission) => {
+    setMissionToEdit(mission);
+    setIsEditModalOpen(true);
+    setIsDetailModalOpen(false);
+  };
+
+  const handleDeleteMission = (mission: Mission) => {
+    setMissionToDelete(mission);
+    setIsDeleteDialogOpen(true);
+    setIsDetailModalOpen(false);
+  };
+
+  const confirmDeleteMission = async () => {
+    if (!missionToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .delete()
+        .eq('id', missionToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success("Mission supprimée avec succès");
+      refetch();
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression de la mission:', error);
+      toast.error(`Erreur: ${error.message}`);
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setMissionToDelete(null);
+    }
+  };
+
   const getMissionsForDay = (day: Date) => {
     return missions.filter(mission => 
-      mission.date.getDate() === day.getDate() && 
-      mission.date.getMonth() === day.getMonth() && 
-      mission.date.getFullYear() === day.getFullYear()
+      isSameDay(mission.date, day)
     );
   };
 
   // Function to get status color
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "bg-success text-success-foreground";
-      case "cancelled": return "bg-destructive text-destructive-foreground";
+      case "terminee": return "bg-success text-success-foreground";
+      case "annulee": return "bg-destructive text-destructive-foreground";
       default: return "bg-primary text-primary-foreground";
     }
+  };
+
+  // Gérer les chevauchements de missions
+  const getPositionStyle = (missions: Mission[], index: number) => {
+    if (missions.length <= 1) return {};
+    
+    // Distribuer les missions sur la hauteur
+    const offset = (index / missions.length) * 100;
+    const height = 80 / missions.length; // 80% de la cellule pour toutes les missions
+    
+    return {
+      top: `${offset}%`,
+      height: `${height}%`,
+      position: 'relative' as const,
+      zIndex: missions.length - index,
+      width: '95%',
+    };
   };
 
   return (
@@ -156,65 +190,104 @@ export function MissionsCalendar() {
         <CalendarNav currentDate={currentDate} setCurrentDate={setCurrentDate} />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {/* Calendar header */}
-          <div className="grid grid-cols-7 border-b">
-            {dayNames.map((day) => (
-              <div key={day} className="p-2 text-center font-medium text-muted-foreground">
-                {day}
-              </div>
-            ))}
-          </div>
-          
-          {/* Calendar body */}
-          <div className="grid grid-cols-7">
-            {/* Padding days */}
-            {paddingDays.map((day, index) => (
-              <div key={`padding-${index}`} className="min-h-[120px] p-1 border border-muted/20 bg-muted/10">
-                <span className="text-sm text-muted-foreground">{format(day, 'd')}</span>
-              </div>
-            ))}
-            
-            {/* Actual days of the month */}
-            {daysInMonth.map((day) => {
-              const dayMissions = getMissionsForDay(day);
-              const isToday = day.toDateString() === new Date().toDateString();
-              
-              return (
-                <div 
-                  key={day.toString()} 
-                  className={`min-h-[120px] p-1 border border-muted/20 ${isToday ? 'bg-accent/20' : ''}`}
-                >
-                  <span className={`text-sm font-medium ${isToday ? 'text-primary' : ''}`}>
-                    {format(day, 'd')}
-                  </span>
-                  
-                  <div className="mt-1 space-y-1 max-h-[100px] overflow-y-auto">
-                    {dayMissions.map((mission) => (
-                      <div
-                        key={mission.id}
-                        onClick={() => handleMissionClick(mission)}
-                        className={`text-xs p-1 rounded cursor-pointer ${getStatusColor(mission.status)} hover:opacity-80 truncate`}
-                      >
-                        {format(mission.date, 'HH:mm')} - {mission.title}
-                      </div>
-                    ))}
-                  </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-60">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <span className="ml-2 text-lg">Chargement des missions...</span>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            {/* Calendar header */}
+            <div className="grid grid-cols-7 border-b">
+              {dayNames.map((day) => (
+                <div key={day} className="p-2 text-center font-medium text-muted-foreground">
+                  {day}
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+            
+            {/* Calendar body */}
+            <div className="grid grid-cols-7">
+              {/* Padding days */}
+              {paddingDays.map((day, index) => (
+                <div key={`padding-${index}`} className="min-h-[120px] p-1 border border-muted/20 bg-muted/10">
+                  <span className="text-sm text-muted-foreground">{format(day, 'd')}</span>
+                </div>
+              ))}
+              
+              {/* Actual days of the month */}
+              {daysInMonth.map((day) => {
+                const dayMissions = getMissionsForDay(day);
+                const isToday = isSameDay(day, new Date());
+                
+                return (
+                  <div 
+                    key={day.toString()} 
+                    className={`min-h-[120px] p-1 border border-muted/20 ${isToday ? 'bg-accent/20' : ''}`}
+                  >
+                    <span className={`text-sm font-medium ${isToday ? 'text-primary' : ''}`}>
+                      {format(day, 'd')}
+                    </span>
+                    
+                    <div className="mt-1 space-y-1 max-h-[100px] overflow-y-auto relative">
+                      {dayMissions.map((mission, index) => (
+                        <div
+                          key={mission.id}
+                          onClick={() => handleMissionClick(mission)}
+                          className={`text-xs p-1 rounded cursor-pointer ${getStatusColor(mission.status)} hover:opacity-80 truncate`}
+                          style={getPositionStyle(dayMissions, index)}
+                        >
+                          {format(mission.date, 'HH:mm')} - {mission.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedMission && (
         <MissionDetailModal
           mission={selectedMission}
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
+          onEdit={() => handleEditMission(selectedMission)}
+          onDelete={() => handleDeleteMission(selectedMission)}
         />
       )}
+
+      {missionToEdit && (
+        <EditMissionModal
+          mission={missionToEdit}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            refetch();
+            setIsEditModalOpen(false);
+          }}
+        />
+      )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette mission ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action ne peut pas être annulée. La mission sera définitivement supprimée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteMission} className="bg-destructive text-destructive-foreground">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

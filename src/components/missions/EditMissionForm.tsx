@@ -1,15 +1,16 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { format, addHours } from "date-fns";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { Mission } from "./MissionsCalendar";
 
 import {
   Form,
@@ -36,7 +37,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface NewMissionFormProps {
+interface EditMissionFormProps {
+  mission: Mission;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -93,27 +95,28 @@ const fetchVehiclesByCompany = async (companyId: string) => {
   return data || [];
 };
 
-export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
+export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<string>("");
+  const [selectedCompany, setSelectedCompany] = useState<string>(mission.company_id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const defaultDate = new Date();
-  defaultDate.setMinutes(Math.ceil(defaultDate.getMinutes() / 15) * 15); // Round to next 15 min
-  
-  const defaultArrivalDate = addHours(defaultDate, 1); // Default 1 hour duration
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: "",
-      date: defaultDate,
-      arrivalDate: defaultArrivalDate,
-      driver: "",
-      vehicle: "",
-      company: "",
-      status: "en_cours",
+      title: mission.title,
+      date: mission.date,
+      arrivalDate: mission.arrival_date,
+      driver: mission.driver_id || "",
+      vehicle: mission.vehicle_id || "",
+      company: mission.company_id || "",
+      startLocation: mission.start_location || "",
+      endLocation: mission.end_location || "",
+      client: mission.client || "",
+      passengers: mission.passengers,
+      description: mission.description || "",
+      additionalDetails: mission.additional_details || "",
+      status: mission.status,
     },
   });
 
@@ -141,18 +144,20 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const handleCompanyChange = (value: string) => {
     setSelectedCompany(value);
     // Reset driver and vehicle fields when company changes
-    form.setValue('driver', '');
-    form.setValue('vehicle', '');
+    if (value !== mission.company_id) {
+      form.setValue('driver', '');
+      form.setValue('vehicle', '');
+    }
   };
 
   async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
       setIsSubmitting(true);
       
-      // Insérer la nouvelle mission dans la base de données
-      const { data: mission, error } = await supabase
+      // Mettre à jour la mission dans la base de données
+      const { error } = await supabase
         .from('missions')
-        .insert({
+        .update({
           title: data.title,
           date: data.date.toISOString(),
           arrival_date: data.arrivalDate?.toISOString(),
@@ -167,17 +172,16 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           description: data.description || null,
           additional_details: data.additionalDetails || null
         })
-        .select('id')
-        .single();
+        .eq('id', mission.id);
 
       if (error) {
         throw error;
       }
 
-      toast.success("Mission créée avec succès!");
+      toast.success("Mission mise à jour avec succès!");
       onSuccess();
     } catch (error: any) {
-      console.error("Erreur lors de la création de la mission:", error);
+      console.error("Erreur lors de la mise à jour de la mission:", error);
       toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
     } finally {
       setIsSubmitting(false);
@@ -607,7 +611,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             Annuler
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Création en cours..." : "Créer la mission"}
+            {isSubmitting ? "Mise à jour en cours..." : "Mettre à jour"}
           </Button>
         </div>
       </form>
