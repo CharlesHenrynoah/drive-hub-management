@@ -8,6 +8,8 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   Form,
@@ -52,12 +54,49 @@ const formSchema = z.object({
   passengers: z.coerce.number().int().nonnegative().optional(),
   description: z.string().optional(),
   additionalDetails: z.string().optional(),
-  status: z.enum(["pending", "completed", "cancelled"]).default("pending"),
+  status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
 });
+
+// Fetch companies from Supabase
+const fetchCompanies = async () => {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('*');
+  
+  if (error) throw error;
+  return data || [];
+};
+
+// Fetch drivers based on company
+const fetchDriversByCompany = async (companyId: string) => {
+  if (!companyId) return [];
+  
+  const { data, error } = await supabase
+    .from('drivers')
+    .select('*')
+    .eq('id_entreprise', companyId);
+  
+  if (error) throw error;
+  return data || [];
+};
+
+// Fetch vehicles based on company
+const fetchVehiclesByCompany = async (companyId: string) => {
+  if (!companyId) return [];
+  
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('*')
+    .eq('company_id', companyId);
+  
+  if (error) throw error;
+  return data || [];
+};
 
 export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<string>("");
   
   const defaultDate = new Date();
   defaultDate.setMinutes(Math.ceil(defaultDate.getMinutes() / 15) * 15); // Round to next 15 min
@@ -73,9 +112,37 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
       driver: "",
       vehicle: "",
       company: "",
-      status: "pending",
+      status: "en_cours",
     },
   });
+
+  // Query for companies
+  const { data: companies = [] } = useQuery({
+    queryKey: ['companies'],
+    queryFn: fetchCompanies,
+  });
+
+  // Query for drivers based on selected company
+  const { data: drivers = [] } = useQuery({
+    queryKey: ['drivers', selectedCompany],
+    queryFn: () => fetchDriversByCompany(selectedCompany),
+    enabled: !!selectedCompany,
+  });
+
+  // Query for vehicles based on selected company
+  const { data: vehicles = [] } = useQuery({
+    queryKey: ['vehicles', selectedCompany],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany),
+    enabled: !!selectedCompany,
+  });
+
+  // Handle company selection
+  const handleCompanyChange = (value: string) => {
+    setSelectedCompany(value);
+    // Reset driver and vehicle fields when company changes
+    form.setValue('driver', '');
+    form.setValue('vehicle', '');
+  };
 
   function onSubmit(data: z.infer<typeof formSchema>) {
     // Here we would normally save to a database
@@ -122,6 +189,43 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
               <FormControl>
                 <Input placeholder="Titre de la mission" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Company - Now as the first selection field */}
+        <FormField
+          control={form.control}
+          name="company"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Entreprise
+                </span>
+              </FormLabel>
+              <Select
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  handleCompanyChange(value);
+                }}
+                value={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une entreprise" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -253,9 +357,9 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="completed">Terminée</SelectItem>
-                  <SelectItem value="cancelled">Annulée</SelectItem>
+                  <SelectItem value="en_cours">En cours</SelectItem>
+                  <SelectItem value="terminee">Terminée</SelectItem>
+                  <SelectItem value="annulee">Annulée</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -263,8 +367,8 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
         
-        <div className="grid md:grid-cols-3 gap-4">
-          {/* Driver */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Driver - Now dependent on company */}
           <FormField
             control={form.control}
             name="driver"
@@ -276,15 +380,30 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                     Chauffeur
                   </span>
                 </FormLabel>
-                <FormControl>
-                  <Input placeholder="Nom du chauffeur" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={!selectedCompany}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un chauffeur" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {drivers.map((driver) => (
+                      <SelectItem key={driver.id} value={driver.id}>
+                        {`${driver.prenom} ${driver.nom}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Vehicle */}
+          {/* Vehicle - Now dependent on company */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -296,29 +415,24 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                     Véhicule
                   </span>
                 </FormLabel>
-                <FormControl>
-                  <Input placeholder="Modèle du véhicule" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Company */}
-          <FormField
-            control={form.control}
-            name="company"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Entreprise
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Nom de l'entreprise" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={!selectedCompany}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un véhicule" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {vehicles.map((vehicle) => (
+                      <SelectItem key={vehicle.id} value={vehicle.id}>
+                        {`${vehicle.brand} ${vehicle.model} (${vehicle.registration})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

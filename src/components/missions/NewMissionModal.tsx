@@ -25,7 +25,7 @@ export function NewMissionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>Nouvelle mission</DialogTitle>
         </DialogHeader>
