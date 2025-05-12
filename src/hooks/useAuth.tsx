@@ -44,11 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: session.user.email || "jean.dupont@exemple.fr",
             role: "manager",
           });
+          
+          // If logged in and on login page, redirect to home
+          if (location.pathname === "/login") {
+            navigate("/");
+          }
         } else if (location.pathname !== "/login") {
           navigate("/login");
         }
       } catch (error) {
         console.error("Erreur lors de la vérification de session:", error);
+        navigate("/login");
       } finally {
         setIsLoading(false);
       }
@@ -83,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
+        console.error("Erreur de connexion:", error);
         throw error;
       }
       

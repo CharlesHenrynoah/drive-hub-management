@@ -23,6 +23,7 @@ export default function LoginPage() {
 
     try {
       if (isSigningUp) {
+        // Create a new user
         const { error } = await supabase.auth.signUp({ 
           email, 
           password,
@@ -43,9 +44,11 @@ export default function LoginPage() {
         
         setIsSigningUp(false);
       } else {
+        // Log in an existing user
         await login(email, password);
       }
     } catch (error: any) {
+      console.error("Erreur de connexion:", error);
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue",
