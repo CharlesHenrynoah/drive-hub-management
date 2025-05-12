@@ -178,7 +178,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
         {/* Title */}
         <FormField
           control={form.control}
@@ -218,7 +218,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                     <SelectValue placeholder="Sélectionner une entreprise" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="max-h-[200px] overflow-y-auto">
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
@@ -231,7 +231,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
         
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Departure Date and Time */}
           <FormField
             control={form.control}
@@ -261,7 +261,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <div className="h-[300px] overflow-y-auto p-2">
+                      <div className="h-[200px] overflow-y-auto p-2">
                         {timeOptions.map((option) => (
                           <Button
                             key={option.value}
@@ -315,7 +315,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <div className="h-[300px] overflow-y-auto p-2">
+                      <div className="h-[200px] overflow-y-auto p-2">
                         {timeOptions.map((option) => (
                           <Button
                             key={option.value}
@@ -367,7 +367,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
         
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Driver - Now dependent on company */}
           <FormField
             control={form.control}
@@ -390,7 +390,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                       <SelectValue placeholder="Sélectionner un chauffeur" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="max-h-[200px] overflow-y-auto">
                     {drivers.map((driver) => (
                       <SelectItem key={driver.id} value={driver.id}>
                         {`${driver.prenom} ${driver.nom}`}
@@ -425,7 +425,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                       <SelectValue placeholder="Sélectionner un véhicule" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="max-h-[200px] overflow-y-auto">
                     {vehicles.map((vehicle) => (
                       <SelectItem key={vehicle.id} value={vehicle.id}>
                         {`${vehicle.brand} ${vehicle.model} (${vehicle.registration})`}
@@ -439,7 +439,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Start Location */}
           <FormField
             control={form.control}
@@ -481,7 +481,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Client */}
           <FormField
             control={form.control}
@@ -544,7 +544,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Textarea 
                   placeholder="Description de la mission" 
                   className="resize-none" 
-                  rows={3} 
+                  rows={2} 
                   {...field} 
                   value={field.value || ""} 
                 />
@@ -565,7 +565,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Textarea 
                   placeholder="Détails supplémentaires" 
                   className="resize-none" 
-                  rows={3} 
+                  rows={2} 
                   {...field} 
                   value={field.value || ""} 
                 />
@@ -575,7 +575,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" type="button" onClick={onCancel}>
             Annuler
           </Button>
