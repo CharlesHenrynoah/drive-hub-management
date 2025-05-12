@@ -84,7 +84,7 @@ export function AppSidebar() {
           <p>Version 1.0.0</p>
         </div>
       </SidebarFooter>
-      <SidebarTrigger className="absolute top-4 right-0 translate-x-1/2 h-8 w-8" />
+      <SidebarTrigger className="absolute top-4 left-4 md:left-4 z-20 h-8 w-8" />
     </Sidebar>
   );
 }
