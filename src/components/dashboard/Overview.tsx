@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -219,8 +218,8 @@ export function Overview() {
           </div>
           
           {/* Bloc graphiques */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="md:col-span-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="md:col-span-1">
               <CardHeader>
                 <CardTitle>Évolution des missions</CardTitle>
                 <CardDescription>Nombre de missions sur les 6 derniers mois</CardDescription>
@@ -230,23 +229,13 @@ export function Overview() {
               </CardContent>
             </Card>
             
-            <Card className="md:col-span-3">
+            <Card className="md:col-span-1">
               <CardHeader>
                 <CardTitle>Types de véhicules</CardTitle>
                 <CardDescription>Répartition du parc par catégorie</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
                 <VehicleTypeChart />
-              </CardContent>
-            </Card>
-            
-            <Card className="md:col-span-7">
-              <CardHeader>
-                <CardTitle>Performance globale</CardTitle>
-                <CardDescription>Missions vs. Revenus mensuels</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px]">
-                <OverviewChart hideFinancialData={!hasFinanceAccess} />
               </CardContent>
             </Card>
           </div>
