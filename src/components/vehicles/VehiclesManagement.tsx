@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -41,6 +40,7 @@ import { AddVehicleForm } from "./AddVehicleForm";
 import { VehicleDetailModal } from "./VehicleDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export type Vehicle = {
   id: string;
@@ -268,85 +268,87 @@ export function VehiclesManagement() {
       </div>
       
       <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Photo</TableHead>
-                <TableHead>ID</TableHead>
-                <TableHead>Marque / Modèle</TableHead>
-                <TableHead>Immatriculation</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Capacité</TableHead>
-                <TableHead>Carburant</TableHead>
-                <TableHead>Score Écologique</TableHead>
-                <TableHead>Note Moy. Client</TableHead>
-                <TableHead>Entretien</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Kilométrage</TableHead>
-                <TableHead>Entreprise</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+        <ScrollArea className="w-full" orientation="both">
+          <div className="min-w-[1200px]">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center py-6">Chargement des données...</TableCell>
+                  <TableHead className="w-16">Photo</TableHead>
+                  <TableHead className="w-24">ID</TableHead>
+                  <TableHead className="w-48">Marque / Modèle</TableHead>
+                  <TableHead className="w-36">Immatriculation</TableHead>
+                  <TableHead className="w-32">Type</TableHead>
+                  <TableHead className="w-32">Capacité</TableHead>
+                  <TableHead className="w-32">Carburant</TableHead>
+                  <TableHead className="w-36">Score Écologique</TableHead>
+                  <TableHead className="w-36">Note Moy. Client</TableHead>
+                  <TableHead className="w-36">Entretien</TableHead>
+                  <TableHead className="w-32">Statut</TableHead>
+                  <TableHead className="w-32">Kilométrage</TableHead>
+                  <TableHead className="w-36">Entreprise</TableHead>
+                  <TableHead className="w-40">Actions</TableHead>
                 </TableRow>
-              ) : filteredVehicles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center py-6">Aucun véhicule trouvé</TableCell>
-                </TableRow>
-              ) : (
-                filteredVehicles.map((v) => (
-                  <TableRow key={v.id}>
-                    <TableCell>
-                      <Avatar>
-                        <AvatarImage src={v.photo_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop"} alt={`${v.brand} ${v.model}`} />
-                        <AvatarFallback>{v.brand.substring(0, 2)}</AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell>{v.id.substring(0, 8)}...</TableCell>
-                    <TableCell>{v.brand} {v.model}</TableCell>
-                    <TableCell>{v.registration}</TableCell>
-                    <TableCell>{v.type}</TableCell>
-                    <TableCell>{v.capacity} places</TableCell>
-                    <TableCell>{v.fuel_type}</TableCell>
-                    <TableCell>{v.ecological_score}</TableCell>
-                    <TableCell>{((v.Note_Moyenne_Client || 85) / 20).toFixed(1)}/5</TableCell>
-                    <TableCell>{new Date(v.last_maintenance || Date.now()).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`
-                          ${v.status === "Disponible" ? "bg-success text-success-foreground" : ""}
-                          ${v.status === "En maintenance" ? "bg-warning text-warning-foreground" : ""}
-                        `}
-                      >
-                        {v.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{v.mileage?.toLocaleString() || "0"} km</TableCell>
-                    <TableCell>{v.company_id ? companies[v.company_id] || "N/A" : "N/A"}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleVehicleClick(v)}>
-                          Détails
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(v)} className="text-blue-500">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(v)} className="text-red-500">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={14} className="text-center py-6">Chargement des données...</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : filteredVehicles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={14} className="text-center py-6">Aucun véhicule trouvé</TableCell>
+                  </TableRow>
+                ) : (
+                  filteredVehicles.map((v) => (
+                    <TableRow key={v.id}>
+                      <TableCell>
+                        <Avatar>
+                          <AvatarImage src={v.photo_url || "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop"} alt={`${v.brand} ${v.model}`} />
+                          <AvatarFallback>{v.brand.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell>{v.id.substring(0, 8)}...</TableCell>
+                      <TableCell>{v.brand} {v.model}</TableCell>
+                      <TableCell>{v.registration}</TableCell>
+                      <TableCell>{v.type}</TableCell>
+                      <TableCell>{v.capacity} places</TableCell>
+                      <TableCell>{v.fuel_type}</TableCell>
+                      <TableCell>{v.ecological_score}</TableCell>
+                      <TableCell>{((v.Note_Moyenne_Client || 85) / 20).toFixed(1)}/5</TableCell>
+                      <TableCell>{new Date(v.last_maintenance || Date.now()).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`
+                            ${v.status === "Disponible" ? "bg-success text-success-foreground" : ""}
+                            ${v.status === "En maintenance" ? "bg-warning text-warning-foreground" : ""}
+                          `}
+                        >
+                          {v.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{v.mileage?.toLocaleString() || "0"} km</TableCell>
+                      <TableCell>{v.company_id ? companies[v.company_id] || "N/A" : "N/A"}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button variant="ghost" size="sm" onClick={() => handleVehicleClick(v)}>
+                            Détails
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleEditClick(v)} className="text-blue-500">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(v)} className="text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
       </div>
       
       {/* Detail Modal */}

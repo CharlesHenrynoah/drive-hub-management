@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -31,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EditFleetForm } from "./EditFleetForm";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Type for fleets from the database
 export type Fleet = {
@@ -237,92 +237,94 @@ export function FleetsManagement() {
       </div>
       
       <div className="rounded-md border">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nom</TableHead>
-                <TableHead>Entreprise</TableHead>
-                <TableHead>Nombre de véhicules</TableHead>
-                <TableHead>Date de création</TableHead>
-                <TableHead>Dernière modification</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+        <ScrollArea className="w-full" orientation="both">
+          <div className="min-w-[900px]">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6">
-                    <div className="flex justify-center items-center">
-                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      Chargement des données...
-                    </div>
-                  </TableCell>
+                  <TableHead className="w-24">ID</TableHead>
+                  <TableHead className="w-40">Nom</TableHead>
+                  <TableHead className="w-40">Entreprise</TableHead>
+                  <TableHead className="w-40">Nombre de véhicules</TableHead>
+                  <TableHead className="w-40">Date de création</TableHead>
+                  <TableHead className="w-40">Dernière modification</TableHead>
+                  <TableHead className="w-48">Actions</TableHead>
                 </TableRow>
-              ) : filteredFleets.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
-                    <div className="flex flex-col items-center space-y-4">
-                      <p className="text-lg font-medium">Aucune flotte disponible</p>
-                      <p className="text-muted-foreground">Ajoutez votre première flotte pour démarrer</p>
-                      <AddFleetForm 
-                        companies={companies} 
-                        onFleetAdded={handleFleetChange} 
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredFleets.map((fleet) => (
-                  <TableRow key={fleet.id}>
-                    <TableCell>{fleet.id.substring(0, 8)}...</TableCell>
-                    <TableCell>{fleet.name}</TableCell>
-                    <TableCell>{fleet.companyName}</TableCell>
-                    <TableCell>{fleet.vehicleCount || 0}</TableCell>
-                    <TableCell>{new Date(fleet.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(fleet.updated_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedFleet(fleet)}>
-                              Détails
-                            </Button>
-                          </DialogTrigger>
-                          {selectedFleet && selectedFleet.id === fleet.id && (
-                            <FleetDetailModal 
-                              fleet={selectedFleet} 
-                              companies={companies}
-                              onUpdate={handleFleetChange}
-                            />
-                          )}
-                        </Dialog>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => handleEditClick(fleet, e)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Modifier
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => handleDeleteClick(fleet, e)} 
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Supprimer
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-6">
+                      <div className="flex justify-center items-center">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        Chargement des données...
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : filteredFleets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex flex-col items-center space-y-4">
+                        <p className="text-lg font-medium">Aucune flotte disponible</p>
+                        <p className="text-muted-foreground">Ajoutez votre première flotte pour démarrer</p>
+                        <AddFleetForm 
+                          companies={companies} 
+                          onFleetAdded={handleFleetChange} 
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredFleets.map((fleet) => (
+                    <TableRow key={fleet.id}>
+                      <TableCell>{fleet.id.substring(0, 8)}...</TableCell>
+                      <TableCell>{fleet.name}</TableCell>
+                      <TableCell>{fleet.companyName}</TableCell>
+                      <TableCell>{fleet.vehicleCount || 0}</TableCell>
+                      <TableCell>{new Date(fleet.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(fleet.updated_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedFleet(fleet)}>
+                                Détails
+                              </Button>
+                            </DialogTrigger>
+                            {selectedFleet && selectedFleet.id === fleet.id && (
+                              <FleetDetailModal 
+                                fleet={selectedFleet} 
+                                companies={companies}
+                                onUpdate={handleFleetChange}
+                              />
+                            )}
+                          </Dialog>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={(e) => handleEditClick(fleet, e)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Modifier
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={(e) => handleDeleteClick(fleet, e)} 
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Supprimer
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
       </div>
 
       {/* Edit Fleet Dialog */}
