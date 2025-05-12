@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -7,6 +6,7 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuButton,
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
@@ -84,7 +84,8 @@ export function AppSidebar() {
           <p>Version 1.0.0</p>
         </div>
       </SidebarFooter>
-      <SidebarTrigger className="absolute top-4 left-4 md:left-4 z-20 h-8 w-8" />
+      {/* Repositioned sidebar trigger button */}
+      <SidebarTrigger className="fixed top-4 left-4 z-50 h-10 w-10 bg-white dark:bg-gray-800 shadow-md rounded-full flex items-center justify-center" />
     </Sidebar>
   );
 }
