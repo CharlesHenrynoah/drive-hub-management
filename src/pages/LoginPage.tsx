@@ -22,11 +22,17 @@ export default function LoginPage() {
     try {
       // Log in an existing user
       await login(email, password);
+      toast({
+        title: "Connexion réussie",
+        description: "Bienvenue sur DriveHub",
+      });
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
       toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue",
+        title: "Erreur de connexion",
+        description: error?.message === "Invalid login credentials" 
+          ? "Email ou mot de passe incorrect" 
+          : error?.message || "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {

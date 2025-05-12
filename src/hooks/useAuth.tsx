@@ -38,11 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
+          console.log("Session trouvée:", session.user);
           setUser({
             id: session.user.id,
-            name: "Jean Dupont",
+            name: session.user.user_metadata?.name || "Jean Dupont",
             email: session.user.email || "jean.dupont@exemple.fr",
-            role: "manager",
+            role: session.user.user_metadata?.role || "manager",
           });
           
           // If logged in and on login page, redirect to home
@@ -64,15 +65,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state change:", event, session?.user);
+      
       if (event === "SIGNED_OUT") {
         setUser(null);
         navigate("/login");
       } else if (event === "SIGNED_IN" && session) {
         setUser({
           id: session.user.id,
-          name: "Jean Dupont",
+          name: session.user.user_metadata?.name || "Jean Dupont",
           email: session.user.email || "jean.dupont@exemple.fr",
-          role: "manager",
+          role: session.user.user_metadata?.role || "manager",
         });
         
         if (location.pathname === "/login") {
@@ -86,16 +89,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("Tentative de connexion avec:", email);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
         console.error("Erreur de connexion:", error);
         throw error;
       }
       
-      navigate("/");
-    } catch (error) {
-      console.error("Erreur de connexion:", error);
+      if (data.user) {
+        console.log("Connexion réussie:", data.user);
+        navigate("/");
+        return;
+      }
+      
+      throw new Error("Aucun utilisateur retourné après la connexion");
+    } catch (error: any) {
+      console.error("Erreur de connexion détaillée:", error);
       throw error;
     }
   }
