@@ -109,13 +109,48 @@ export function MissionsCalendar({ displayMode = "month" }: MissionsCalendarProp
     queryFn: fetchMissions,
   });
 
+  const handleMissionClick = (mission: Mission) => {
+    setSelectedMission(mission);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleEditMission = (mission: Mission) => {
+    setMissionToEdit(mission);
+    setIsEditModalOpen(true);
+    setIsDetailModalOpen(false);
+  };
+
+  const handleDeleteMission = (mission: Mission) => {
+    setMissionToDelete(mission);
+    setIsDeleteDialogOpen(true);
+    setIsDetailModalOpen(false);
+  };
+
+  // Define confirmDeleteMission function before it's used
+  const confirmDeleteMission = async () => {
+    if (!missionToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('missions')
+        .delete()
+        .eq('id', missionToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success("Mission supprimée avec succès");
+      refetch();
+    } catch (error: any) {
+      console.error('Erreur lors de la suppression de la mission:', error);
+      toast.error(`Erreur: ${error.message}`);
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setMissionToDelete(null);
+    }
+  };
+
   // Si nous sommes en mode semaine, afficher le composant WeeklyMissionsView
   if (displayMode === "week") {
-    const handleMissionClick = (mission: Mission) => {
-      setSelectedMission(mission);
-      setIsDetailModalOpen(true);
-    };
-    
     return (
       <>
         <WeeklyMissionsView 
@@ -176,45 +211,6 @@ export function MissionsCalendar({ displayMode = "month" }: MissionsCalendarProp
   const paddingDays = Array.from({ length: startDay }, (_, i) => 
     addDays(startDate, -(startDay - i))
   );
-
-  const handleMissionClick = (mission: Mission) => {
-    setSelectedMission(mission);
-    setIsDetailModalOpen(true);
-  };
-
-  const handleEditMission = (mission: Mission) => {
-    setMissionToEdit(mission);
-    setIsEditModalOpen(true);
-    setIsDetailModalOpen(false);
-  };
-
-  const handleDeleteMission = (mission: Mission) => {
-    setMissionToDelete(mission);
-    setIsDeleteDialogOpen(true);
-    setIsDetailModalOpen(false);
-  };
-
-  const confirmDeleteMission = async () => {
-    if (!missionToDelete) return;
-    
-    try {
-      const { error } = await supabase
-        .from('missions')
-        .delete()
-        .eq('id', missionToDelete.id);
-      
-      if (error) throw error;
-      
-      toast.success("Mission supprimée avec succès");
-      refetch();
-    } catch (error: any) {
-      console.error('Erreur lors de la suppression de la mission:', error);
-      toast.error(`Erreur: ${error.message}`);
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setMissionToDelete(null);
-    }
-  };
 
   const getMissionsForDay = (day: Date) => {
     return missions.filter(mission => 
