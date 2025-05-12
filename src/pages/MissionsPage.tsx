@@ -9,6 +9,7 @@ import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function MissionsPage() {
   const [isNewMissionModalOpen, setIsNewMissionModalOpen] = useState(false);
@@ -23,9 +24,9 @@ export default function MissionsPage() {
   return (
     <AuthProvider>
       <DashboardLayout>
-        <div className="w-full max-w-full overflow-x-hidden">
+        <div className="w-full max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <h1 className="text-2xl font-bold">Calendrier des missions</h1>
+            <h1 className="text-2xl font-bold truncate">Calendrier des missions</h1>
             
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "month" | "week")} className="w-full sm:w-auto">
@@ -41,16 +42,18 @@ export default function MissionsPage() {
             </div>
           </div>
           
-          <div className="w-full overflow-x-hidden">
-            {activeView === "month" ? (
-              <MissionsCalendar key={`missions-calendar-${refreshTrigger}`} />
-            ) : (
-              <MissionsCalendar 
-                key={`missions-weekly-${refreshTrigger}`} 
-                displayMode="week"
-              />
-            )}
-          </div>
+          <ScrollArea className="w-full">
+            <div className="missions-container w-full">
+              {activeView === "month" ? (
+                <MissionsCalendar key={`missions-calendar-${refreshTrigger}`} />
+              ) : (
+                <MissionsCalendar 
+                  key={`missions-weekly-${refreshTrigger}`} 
+                  displayMode="week"
+                />
+              )}
+            </div>
+          </ScrollArea>
           
           <NewMissionModal
             isOpen={isNewMissionModalOpen}

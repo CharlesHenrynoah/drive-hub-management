@@ -29,12 +29,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full overflow-x-hidden">
         <AppSidebar />
-        <div className="flex-1 flex flex-col min-h-screen">
-          <header className="sticky top-0 z-30 bg-background border-b h-16 flex items-center px-4">
+        <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden max-w-full">
+          <header className="sticky top-0 z-30 bg-background border-b h-16 flex items-center px-4 w-full">
             <div className="flex justify-between items-center w-full">
-              <h1 className="text-xl font-semibold">{pageTitle}</h1>
+              <h1 className="text-xl font-semibold truncate">{pageTitle}</h1>
               <div className="flex items-center space-x-4">
                 <Button variant="ghost" size="icon">
                   <Bell className="h-5 w-5" />
@@ -47,8 +47,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           <User className="h-5 w-5" />
                         </div>
                         <div className="hidden md:block">
-                          <p className="text-sm font-medium">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.role}</p>
+                          <p className="text-sm font-medium truncate">{user.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.role}</p>
                         </div>
                       </div>
                       <Button variant="ghost" size="icon" onClick={logout}>
@@ -60,8 +60,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-4 md:p-6">
-            {children}
+          <main className="flex-1 overflow-x-hidden p-4 md:p-6 w-full max-w-full">
+            <div className="w-full max-w-full overflow-x-hidden">
+              {children}
+            </div>
           </main>
         </div>
       </div>

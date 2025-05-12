@@ -8,9 +8,11 @@ export default function FleetsPage() {
   return (
     <AuthProvider>
       <DashboardLayout>
-        <div className="container mx-auto p-6">
-          <h1 className="text-2xl font-bold mb-6">Gestion des flottes</h1>
-          <FleetsManagement />
+        <div className="w-full max-w-full overflow-hidden">
+          <h1 className="text-2xl font-bold mb-6 truncate">Gestion des flottes</h1>
+          <div className="overflow-hidden">
+            <FleetsManagement />
+          </div>
         </div>
       </DashboardLayout>
       <Toaster />

@@ -53,11 +53,11 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
   };
 
   return (
-    <div className="space-y-4 w-full overflow-x-hidden">
+    <div className="space-y-4 w-full overflow-hidden">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-5 w-5" />
-          <h2 className="text-xl font-semibold">
+          <h2 className="text-xl font-semibold truncate">
             {format(weekStart, 'd', { locale: fr })} - {format(weekEnd, 'd MMMM yyyy', { locale: fr })}
           </h2>
         </div>
@@ -81,9 +81,9 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
           <span className="ml-2 text-lg">Chargement des missions...</span>
         </div>
       ) : (
-        <Card className="w-full overflow-hidden">
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <ScrollArea className="w-full">
+            <ScrollArea className="w-full" orientation="horizontal">
               <div className="grid grid-cols-7 min-w-max">
                 {/* En-têtes des jours */}
                 {daysInWeek.map((day, index) => {
@@ -92,6 +92,7 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
                     <div 
                       key={`header-${index}`}
                       className={`p-2 border-b text-center font-medium ${isToday ? 'bg-accent text-accent-foreground' : ''}`}
+                      style={{ minWidth: '180px' }}
                     >
                       <div className="truncate">{format(day, 'EEEE', { locale: fr })}</div>
                       <div className="text-sm truncate">{format(day, 'd MMMM', { locale: fr })}</div>
@@ -108,6 +109,7 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
                     <div 
                       key={`day-${index}`}
                       className={`min-h-[300px] border border-muted/20 p-2 ${isToday ? 'bg-accent/20' : ''}`}
+                      style={{ minWidth: '180px' }}
                     >
                       <div className="space-y-2 max-h-[280px] overflow-y-auto">
                         {dayMissions.length === 0 ? (
@@ -121,7 +123,7 @@ export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: Week
                               onClick={() => onMissionClick(mission)}
                               className={`p-2 rounded cursor-pointer ${getStatusColor(mission.status)} hover:opacity-90`}
                             >
-                              <div className="font-medium">{format(mission.date, 'HH:mm')}</div>
+                              <div className="font-medium truncate">{format(mission.date, 'HH:mm')}</div>
                               <div className="truncate">{mission.title}</div>
                               <div className="text-xs truncate">
                                 {mission.driver || "Chauffeur non assigné"}
