@@ -1,11 +1,14 @@
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hasFinanceAccess: boolean;
+  isLoading: boolean;
 }
 
 interface User {
@@ -18,37 +21,82 @@ interface User {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Simuler un utilisateur déjà connecté pour la démo
-    return {
-      id: "user-001",
-      name: "Jean Dupont",
-      email: "jean.dupont@exemple.fr",
-      role: "manager",
-    };
-  });
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   // Dans une application réelle, cela serait basé sur le rôle de l'utilisateur
   // Pour la démo, nous définissons simplement cette valeur
   const hasFinanceAccess = true;
 
-  async function login(email: string, password: string) {
-    // Simulation d'une API d'authentification
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
+  // Check for existing session on mount
+  useEffect(() => {
+    async function checkSession() {
+      setIsLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            name: "Jean Dupont",
+            email: session.user.email || "jean.dupont@exemple.fr",
+            role: "manager",
+          });
+        } else if (location.pathname !== "/login") {
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error("Erreur lors de la vérification de session:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    checkSession();
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        navigate("/login");
+      } else if (event === "SIGNED_IN" && session) {
         setUser({
-          id: "user-001",
+          id: session.user.id,
           name: "Jean Dupont",
-          email: email,
+          email: session.user.email || "jean.dupont@exemple.fr",
           role: "manager",
         });
-        resolve();
-      }, 500);
+        
+        if (location.pathname === "/login") {
+          navigate("/");
+        }
+      }
     });
+    
+    return () => subscription.unsubscribe();
+  }, [navigate, location.pathname]);
+
+  async function login(email: string, password: string) {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        throw error;
+      }
+      
+      navigate("/");
+    } catch (error) {
+      console.error("Erreur de connexion:", error);
+      throw error;
+    }
   }
 
   function logout() {
-    setUser(null);
+    supabase.auth.signOut().then(() => {
+      navigate("/login");
+    });
   }
 
   const value = {
@@ -56,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     hasFinanceAccess,
+    isLoading,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
