@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, role?: string) => Promise<void>;
   logout: () => void;
   hasFinanceAccess: boolean;
   isLoading: boolean;
@@ -27,7 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   // Dans une application réelle, cela serait basé sur le rôle de l'utilisateur
-  // Pour la démo, nous définissons simplement cette valeur
   const hasFinanceAccess = true;
 
   // Check for existing session on mount
@@ -39,16 +38,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (session?.user) {
           console.log("Session trouvée:", session.user);
+          const userRole = session.user.user_metadata?.role || "manager";
+          
           setUser({
             id: session.user.id,
             name: session.user.user_metadata?.name || "Jean Dupont",
             email: session.user.email || "jean.dupont@exemple.fr",
-            role: session.user.user_metadata?.role || "manager",
+            role: userRole,
           });
           
-          // If logged in and on login page, redirect to home
+          // If logged in and on login page, redirect based on role
           if (location.pathname === "/login") {
-            navigate("/");
+            if (userRole === "admin") {
+              navigate("/admin");
+            } else {
+              navigate("/");
+            }
           }
         } else if (location.pathname !== "/login") {
           navigate("/login");
@@ -71,15 +76,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         navigate("/login");
       } else if (event === "SIGNED_IN" && session) {
+        const userRole = session.user.user_metadata?.role || "manager";
+        
         setUser({
           id: session.user.id,
           name: session.user.user_metadata?.name || "Jean Dupont",
           email: session.user.email || "jean.dupont@exemple.fr",
-          role: session.user.user_metadata?.role || "manager",
+          role: userRole,
         });
         
         if (location.pathname === "/login") {
-          navigate("/");
+          if (userRole === "admin") {
+            navigate("/admin");
+          } else {
+            navigate("/");
+          }
         }
       }
     });
@@ -87,10 +98,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [navigate, location.pathname]);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, role?: string) {
     try {
-      console.log("Tentative de connexion avec:", email);
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log(`Tentative de connexion avec: ${email}, rôle: ${role || "manager"}`);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: {
+          data: {
+            role: role || "manager",
+          }
+        }
+      });
       
       if (error) {
         console.error("Erreur de connexion:", error);
@@ -99,7 +119,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data.user) {
         console.log("Connexion réussie:", data.user);
-        navigate("/");
+        
+        const userRole = data.user.user_metadata?.role || role || "manager";
+        
+        // Rediriger en fonction du rôle
+        if (userRole === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
         return;
       }
       

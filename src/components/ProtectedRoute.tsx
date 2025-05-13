@@ -1,15 +1,17 @@
 
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  requiredRole?: string;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
   
   if (isLoading) {
     return (
@@ -21,6 +23,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+  
+  // Si un rôle spécifique est requis et l'utilisateur n'a pas ce rôle
+  if (requiredRole && user.role !== requiredRole) {
+    // Rediriger vers la page appropriée en fonction du rôle de l'utilisateur
+    if (user.role === "admin" && location.pathname !== "/admin") {
+      return <Navigate to="/admin" replace />;
+    } else if (user.role === "manager" && location.pathname === "/admin") {
+      return <Navigate to="/" replace />;
+    }
   }
   
   return <>{children}</>;
