@@ -6,7 +6,7 @@ import { z } from "zod";
 import { format, addHours } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
-import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, UserRound, Truck, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -47,7 +47,7 @@ const formSchema = z.object({
   arrivalDate: z.date().optional(),
   driver: z.string().min(1, "Le chauffeur est requis"),
   vehicle: z.string().min(1, "Le véhicule est requis"),
-  company: z.string().min(1, "L'entreprise est requise"),
+  fleet: z.string().min(1, "La flotte est requise"),
   startLocation: z.string().optional(),
   endLocation: z.string().optional(),
   client: z.string().optional(),
@@ -57,46 +57,95 @@ const formSchema = z.object({
   status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
 });
 
-// Fetch companies from Supabase
-const fetchCompanies = async () => {
+// Fetch fleets from Supabase
+const fetchFleets = async () => {
   const { data, error } = await supabase
-    .from('companies')
+    .from('fleets')
     .select('*');
   
   if (error) throw error;
   return data || [];
 };
 
-// Fetch drivers based on company
-const fetchDriversByCompany = async (companyId: string) => {
-  if (!companyId) return [];
+// Fetch drivers based on fleet
+const fetchDriversByFleet = async (fleetId: string) => {
+  if (!fleetId) return [];
   
   const { data, error } = await supabase
+    .from('fleet_drivers')
+    .select('driver_id')
+    .eq('fleet_id', fleetId)
+    .filter('driver_id.disponible', 'eq', true);
+  
+  if (error) {
+    console.error('Error fetching fleet drivers:', error);
+    return [];
+  }
+  
+  if (!data || data.length === 0) return [];
+  
+  const driverIds = data.map(item => item.driver_id);
+  
+  const { data: drivers, error: driversError } = await supabase
     .from('drivers')
     .select('*')
-    .eq('id_entreprise', companyId);
+    .in('id', driverIds)
+    .eq('disponible', true);
   
-  if (error) throw error;
-  return data || [];
+  if (driversError) throw driversError;
+  return drivers || [];
 };
 
-// Fetch vehicles based on company
-const fetchVehiclesByCompany = async (companyId: string) => {
-  if (!companyId) return [];
+// Fetch vehicles based on fleet
+const fetchVehiclesByFleet = async (fleetId: string) => {
+  if (!fleetId) return [];
   
   const { data, error } = await supabase
+    .from('fleet_vehicles')
+    .select('vehicle_id')
+    .eq('fleet_id', fleetId);
+  
+  if (error) {
+    console.error('Error fetching fleet vehicles:', error);
+    return [];
+  }
+  
+  if (!data || data.length === 0) return [];
+  
+  const vehicleIds = data.map(item => item.vehicle_id);
+  
+  const { data: vehicles, error: vehiclesError } = await supabase
     .from('vehicles')
     .select('*')
-    .eq('company_id', companyId);
+    .in('id', vehicleIds)
+    .eq('disponible', true);
   
-  if (error) throw error;
-  return data || [];
+  if (vehiclesError) throw vehiclesError;
+  return vehicles || [];
+};
+
+// Fetch company info for a fleet
+const fetchCompanyForFleet = async (fleetId: string) => {
+  if (!fleetId) return null;
+  
+  const { data, error } = await supabase
+    .from('fleets')
+    .select('company_id')
+    .eq('id', fleetId)
+    .single();
+  
+  if (error) {
+    console.error('Error fetching company for fleet:', error);
+    return null;
+  }
+  
+  return data?.company_id || null;
 };
 
 export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<string>("");
+  const [selectedFleet, setSelectedFleet] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const defaultDate = new Date();
@@ -112,35 +161,35 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
       arrivalDate: defaultArrivalDate,
       driver: "",
       vehicle: "",
-      company: "",
+      fleet: "",
       status: "en_cours",
     },
   });
 
-  // Query for companies
-  const { data: companies = [] } = useQuery({
-    queryKey: ['companies'],
-    queryFn: fetchCompanies,
+  // Query for fleets
+  const { data: fleets = [] } = useQuery({
+    queryKey: ['fleets'],
+    queryFn: fetchFleets,
   });
 
-  // Query for drivers based on selected company
+  // Query for drivers based on selected fleet
   const { data: drivers = [] } = useQuery({
-    queryKey: ['drivers', selectedCompany],
-    queryFn: () => fetchDriversByCompany(selectedCompany),
-    enabled: !!selectedCompany,
+    queryKey: ['drivers', selectedFleet],
+    queryFn: () => fetchDriversByFleet(selectedFleet),
+    enabled: !!selectedFleet,
   });
 
-  // Query for vehicles based on selected company
+  // Query for vehicles based on selected fleet
   const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', selectedCompany],
-    queryFn: () => fetchVehiclesByCompany(selectedCompany),
-    enabled: !!selectedCompany,
+    queryKey: ['vehicles', selectedFleet],
+    queryFn: () => fetchVehiclesByFleet(selectedFleet),
+    enabled: !!selectedFleet,
   });
 
-  // Handle company selection
-  const handleCompanyChange = (value: string) => {
-    setSelectedCompany(value);
-    // Reset driver and vehicle fields when company changes
+  // Handle fleet selection
+  const handleFleetChange = (value: string) => {
+    setSelectedFleet(value);
+    // Reset driver and vehicle fields when fleet changes
     form.setValue('driver', '');
     form.setValue('vehicle', '');
   };
@@ -148,6 +197,9 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   async function onSubmit(data: z.infer<typeof formSchema>) {
     try {
       setIsSubmitting(true);
+      
+      // Get company_id from the selected fleet
+      const companyId = await fetchCompanyForFleet(data.fleet);
       
       // Insérer la nouvelle mission dans la base de données
       const { data: mission, error } = await supabase
@@ -158,7 +210,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           arrival_date: data.arrivalDate?.toISOString(),
           driver_id: data.driver,
           vehicle_id: data.vehicle,
-          company_id: data.company,
+          company_id: companyId,
           status: data.status,
           start_location: data.startLocation || null,
           end_location: data.endLocation || null,
@@ -221,34 +273,34 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
 
-        {/* Company - Now as the first selection field */}
+        {/* Fleet - Now as the first selection field */}
         <FormField
           control={form.control}
-          name="company"
+          name="fleet"
           render={({ field }) => (
             <FormItem>
               <FormLabel>
                 <span className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Entreprise
+                  <Users className="h-4 w-4" />
+                  Flotte
                 </span>
               </FormLabel>
               <Select
                 onValueChange={(value) => {
                   field.onChange(value);
-                  handleCompanyChange(value);
+                  handleFleetChange(value);
                 }}
                 value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une entreprise" />
+                    <SelectValue placeholder="Sélectionner une flotte" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="max-h-[200px] overflow-y-auto">
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
+                  {fleets.map((fleet) => (
+                    <SelectItem key={fleet.id} value={fleet.id}>
+                      {fleet.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -395,7 +447,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
         />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Driver - Now dependent on company */}
+          {/* Driver - Now dependent on fleet */}
           <FormField
             control={form.control}
             name="driver"
@@ -410,7 +462,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany}
+                  disabled={!selectedFleet}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -430,7 +482,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Vehicle - Now dependent on company */}
+          {/* Vehicle - Now dependent on fleet */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -445,7 +497,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany}
+                  disabled={!selectedFleet}
                 >
                   <FormControl>
                     <SelectTrigger>
