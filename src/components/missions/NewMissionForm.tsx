@@ -71,11 +71,11 @@ const fetchFleets = async () => {
 const fetchDriversByFleet = async (fleetId: string) => {
   if (!fleetId) return [];
   
+  // Fix: Use a more direct approach to get available drivers in the fleet
   const { data, error } = await supabase
     .from('fleet_drivers')
     .select('driver_id')
-    .eq('fleet_id', fleetId)
-    .filter('driver_id.disponible', 'eq', true);
+    .eq('fleet_id', fleetId);
   
   if (error) {
     console.error('Error fetching fleet drivers:', error);
@@ -86,6 +86,7 @@ const fetchDriversByFleet = async (fleetId: string) => {
   
   const driverIds = data.map(item => item.driver_id);
   
+  // Get the available drivers from these IDs
   const { data: drivers, error: driversError } = await supabase
     .from('drivers')
     .select('*')
@@ -124,8 +125,8 @@ const fetchVehiclesByFleet = async (fleetId: string) => {
   return vehicles || [];
 };
 
-// Fetch company info for a fleet
-const fetchCompanyForFleet = async (fleetId: string) => {
+// Fetch company info for a fleet (simplified to avoid recursive type issues)
+const fetchCompanyForFleet = async (fleetId: string): Promise<string | null> => {
   if (!fleetId) return null;
   
   const { data, error } = await supabase
