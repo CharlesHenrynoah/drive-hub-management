@@ -24,7 +24,7 @@ export default function LoginPage() {
       await login(email, password);
       toast({
         title: "Connexion réussie",
-        description: "Bienvenue sur DriveHub",
+        description: "Bienvenue sur Hermes",
       });
     } catch (error: any) {
       console.error("Erreur de connexion:", error);
@@ -53,7 +53,7 @@ export default function LoginPage() {
               <Car className="h-6 w-6 text-black" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-white">DriveHub</CardTitle>
+          <CardTitle className="text-2xl text-white">Hermes</CardTitle>
           <CardDescription className="text-gray-300">
             Connectez-vous à votre compte
           </CardDescription>
