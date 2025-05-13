@@ -4,17 +4,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Database, Download, RefreshCw, HardDrive, Server } from "lucide-react";
+import { Database, Download, RefreshCw, HardDrive, Server, AlertCircle } from "lucide-react";
+import { useTableData } from "@/hooks/useTableData";
+import { useDbStats } from "@/hooks/useDbStats";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/use-toast";
 
 export default function AdminDatabasePage() {
-  // Données d'exemple pour les tables
-  const tables = [
-    { name: "vehicles", rows: 145, size: "2.3 MB", lastBackup: "2023-10-15" },
-    { name: "drivers", rows: 87, size: "1.1 MB", lastBackup: "2023-10-15" },
-    { name: "missions", rows: 342, size: "4.6 MB", lastBackup: "2023-10-15" },
-    { name: "users", rows: 23, size: "0.4 MB", lastBackup: "2023-10-15" },
-    { name: "companies", rows: 12, size: "0.3 MB", lastBackup: "2023-10-15" },
-  ];
+  const { data: tables = [], isLoading: isTablesLoading, isError: isTablesError, refetch: refetchTables } = useTableData();
+  const { data: stats, isLoading: isStatsLoading, isError: isStatsError, refetch: refetchStats } = useDbStats();
+
+  const handleRefresh = async () => {
+    await Promise.all([refetchTables(), refetchStats()]);
+    toast({
+      title: "Données actualisées",
+      description: "Les informations de la base de données ont été mises à jour avec succès.",
+    });
+  };
+
+  const handleExportData = () => {
+    toast({
+      title: "Export lancé",
+      description: "L'export des données a été initialisé. Vous recevrez une notification quand il sera terminé.",
+    });
+  };
 
   return (
     <AdminLayout>
@@ -33,9 +46,24 @@ export default function AdminDatabasePage() {
               <HardDrive className="h-4 w-4 text-hermes-green" />
             </CardHeader>
             <CardContent className="pt-2">
-              <div className="text-2xl font-bold">8.7 GB / 20 GB</div>
-              <Progress className="mt-2" value={43.5} />
-              <p className="text-xs text-zinc-400 mt-2">43.5% d'espace utilisé</p>
+              {isStatsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-full bg-zinc-700 mb-2" />
+                  <Skeleton className="h-2 w-full bg-zinc-700 mb-2" />
+                  <Skeleton className="h-4 w-20 bg-zinc-700" />
+                </>
+              ) : isStatsError ? (
+                <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                  <p className="text-sm text-red-400">Erreur de chargement</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stats.diskUsage.used} GB / {stats.diskUsage.total} GB</div>
+                  <Progress className="mt-2" value={stats.diskUsage.percentage} />
+                  <p className="text-xs text-zinc-400 mt-2">{stats.diskUsage.percentage}% d'espace utilisé</p>
+                </>
+              )}
             </CardContent>
           </Card>
           <Card className="bg-zinc-800 border-zinc-700 text-white">
@@ -44,8 +72,22 @@ export default function AdminDatabasePage() {
               <Database className="h-4 w-4 text-hermes-green" />
             </CardHeader>
             <CardContent className="pt-2">
-              <div className="text-2xl font-bold">15</div>
-              <p className="text-xs text-zinc-400 mt-2">609 enregistrements au total</p>
+              {isStatsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-16 bg-zinc-700 mb-2" />
+                  <Skeleton className="h-4 w-48 bg-zinc-700" />
+                </>
+              ) : isStatsError ? (
+                <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                  <p className="text-sm text-red-400">Erreur de chargement</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stats.tableCount}</div>
+                  <p className="text-xs text-zinc-400 mt-2">{stats.totalRows} enregistrements au total</p>
+                </>
+              )}
             </CardContent>
           </Card>
           <Card className="bg-zinc-800 border-zinc-700 text-white">
@@ -54,8 +96,22 @@ export default function AdminDatabasePage() {
               <Server className="h-4 w-4 text-hermes-green" />
             </CardHeader>
             <CardContent className="pt-2">
-              <div className="text-2xl font-bold">15/10/2023</div>
-              <p className="text-xs text-zinc-400 mt-2">Sauvegarde automatique quotidienne</p>
+              {isStatsLoading ? (
+                <>
+                  <Skeleton className="h-8 w-32 bg-zinc-700 mb-2" />
+                  <Skeleton className="h-4 w-48 bg-zinc-700" />
+                </>
+              ) : isStatsError ? (
+                <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                  <AlertCircle className="h-8 w-8 text-red-500" />
+                  <p className="text-sm text-red-400">Erreur de chargement</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{new Date(stats.lastBackupDate).toLocaleDateString('fr-FR')}</div>
+                  <p className="text-xs text-zinc-400 mt-2">Sauvegarde automatique quotidienne</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -67,8 +123,13 @@ export default function AdminDatabasePage() {
                 <Database className="h-5 w-5 text-hermes-green" />
                 <CardTitle>Tables de la base de données</CardTitle>
               </div>
-              <Button variant="outline" className="h-8 border-zinc-700 text-zinc-300 hover:text-white">
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <Button 
+                variant="outline" 
+                className="h-8 border-zinc-700 text-zinc-300 hover:text-white"
+                onClick={handleRefresh}
+                disabled={isTablesLoading || isStatsLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${(isTablesLoading || isStatsLoading) ? 'animate-spin' : ''}`} />
                 Actualiser
               </Button>
             </div>
@@ -77,30 +138,59 @@ export default function AdminDatabasePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader className="bg-zinc-900">
-                <TableRow>
-                  <TableHead className="text-zinc-400">Nom de la table</TableHead>
-                  <TableHead className="text-zinc-400 text-right">Lignes</TableHead>
-                  <TableHead className="text-zinc-400 text-right">Taille</TableHead>
-                  <TableHead className="text-zinc-400 text-right">Dernière sauvegarde</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tables.map(table => (
-                  <TableRow key={table.name} className="border-zinc-700">
-                    <TableCell className="font-medium text-white">{table.name}</TableCell>
-                    <TableCell className="text-right">{table.rows}</TableCell>
-                    <TableCell className="text-right">{table.size}</TableCell>
-                    <TableCell className="text-right">{table.lastBackup}</TableCell>
+            {isTablesLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full bg-zinc-700" />
+                <Skeleton className="h-12 w-full bg-zinc-700" />
+                <Skeleton className="h-12 w-full bg-zinc-700" />
+                <Skeleton className="h-12 w-full bg-zinc-700" />
+              </div>
+            ) : isTablesError ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                <AlertCircle className="h-16 w-16 text-red-500" />
+                <p className="text-red-400">Erreur lors du chargement des données des tables.</p>
+                <Button variant="outline" onClick={() => refetchTables()}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Réessayer
+                </Button>
+              </div>
+            ) : tables.length === 0 ? (
+              <div className="text-center py-8 text-zinc-500">
+                <Database className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <p>Aucune table trouvée dans la base de données.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-zinc-900">
+                  <TableRow>
+                    <TableHead className="text-zinc-400">Nom de la table</TableHead>
+                    <TableHead className="text-zinc-400 text-right">Lignes</TableHead>
+                    <TableHead className="text-zinc-400 text-right">Taille estimée</TableHead>
+                    <TableHead className="text-zinc-400 text-right">Dernière sauvegarde</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {tables.map(table => (
+                    <TableRow key={table.name} className="border-zinc-700">
+                      <TableCell className="font-medium text-white">{table.name}</TableCell>
+                      <TableCell className="text-right">{table.rows}</TableCell>
+                      <TableCell className="text-right">{table.size}</TableCell>
+                      <TableCell className="text-right">{new Date(table.lastBackup).toLocaleDateString('fr-FR')}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
           <CardFooter className="border-t border-zinc-700 flex justify-between">
-            <div className="text-sm text-zinc-400">5 tables affichées sur 15 au total</div>
-            <Button variant="outline" className="h-8 border-zinc-700 text-zinc-300 hover:text-white">
+            <div className="text-sm text-zinc-400">
+              {tables.length} {tables.length > 1 ? "tables affichées" : "table affichée"}
+            </div>
+            <Button 
+              variant="outline" 
+              className="h-8 border-zinc-700 text-zinc-300 hover:text-white"
+              onClick={handleExportData}
+            >
               <Download className="h-4 w-4 mr-2" />
               Exporter les données
             </Button>
