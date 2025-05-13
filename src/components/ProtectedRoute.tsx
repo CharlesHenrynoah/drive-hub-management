@@ -28,9 +28,9 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   // Si un rôle spécifique est requis et l'utilisateur n'a pas ce rôle
   if (requiredRole && user.role !== requiredRole) {
     // Rediriger vers la page appropriée en fonction du rôle de l'utilisateur
-    if (user.role === "admin" && location.pathname !== "/admin") {
+    if (user.role === "admin" && !location.pathname.startsWith("/admin")) {
       return <Navigate to="/admin" replace />;
-    } else if (user.role === "manager" && location.pathname === "/admin") {
+    } else if (user.role === "manager" && location.pathname.startsWith("/admin")) {
       return <Navigate to="/" replace />;
     }
   }
