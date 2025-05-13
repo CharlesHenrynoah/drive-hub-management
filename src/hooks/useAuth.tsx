@@ -102,12 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log(`Tentative de connexion avec: ${email}, rôle: ${role || "manager"}`);
       
+      // Fix: Store the role in user_metadata instead of using the 'data' property
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
         options: {
-          data: {
-            role: role || "manager",
+          metadata: {
+            role: role || "manager"
           }
         }
       });
