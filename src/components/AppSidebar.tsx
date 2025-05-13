@@ -21,8 +21,8 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <Car className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">Hermes</h1>
-            <p className="text-xs text-sidebar-foreground/60">Gestion de flotte</p>
+            <h1 className="text-lg font-bold text-white">Hermes</h1>
+            <p className="text-xs text-white/60">Gestion de flotte</p>
           </div>
         </div>
       </SidebarHeader>
@@ -30,7 +30,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/" className={location.pathname === "/" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+              <Link to="/" className={location.pathname === "/" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <Home className="h-5 w-5" />
                 <span>Tableau de bord</span>
               </Link>
@@ -38,7 +38,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/vehicules" className={location.pathname === "/vehicules" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+              <Link to="/vehicules" className={location.pathname === "/vehicules" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <Car className="h-5 w-5" />
                 <span>Véhicules</span>
               </Link>
@@ -46,7 +46,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/chauffeurs" className={location.pathname === "/chauffeurs" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+              <Link to="/chauffeurs" className={location.pathname === "/chauffeurs" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <User className="h-5 w-5" />
                 <span>Chauffeurs</span>
               </Link>
@@ -54,7 +54,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/flottes" className={location.pathname === "/flottes" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+              <Link to="/flottes" className={location.pathname === "/flottes" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <Users className="h-5 w-5" />
                 <span>Flottes</span>
               </Link>
@@ -62,7 +62,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/entreprises" className={location.pathname === "/entreprises" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+              <Link to="/entreprises" className={location.pathname === "/entreprises" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <Building2 className="h-5 w-5" />
                 <span>Entreprises</span>
               </Link>
@@ -70,7 +70,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link to="/missions" className={location.pathname === "/missions" ? "text-sidebar-primary bg-sidebar-accent/50" : ""}>
+              <Link to="/missions" className={location.pathname === "/missions" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <Calendar className="h-5 w-5" />
                 <span>Missions</span>
               </Link>
@@ -79,7 +79,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="px-4 py-4">
-        <div className="text-xs text-sidebar-foreground/60">
+        <div className="text-xs text-white/60">
           {/* Footer content removed */}
         </div>
       </SidebarFooter>
