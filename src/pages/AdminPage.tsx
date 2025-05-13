@@ -8,6 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Shield, Key, FileText } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
+// Import du fichier d'extension pour les types Supabase
+import "@/types/supabase-extensions";
+
 function AdminContent() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("keys");
