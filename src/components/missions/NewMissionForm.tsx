@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -41,6 +40,28 @@ interface NewMissionFormProps {
   onCancel: () => void;
 }
 
+// Define interfaces for our data types to avoid recursive type issues
+interface Fleet {
+  id: string;
+  name: string;
+  company_id: string;
+}
+
+interface Driver {
+  id: string;
+  nom: string;
+  prenom: string;
+  disponible: boolean;
+}
+
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  registration: string;
+  disponible: boolean;
+}
+
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
@@ -57,8 +78,8 @@ const formSchema = z.object({
   status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
 });
 
-// Fetch fleets from Supabase
-const fetchFleets = async () => {
+// Fetch fleets from Supabase with explicit return type
+const fetchFleets = async (): Promise<Fleet[]> => {
   const { data, error } = await supabase
     .from('fleets')
     .select('*');
@@ -67,11 +88,11 @@ const fetchFleets = async () => {
   return data || [];
 };
 
-// Fetch drivers based on fleet
-const fetchDriversByFleet = async (fleetId: string) => {
+// Fetch drivers based on fleet with explicit return type
+const fetchDriversByFleet = async (fleetId: string): Promise<Driver[]> => {
   if (!fleetId) return [];
   
-  // Fix: Use a more direct approach to get available drivers in the fleet
+  // Get driver IDs in the fleet
   const { data, error } = await supabase
     .from('fleet_drivers')
     .select('driver_id')
@@ -97,10 +118,11 @@ const fetchDriversByFleet = async (fleetId: string) => {
   return drivers || [];
 };
 
-// Fetch vehicles based on fleet
-const fetchVehiclesByFleet = async (fleetId: string) => {
+// Fetch vehicles based on fleet with explicit return type
+const fetchVehiclesByFleet = async (fleetId: string): Promise<Vehicle[]> => {
   if (!fleetId) return [];
   
+  // Get vehicle IDs in the fleet
   const { data, error } = await supabase
     .from('fleet_vehicles')
     .select('vehicle_id')
@@ -115,6 +137,7 @@ const fetchVehiclesByFleet = async (fleetId: string) => {
   
   const vehicleIds = data.map(item => item.vehicle_id);
   
+  // Get available vehicles from these IDs
   const { data: vehicles, error: vehiclesError } = await supabase
     .from('vehicles')
     .select('*')
@@ -125,7 +148,7 @@ const fetchVehiclesByFleet = async (fleetId: string) => {
   return vehicles || [];
 };
 
-// Fetch company info for a fleet (simplified to avoid recursive type issues)
+// Simplified function to fetch company ID for a fleet
 const fetchCompanyForFleet = async (fleetId: string): Promise<string | null> => {
   if (!fleetId) return null;
   
