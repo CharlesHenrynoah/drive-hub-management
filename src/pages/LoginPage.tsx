@@ -41,23 +41,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center"
+      style={{ backgroundImage: "url('/lovable-uploads/1cf44c13-37d1-4004-b60c-77fea1fc455b.png')" }}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+      <Card className="w-full max-w-md relative z-10 bg-black/80 border-hermes-green/50">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
-            <div className="h-12 w-12 bg-primary rounded-full flex items-center justify-center">
-              <Car className="h-6 w-6 text-primary-foreground" />
+            <div className="h-12 w-12 bg-hermes-green rounded-full flex items-center justify-center">
+              <Car className="h-6 w-6 text-black" />
             </div>
           </div>
-          <CardTitle className="text-2xl">DriveHub</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl text-white">DriveHub</CardTitle>
+          <CardDescription className="text-gray-300">
             Connectez-vous à votre compte
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleAuth}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-white">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -65,21 +69,23 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="bg-white/10 border-hermes-green/20 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <Label htmlFor="password" className="text-white">Mot de passe</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-white/10 border-hermes-green/20 text-white"
               />
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-hermes-green text-black hover:bg-hermes-green/90" disabled={isLoading}>
               {isLoading ? "Chargement..." : "Se connecter"}
             </Button>
           </CardFooter>
