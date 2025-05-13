@@ -22,6 +22,8 @@ interface MissionPayload {
   start_location?: string;
   end_location?: string;
   client?: string;
+  client_email?: string;
+  client_phone?: string;
   passengers?: number;
   description?: string;
   additional_details?: string;
@@ -92,6 +94,8 @@ Deno.serve(async (req) => {
       start_location: missionData.start_location || null,
       end_location: missionData.end_location || null,
       client: missionData.client || null,
+      client_email: missionData.client_email || null,
+      client_phone: missionData.client_phone || null,
       passengers: missionData.passengers || null,
       description: missionData.description || null,
       additional_details: missionData.additional_details || null

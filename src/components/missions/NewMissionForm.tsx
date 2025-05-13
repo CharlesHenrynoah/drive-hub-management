@@ -6,7 +6,7 @@ import { z } from "zod";
 import { format, addHours } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
-import { CalendarIcon, Clock, MapPin, UserRound, Truck, Users } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, UserRound, Truck, Users, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -84,6 +84,8 @@ const formSchema = z.object({
   startLocation: z.string().optional(),
   endLocation: z.string().optional(),
   client: z.string().optional(),
+  clientEmail: z.string().email("Email invalide").optional().or(z.literal('')),
+  clientPhone: z.string().optional(),
   passengers: z.coerce.number().int().nonnegative().optional(),
   description: z.string().optional(),
   additionalDetails: z.string().optional(),
@@ -235,6 +237,8 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
       driver: "",
       vehicle: "",
       fleet: "",
+      clientEmail: "",
+      clientPhone: "",
       status: "en_cours",
     },
   });
@@ -288,6 +292,8 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           start_location: data.startLocation || null,
           end_location: data.endLocation || null,
           client: data.client || null,
+          client_email: data.clientEmail || null, 
+          client_phone: data.clientPhone || null,
           passengers: data.passengers || null,
           description: data.description || null,
           additional_details: data.additionalDetails || null
@@ -633,27 +639,79 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
+        {/* Client information section */}
+        <FormField
+          control={form.control}
+          name="client"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <UserRound className="h-4 w-4" />
+                  Client
+                </span>
+              </FormLabel>
+              <FormControl>
+                <Input placeholder="Nom du client" {...field} value={field.value || ""} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Client */}
+          {/* Client Email - New field */}
           <FormField
             control={form.control}
-            name="client"
+            name="clientEmail"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
                   <span className="flex items-center gap-2">
-                    <UserRound className="h-4 w-4" />
-                    Client
+                    <Mail className="h-4 w-4" />
+                    Email du client
                   </span>
                 </FormLabel>
                 <FormControl>
-                  <Input placeholder="Nom du client" {...field} value={field.value || ""} />
+                  <Input 
+                    type="email" 
+                    placeholder="Email du client" 
+                    {...field} 
+                    value={field.value || ""} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
+          {/* Client Phone - New field */}
+          <FormField
+            control={form.control}
+            name="clientPhone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Téléphone du client
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="tel" 
+                    placeholder="Téléphone du client" 
+                    {...field} 
+                    value={field.value || ""} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Passengers */}
           <FormField
             control={form.control}

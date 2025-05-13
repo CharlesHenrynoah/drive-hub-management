@@ -52,6 +52,8 @@ Authorization: Bearer VOTRE_CLE_API`}
   "start_location": "Paris", // Optionnel
   "end_location": "Lyon", // Optionnel
   "client": "Nom du client", // Optionnel
+  "client_email": "client@example.com", // Optionnel
+  "client_phone": "+33123456789", // Optionnel
   "passengers": 3, // Optionnel
   "description": "Description de la mission", // Optionnel
   "additional_details": "Détails supplémentaires" // Optionnel
@@ -100,6 +102,8 @@ Authorization: Bearer VOTRE_CLE_API`}
     "start_location": "Paris",
     "end_location": "Lyon",
     "client": "Entreprise XYZ",
+    "client_email": "contact@xyz.com",
+    "client_phone": "+33123456789",
     "passengers": 2,
     "description": "Transport de dirigeants"
   }'`}
@@ -123,8 +127,10 @@ Authorization: Bearer VOTRE_CLE_API`}
         date: "2025-05-20T09:00:00Z",
         driver_id: "uuid-du-chauffeur",
         vehicle_id: "uuid-du-vehicule",
-        status: "en_cours",
-        client: "Client Premium"
+        client: "Client Premium",
+        client_email: "premium@client.com",
+        client_phone: "+33698765432",
+        status: "en_cours"
       })
     }
   );
@@ -151,6 +157,9 @@ payload = {
     "date": "2025-05-21T10:45:00Z",
     "start_location": "Centre-ville",
     "end_location": "Aéroport Charles de Gaulle",
+    "client": "Société ABC",
+    "client_email": "contact@abc.fr",
+    "client_phone": "+33612345678",
     "passengers": 4
 }
 
