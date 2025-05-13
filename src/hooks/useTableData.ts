@@ -26,7 +26,7 @@ export function useTableData() {
           "fleets",
           "fleet_drivers",
           "fleet_vehicles"
-        ];
+        ] as const; // Define as readonly array
         
         const tablesData: TableInfo[] = [];
         

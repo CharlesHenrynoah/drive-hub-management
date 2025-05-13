@@ -30,7 +30,7 @@ export function useDbStats() {
           "fleets",
           "fleet_drivers",
           "fleet_vehicles"
-        ];
+        ] as const; // Define as readonly array
         
         let totalRows = 0;
         let tableCount = tables.length;
