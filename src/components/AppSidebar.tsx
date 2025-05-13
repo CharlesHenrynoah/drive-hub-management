@@ -10,13 +10,10 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Home, Car, User, Users, Map, Calendar, Shield, Code } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { Home, Car, User, Users, Map, Calendar } from "lucide-react";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
 
   return (
     <Sidebar>
@@ -70,26 +67,6 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/api-missions" className={location.pathname === "/api-missions" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <Code className="h-5 w-5" />
-                <span>API de Missions</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          
-          {/* Section Admin uniquement visible pour les administrateurs */}
-          {isAdmin && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link to="/admin" className={location.pathname === "/admin" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                  <Shield className="h-5 w-5" />
-                  <span>Administration</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="px-4 py-4">

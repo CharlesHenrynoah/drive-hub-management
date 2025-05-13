@@ -4,118 +4,167 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
-// Définition des en-têtes CORS pour permettre les requêtes cross-origin
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+interface MissionPayload {
+  title: string;
+  date: string;
+  arrival_date?: string;
+  driver_id?: string;
+  vehicle_id?: string;
+  fleet_id?: string;
+  company_id?: string;
+  status?: string;
+  start_location?: string;
+  end_location?: string;
+  client?: string;
+  passengers?: number;
+  description?: string;
+  additional_details?: string;
+}
+
 Deno.serve(async (req) => {
-  // Gestion des requêtes OPTIONS (CORS preflight)
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: corsHeaders,
       status: 204,
-    })
+    });
   }
 
-  // Validation que seules les requêtes POST sont acceptées
+  // Only accept POST requests
   if (req.method !== 'POST') {
     return new Response(
-      JSON.stringify({ error: 'Méthode non autorisée' }),
+      JSON.stringify({ error: 'Method not allowed' }),
       {
         status: 405,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
+    );
   }
 
-  const startTime = performance.now();
-  let apiKeyId = null;
-  let statusCode = 500;
-
   try {
-    // Récupérer la clé API de l'en-tête
-    const apiKey = req.headers.get('x-api-key');
-    
-    if (!apiKey) {
-      statusCode = 401;
-      throw new Error('Clé API requise');
-    }
-
-    // Créer le client Supabase
+    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Vérifier si la clé API est valide
-    const { data: keyData, error: keyError } = await supabase
-      .from('api_keys')
-      .select('id, revoked')
-      .eq('api_key', apiKey)
-      .single();
+    // Parse the mission data from the request body
+    const missionData: MissionPayload = await req.json();
 
-    if (keyError || !keyData) {
-      statusCode = 401;
-      throw new Error('Clé API invalide');
+    // API key verification (optional, implement as needed)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid API key' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
+    const apiKey = authHeader.split(' ')[1];
+    // Basic validation to ensure we have at minimum required fields
+    if (!missionData.title || !missionData.date) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: title and date are required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    if (keyData.revoked) {
-      statusCode = 403;
-      throw new Error('Clé API révoquée');
-    }
+    // Format the mission payload for insertion
+    const missionPayload = {
+      title: missionData.title,
+      date: missionData.date,
+      arrival_date: missionData.arrival_date || null,
+      driver_id: missionData.driver_id || null,
+      vehicle_id: missionData.vehicle_id || null,
+      company_id: missionData.company_id || null,
+      status: missionData.status || 'en_cours',
+      start_location: missionData.start_location || null,
+      end_location: missionData.end_location || null,
+      client: missionData.client || null,
+      passengers: missionData.passengers || null,
+      description: missionData.description || null,
+      additional_details: missionData.additional_details || null
+    };
 
-    apiKeyId = keyData.id;
-
-    // Mettre à jour la date de dernière utilisation de la clé API
-    await supabase
-      .from('api_keys')
-      .update({ last_used_at: new Date().toISOString() })
-      .eq('id', apiKeyId);
-
-    // Récupérer et valider les données de la requête
-    const { title, date, description, driver_id, vehicle_id, client, 
-            start_location, end_location, passengers, company_id, arrival_date } = await req.json();
-
-    if (!title || !date) {
-      statusCode = 400;
-      throw new Error('Titre et date requis');
-    }
-
-    // Créer une nouvelle mission
-    const { data: mission, error } = await supabase
+    // Insert the mission into the database
+    const { data, error } = await supabase
       .from('missions')
-      .insert({
-        title,
-        date,
-        description,
-        driver_id,
-        vehicle_id,
-        client,
-        start_location,
-        end_location,
-        passengers,
-        company_id,
-        arrival_date,
-        status: 'en_cours'
-      })
-      .select()
+      .insert(missionPayload)
+      .select('id, title')
       .single();
 
     if (error) {
-      statusCode = 400;
-      throw error;
+      console.error('Error creating mission:', error);
+      
+      return new Response(
+        JSON.stringify({ error: `Failed to create mission: ${error.message}` }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    statusCode = 201;
+    // If fleet_id is provided, associate driver and vehicle with this fleet
+    if (missionData.fleet_id && missionData.driver_id) {
+      // Check if driver is already in the fleet
+      const { data: existingDriverInFleet } = await supabase
+        .from('fleet_drivers')
+        .select('id')
+        .eq('fleet_id', missionData.fleet_id)
+        .eq('driver_id', missionData.driver_id)
+        .maybeSingle();
+        
+      if (!existingDriverInFleet) {
+        // Add driver to the fleet
+        await supabase
+          .from('fleet_drivers')
+          .insert({
+            fleet_id: missionData.fleet_id,
+            driver_id: missionData.driver_id
+          });
+      }
+    }
     
-    // Renvoyer une réponse de succès
+    if (missionData.fleet_id && missionData.vehicle_id) {
+      // Check if vehicle is already in the fleet
+      const { data: existingVehicleInFleet } = await supabase
+        .from('fleet_vehicles')
+        .select('id')
+        .eq('fleet_id', missionData.fleet_id)
+        .eq('vehicle_id', missionData.vehicle_id)
+        .maybeSingle();
+        
+      if (!existingVehicleInFleet) {
+        // Add vehicle to the fleet
+        await supabase
+          .from('fleet_vehicles')
+          .insert({
+            fleet_id: missionData.fleet_id,
+            vehicle_id: missionData.vehicle_id
+          });
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Mission créée avec succès',
-        data: mission
+        message: 'Mission créée avec succès', 
+        data: { 
+          id: data.id,
+          title: data.title 
+        } 
       }),
       {
         status: 201,
@@ -123,42 +172,17 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
-    console.error('Erreur:', err);
+    console.error('Unexpected error:', err);
     
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Erreur inconnue'
+        error: 'Une erreur inattendue est survenue',
+        details: err instanceof Error ? err.message : 'Unknown error'
       }),
       {
-        status: statusCode,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } finally {
-    // Enregistrer la requête API dans le journal
-    try {
-      const endTime = performance.now();
-      const responseTime = Math.round(endTime - startTime);
-      
-      // Créer le client Supabase (à nouveau car on ne peut pas le réutiliser dans un bloc finally)
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      // Enregistrer la requête
-      await supabase
-        .from('api_requests')
-        .insert({
-          api_key_id: apiKeyId,
-          endpoint: '/create-mission',
-          method: 'POST',
-          ip_address: req.headers.get('x-forwarded-for') || null,
-          status_code: statusCode,
-          response_time_ms: responseTime
-        });
-    } catch (logError) {
-      console.error('Erreur lors de l\'enregistrement de la requête:', logError);
-    }
   }
 });

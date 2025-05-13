@@ -39,19 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (session?.user) {
           console.log("Session trouvée:", session.user);
-          
-          // Déterminer le rôle en fonction de l'email pour la démo
-          // Dans une véritable application, ces informations seraient stockées en base de données
-          let userRole = "manager";
-          if (session.user.email === "admin@example.com") {
-            userRole = "admin";
-          }
-          
           setUser({
             id: session.user.id,
-            name: session.user.user_metadata?.name || (userRole === "admin" ? "Administrateur" : "Jean Dupont"),
+            name: session.user.user_metadata?.name || "Jean Dupont",
             email: session.user.email || "jean.dupont@exemple.fr",
-            role: userRole,
+            role: session.user.user_metadata?.role || "manager",
           });
           
           // If logged in and on login page, redirect to home
@@ -79,17 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         navigate("/login");
       } else if (event === "SIGNED_IN" && session) {
-        // Déterminer le rôle en fonction de l'email pour la démo
-        let userRole = "manager";
-        if (session.user.email === "admin@example.com") {
-          userRole = "admin";
-        }
-        
         setUser({
           id: session.user.id,
-          name: session.user.user_metadata?.name || (userRole === "admin" ? "Administrateur" : "Jean Dupont"),
+          name: session.user.user_metadata?.name || "Jean Dupont",
           email: session.user.email || "jean.dupont@exemple.fr",
-          role: userRole,
+          role: session.user.user_metadata?.role || "manager",
         });
         
         if (location.pathname === "/login") {

@@ -9,10 +9,3 @@ schemas = ["public", "storage", "graphql_public"]
 # Déclarer la fonction create-mission
 [functions.create-mission]
 verify_jwt = false
-
-# Ajouter les nouvelles fonctions
-[functions.generate-api-key]
-verify_jwt = true
-
-[functions.revoke-api-key]
-verify_jwt = true
