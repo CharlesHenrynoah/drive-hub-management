@@ -28,26 +28,35 @@ interface MissionPayload {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders,
-      status: 204,
-    });
-  }
-
-  // Only accept POST requests
-  if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      {
-        status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-  }
-
+  const startTime = performance.now();
+  const requestIP = req.headers.get("x-forwarded-for") || "unknown";
+  const requestURL = new URL(req.url);
+  const endpoint = requestURL.pathname;
+  const requestMethod = req.method;
+  let apiKeyId: string | null = null;
+  let statusCode = 200;
+  
   try {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: corsHeaders,
+        status: 204,
+      });
+    }
+
+    // Only accept POST requests
+    if (req.method !== 'POST') {
+      statusCode = 405;
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        {
+          status: statusCode,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -56,25 +65,65 @@ Deno.serve(async (req) => {
     // Parse the mission data from the request body
     const missionData: MissionPayload = await req.json();
 
-    // API key verification (optional, implement as needed)
+    // API key verification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      statusCode = 401;
       return new Response(
         JSON.stringify({ error: 'Missing or invalid API key' }),
         {
-          status: 401,
+          status: statusCode,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
     
     const apiKey = authHeader.split(' ')[1];
+    
+    // Verify API key against database
+    const { data: apiKeyData, error: apiKeyError } = await supabase
+      .from('api_keys')
+      .select('id, revoked')
+      .eq('api_key', apiKey)
+      .single();
+      
+    if (apiKeyError || !apiKeyData) {
+      statusCode = 401;
+      return new Response(
+        JSON.stringify({ error: 'Invalid API key' }),
+        {
+          status: statusCode,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
+    if (apiKeyData.revoked) {
+      statusCode = 401;
+      return new Response(
+        JSON.stringify({ error: 'API key has been revoked' }),
+        {
+          status: statusCode,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    
+    apiKeyId = apiKeyData.id;
+    
+    // Update last used timestamp for API key
+    await supabase
+      .from('api_keys')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', apiKeyId);
+    
     // Basic validation to ensure we have at minimum required fields
     if (!missionData.title || !missionData.date) {
+      statusCode = 400;
       return new Response(
         JSON.stringify({ error: 'Missing required fields: title and date are required' }),
         {
-          status: 400,
+          status: statusCode,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -106,11 +155,12 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error('Error creating mission:', error);
+      statusCode = 400;
       
       return new Response(
         JSON.stringify({ error: `Failed to create mission: ${error.message}` }),
         {
-          status: 400,
+          status: statusCode,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -157,6 +207,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    statusCode = 201;
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -167,12 +218,13 @@ Deno.serve(async (req) => {
         } 
       }),
       {
-        status: 201,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   } catch (err) {
     console.error('Unexpected error:', err);
+    statusCode = 500;
     
     return new Response(
       JSON.stringify({ 
@@ -180,9 +232,35 @@ Deno.serve(async (req) => {
         details: err instanceof Error ? err.message : 'Unknown error'
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
+  } finally {
+    // Calculate response time
+    const endTime = performance.now();
+    const responseTimeMs = Math.round(endTime - startTime);
+    
+    // Create Supabase client again to log the request
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    try {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      // Log API request
+      await supabase
+        .from('api_requests')
+        .insert({
+          api_key_id: apiKeyId,
+          method: requestMethod,
+          endpoint,
+          ip_address: requestIP,
+          status_code: statusCode,
+          response_time_ms: responseTimeMs
+        });
+    } catch (error) {
+      console.error('Error logging API request:', error);
+    }
   }
 });
