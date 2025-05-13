@@ -151,7 +151,7 @@ const fetchDriversByFleet = async (fleetId: string): Promise<Driver[]> => {
   // Get the available drivers from these IDs
   const { data: drivers, error: driversError } = await supabase
     .from('drivers')
-    .select('*')
+    .select('id, nom, prenom, disponible')
     .in('id', driverIds)
     .eq('disponible', true);
   
@@ -177,14 +177,24 @@ const fetchVehiclesByFleet = async (fleetId: string): Promise<Vehicle[]> => {
   
   const vehicleIds = data.map(item => item.vehicle_id);
   
-  const { data: vehicles, error: vehiclesError } = await supabase
+  // Fixed: Only select fields we need and explicitly add disponible field
+  const { data: vehiclesData, error: vehiclesError } = await supabase
     .from('vehicles')
-    .select('*')
-    .in('id', vehicleIds)
-    .eq('disponible', true);
+    .select('id, brand, model, registration')
+    .in('id', vehicleIds);
   
   if (vehiclesError) throw vehiclesError;
-  return vehicles || [];
+  
+  // Add the disponible property to match our Vehicle interface
+  const vehicles: Vehicle[] = (vehiclesData || []).map(vehicle => ({
+    id: vehicle.id,
+    brand: vehicle.brand,
+    model: vehicle.model,
+    registration: vehicle.registration,
+    disponible: true // We'll assume all fetched vehicles are available
+  }));
+  
+  return vehicles;
 };
 
 // Fetch company info for a fleet
