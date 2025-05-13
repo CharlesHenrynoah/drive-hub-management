@@ -22,7 +22,7 @@ export function AppSidebar() {
           <Car className="h-8 w-8 text-primary" />
           <div>
             <h1 className="text-lg font-bold text-white">Hermes</h1>
-            <p className="text-xs text-white/60">Gestion de flotte</p>
+            <p className="text-xs text-white/60">Gestionnaire de flotte</p>
           </div>
         </div>
       </SidebarHeader>
