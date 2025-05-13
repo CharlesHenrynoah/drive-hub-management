@@ -13,6 +13,7 @@ import VehiclesPage from "./pages/VehiclesPage";
 import DriversPage from "./pages/DriversPage";
 import FleetsPage from "./pages/FleetsPage";
 import MissionsPage from "./pages/MissionsPage";
+import MissionsAPI from "./pages/MissionsAPI";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/chauffeurs" element={<ProtectedRoute><DriversPage /></ProtectedRoute>} />
             <Route path="/flottes" element={<ProtectedRoute><FleetsPage /></ProtectedRoute>} />
             <Route path="/missions" element={<ProtectedRoute><MissionsPage /></ProtectedRoute>} />
+            <Route path="/api-missions" element={<ProtectedRoute><MissionsAPI /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
