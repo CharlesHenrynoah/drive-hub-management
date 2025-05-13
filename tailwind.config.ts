@@ -74,7 +74,11 @@ export default {
 				info: {
 					DEFAULT: 'hsl(var(--info))',
 					foreground: 'hsl(var(--info-foreground))'
-				}
+				},
+				// Ajout des couleurs spécifiques pour Hermes
+				'hermes-green': '#c1ff00', // Vert citron d'autocar-location
+				'hermes-black': '#000000', // Noir de fond
+				'hermes-white': '#FFFFFF'  // Blanc pour les textes
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

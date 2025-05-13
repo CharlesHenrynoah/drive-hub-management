@@ -21,7 +21,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <Car className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">DriveHub</h1>
+            <h1 className="text-lg font-bold text-sidebar-foreground">Hermes</h1>
             <p className="text-xs text-sidebar-foreground/60">Gestion de flotte</p>
           </div>
         </div>
@@ -80,11 +80,11 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="px-4 py-4">
         <div className="text-xs text-sidebar-foreground/60">
-          {/* DriveHub Management text removed */}
+          {/* Footer content removed */}
         </div>
       </SidebarFooter>
       {/* Repositioned sidebar trigger button to bottom left */}
-      <SidebarTrigger className="fixed bottom-4 left-4 z-50 h-10 w-10 bg-white dark:bg-gray-800 shadow-md rounded-full flex items-center justify-center" />
+      <SidebarTrigger className="fixed bottom-4 left-4 z-50 h-10 w-10 bg-black dark:bg-black shadow-md rounded-full flex items-center justify-center" />
     </Sidebar>
   );
 }

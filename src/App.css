@@ -46,14 +46,15 @@
   background-color: var(--background) !important;
   border-radius: 50% !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
-  transition: transform 0.2s ease-in-out !important;
+  transition: none !important;
   position: fixed !important;
   bottom: 1rem !important;
   left: 1rem !important;
 }
 
+/* Remove hover effect */
 [data-sidebar="trigger"]:hover {
-  transform: scale(1.05) !important;
+  transform: none !important;
 }
 
 .logo {
