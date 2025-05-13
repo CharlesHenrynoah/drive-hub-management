@@ -102,15 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log(`Tentative de connexion avec: ${email}, rôle: ${role || "manager"}`);
       
-      // Fix: Pass user role via the proper Supabase API structure
+      // Pass user role directly in the signInWithPassword call - without options.data
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: {
-          data: {
-            role: role || "manager"
-          }
-        }
+        password
       });
       
       if (error) {
@@ -121,7 +116,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         console.log("Connexion réussie:", data.user);
         
-        const userRole = data.user.user_metadata?.role || role || "manager";
+        // Update user metadata with role after successful login
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { role: role || "manager" }
+        });
+        
+        if (updateError) {
+          console.error("Erreur lors de la mise à jour du rôle:", updateError);
+        }
+        
+        const userRole = role || "manager";
         
         // Rediriger en fonction du rôle
         if (userRole === "admin") {
