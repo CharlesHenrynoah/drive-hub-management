@@ -41,6 +41,39 @@ interface NewMissionFormProps {
   onCancel: () => void;
 }
 
+// Define types for our data to avoid circular references
+interface Driver {
+  id: string;
+  nom: string;
+  prenom: string;
+  disponible: boolean;
+}
+
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  registration: string;
+  disponible: boolean;
+}
+
+interface Fleet {
+  id: string;
+  name: string;
+  company_id: string;
+  description?: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
+}
+
+// Combined type for fleet with company name
+interface FleetWithCompany extends Fleet {
+  company_name?: string;
+}
+
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
@@ -57,21 +90,50 @@ const formSchema = z.object({
   status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
 });
 
-// Fetch fleets from Supabase
-const fetchFleets = async () => {
-  const { data, error } = await supabase
+// Fetch fleets from Supabase with company names
+const fetchFleetsWithCompanies = async (): Promise<FleetWithCompany[]> => {
+  // First fetch fleets
+  const { data: fleets, error } = await supabase
     .from('fleets')
     .select('*');
   
   if (error) throw error;
-  return data || [];
+  if (!fleets) return [];
+  
+  // Get all unique company IDs
+  const companyIds = [...new Set(fleets.map(fleet => fleet.company_id))];
+  
+  // Fetch companies
+  const { data: companies, error: companiesError } = await supabase
+    .from('companies')
+    .select('id, name')
+    .in('id', companyIds);
+    
+  if (companiesError) {
+    console.error('Error fetching companies:', companiesError);
+    return fleets;
+  }
+  
+  // Create a lookup map for companies
+  const companyMap = new Map();
+  companies?.forEach(company => {
+    companyMap.set(company.id, company.name);
+  });
+  
+  // Combine fleet with company name
+  const fleetsWithCompanies = fleets.map(fleet => ({
+    ...fleet,
+    company_name: companyMap.get(fleet.company_id) || 'Entreprise inconnue'
+  }));
+  
+  return fleetsWithCompanies;
 };
 
 // Fetch drivers based on fleet
-const fetchDriversByFleet = async (fleetId: string) => {
+const fetchDriversByFleet = async (fleetId: string): Promise<Driver[]> => {
   if (!fleetId) return [];
   
-  // Fix: Use a more direct approach to get available drivers in the fleet
+  // Get available drivers in the fleet
   const { data, error } = await supabase
     .from('fleet_drivers')
     .select('driver_id')
@@ -98,7 +160,7 @@ const fetchDriversByFleet = async (fleetId: string) => {
 };
 
 // Fetch vehicles based on fleet
-const fetchVehiclesByFleet = async (fleetId: string) => {
+const fetchVehiclesByFleet = async (fleetId: string): Promise<Vehicle[]> => {
   if (!fleetId) return [];
   
   const { data, error } = await supabase
@@ -125,7 +187,7 @@ const fetchVehiclesByFleet = async (fleetId: string) => {
   return vehicles || [];
 };
 
-// Fetch company info for a fleet (simplified to avoid recursive type issues)
+// Fetch company info for a fleet
 const fetchCompanyForFleet = async (fleetId: string): Promise<string | null> => {
   if (!fleetId) return null;
   
@@ -167,10 +229,10 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     },
   });
 
-  // Query for fleets
+  // Query for fleets with company names
   const { data: fleets = [] } = useQuery({
-    queryKey: ['fleets'],
-    queryFn: fetchFleets,
+    queryKey: ['fleets-with-companies'],
+    queryFn: fetchFleetsWithCompanies,
   });
 
   // Query for drivers based on selected fleet
@@ -301,7 +363,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <SelectContent className="max-h-[200px] overflow-y-auto">
                   {fleets.map((fleet) => (
                     <SelectItem key={fleet.id} value={fleet.id}>
-                      {fleet.name}
+                      {fleet.name} - {fleet.company_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
