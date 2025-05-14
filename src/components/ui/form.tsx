@@ -40,7 +40,17 @@ const FormField = <
   )
 }
 
-const useFormField = () => {
+// Define a type for the return value of useFormField
+type FormFieldInfo = {
+  id?: string;
+  name?: string;
+  formItemId?: string;
+  formDescriptionId?: string;
+  formMessageId?: string;
+  error?: { message?: string };
+}
+
+const useFormField = (): FormFieldInfo => {
   const fieldContext = React.useContext(FormFieldContext)
   const itemContext = React.useContext(FormItemContext)
   const formContext = useFormContext()
@@ -53,6 +63,7 @@ const useFormField = () => {
       formItemId: itemContext?.id ? `${itemContext.id}-form-item` : undefined,
       formDescriptionId: itemContext?.id ? `${itemContext.id}-form-item-description` : undefined,
       formMessageId: itemContext?.id ? `${itemContext.id}-form-item-message` : undefined,
+      error: undefined,
     }
   }
   
@@ -64,6 +75,7 @@ const useFormField = () => {
       formItemId: itemContext?.id ? `${itemContext.id}-form-item` : undefined,
       formDescriptionId: itemContext?.id ? `${itemContext.id}-form-item-description` : undefined,
       formMessageId: itemContext?.id ? `${itemContext.id}-form-item-message` : undefined,
+      error: undefined,
     }
   }
 
