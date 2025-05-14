@@ -1,10 +1,10 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { toast } from "@/components/ui/sonner";
 
 const ChatbotOtto = () => {
   const [messages, setMessages] = useState<{ text: string; isUser: boolean }[]>([
@@ -15,27 +15,77 @@ const ChatbotOtto = () => {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [showChat, setShowChat] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const location = useLocation();
+  
+  // Use the initial message from the landing page if provided
+  useEffect(() => {
+    if (location.state?.initialMessage) {
+      setInputValue(location.state.initialMessage);
+      // If we have an initial message, submit it automatically
+      handleSubmitWithAPI(location.state.initialMessage);
+    }
+  }, [location.state]);
+
+  const fetchGeminiResponse = async (userMessage: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB_lBRH0ja-p9-8Xzvzv8RfTU6z5QHKRWs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ 
+              text: `Tu es Otto, un assistant virtuel spécialisé dans les locations d'autocars pour autocar-location.com. 
+              Réponds en français à cette demande concernant la location d'autocar: ${userMessage}` 
+            }]
+          }]
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error("Format de réponse inattendu");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la communication avec l'API Gemini:", error);
+      return "Désolé, je rencontre des difficultés techniques. Pouvez-vous reformuler votre question?";
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitWithAPI = async (message: string = inputValue) => {
+    if (!message.trim()) return;
+
+    // Add user message to chat
+    setMessages((prev) => [...prev, { text: message, isUser: true }]);
+    setShowChat(true);
+    setInputValue("");
+    
+    try {
+      // Get AI response
+      const aiResponse = await fetchGeminiResponse(message);
+      
+      // Add AI response to chat
+      setMessages((prev) => [
+        ...prev,
+        { text: aiResponse, isUser: false }
+      ]);
+    } catch (error) {
+      toast.error("Erreur lors de la communication avec Otto");
+      console.error(error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
-
-    // Ajouter le message de l'utilisateur
-    setMessages((prev) => [...prev, { text: inputValue, isUser: true }]);
-    setShowChat(true);
-    
-    // Simuler une réponse du chatbot après un court délai
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: "Merci pour votre demande. Je recherche les meilleures options pour votre trajet. Pouvez-vous me donner plus de détails sur votre déplacement comme la date et le nombre de personnes ?",
-          isUser: false,
-        },
-      ]);
-    }, 1000);
-
-    setInputValue("");
+    handleSubmitWithAPI();
   };
 
   return (
@@ -74,6 +124,17 @@ const ChatbotOtto = () => {
             </div>
           </div>
         ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-white shadow-sm text-gray-800 max-w-3/4 rounded-lg p-4">
+              <div className="flex space-x-2">
+                <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Area */}
@@ -89,8 +150,9 @@ const ChatbotOtto = () => {
             <Button 
               type="submit" 
               className="w-full md:w-auto bg-hermes-green text-black hover:bg-hermes-green/80"
+              disabled={isLoading}
             >
-              Chercher
+              {isLoading ? "Chargement..." : "Chercher"}
             </Button>
           </div>
         ) : (
@@ -100,8 +162,14 @@ const ChatbotOtto = () => {
               placeholder="Posez une question à Otto..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              disabled={isLoading}
             />
-            <Button type="submit" size="icon" className="bg-hermes-green hover:bg-hermes-green/80">
+            <Button 
+              type="submit" 
+              size="icon" 
+              className="bg-hermes-green hover:bg-hermes-green/80"
+              disabled={isLoading}
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>

@@ -1,182 +1,251 @@
-import React from 'react';
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { MissionAPIDoc } from "@/docs/MissionAPIDoc";
-import { AuthProvider } from "@/hooks/useAuth";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, FileText, Code, Globe } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useEffect } from "react";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Calendar } from "@/components/ui/calendar"
+import { CalendarIcon } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { DateRange } from "react-day-picker"
+import { addDays } from "date-fns";
 
-export default function MissionsAPI() {
+type Mission = {
+  id: number;
+  created_at: string;
+  start_date: string;
+  end_date: string;
+  driver_id: number;
+  vehicle_id: number;
+  status: string;
+  details: string;
+};
+
+const MissionsAPI = () => {
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date("2023-01-01"));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: new Date("2023-01-01"),
+    to: new Date(),
+  })
+  const [driverId, setDriverId] = useState<number | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const { toast } = useToast()
+
+  useEffect(() => {
+    fetchMissions();
+  }, [startDate, endDate, driverId, status]);
+
+  const fetchMissions = async () => {
+    let url = `/rest/v1/missions?select=*`;
+
+    if (driverId) {
+      url += `&driver_id=eq.${driverId}`;
+    }
+
+    if (status) {
+      url += `&status=eq.${status}`;
+    }
+
+    if (startDate && endDate) {
+      const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+      const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+      // url += `&start_date=gte.${formattedStartDate}&end_date=lte.${formattedEndDate}`;
+      url += `&start_date=gte.${formattedStartDate}&end_date=lte.${formattedEndDate}`;
+    }
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setMissions(data);
+    } catch (error) {
+      console.error("Could not fetch missions", error);
+      toast({
+        title: "Erreur!",
+        description: "Could not fetch missions",
+      })
+    }
+  };
+
+  const handleDateChange = (newDate: DateRange | undefined) => {
+    setDate(newDate);
+    if (newDate?.from) {
+      setStartDate(newDate.from);
+    }
+    if (newDate?.to) {
+      setEndDate(newDate.to);
+    }
+  };
+
   return (
-    <AuthProvider>
-      <DashboardLayout>
-        <div className="w-full max-w-full overflow-hidden">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <h1 className="text-2xl font-bold truncate">API de gestion des ressources</h1>
-          </div>
-          
-          <Alert className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Important</AlertTitle>
-            <AlertDescription>
-              Cette API permet d'interagir avec votre système via des requêtes HTTPS externes. 
-              Vous pouvez consulter, récupérer des ressources et créer des missions.
-              Assurez-vous de sécuriser votre clé API et de ne la partager qu'avec des services autorisés.
-            </AlertDescription>
-          </Alert>
-          
-          <Tabs defaultValue="missions" className="mb-6">
-            <TabsList className="grid grid-cols-3 w-full max-w-md">
-              <TabsTrigger value="missions" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span>Missions</span>
-              </TabsTrigger>
-              <TabsTrigger value="resources" className="flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                <span>Ressources</span>
-              </TabsTrigger>
-              <TabsTrigger value="integration" className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                <span>Intégration</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="missions" className="mt-6">
-              <MissionAPIDoc />
-            </TabsContent>
-            
-            <TabsContent value="resources" className="mt-6 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>API des ressources disponibles</CardTitle>
-                  <CardDescription>
-                    Accédez aux informations sur vos chauffeurs, véhicules et flottes
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Chauffeurs disponibles</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Récupérez la liste des chauffeurs disponibles à une date spécifique
-                    </p>
-                    <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                      GET https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=YYYY-MM-DD
-                    </pre>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Véhicules disponibles</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Récupérez la liste des véhicules disponibles avec filtrage optionnel
-                    </p>
-                    <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                      GET https://nsfphygihklucqjiwngl.supabase.co/functions/v1/vehicles-available?date=YYYY-MM-DD&type=TYPE&fleet_id=FLEET_ID
-                    </pre>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Les paramètres type et fleet_id sont optionnels
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">Véhicules par flotte</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Récupérez tous les véhicules d'une flotte spécifique
-                    </p>
-                    <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                      GET https://nsfphygihklucqjiwngl.supabase.co/functions/v1/fleets/{"{"}fleet_id{"}"}/vehicles
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="integration" className="mt-6 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Guide d'intégration</CardTitle>
-                  <CardDescription>
-                    Comment intégrer l'API dans votre application externe
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Authentification</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Toutes les requêtes à l'API nécessitent un token d'authentification valide. 
-                        Ce token doit être inclus dans l'en-tête d'autorisation de chaque requête.
-                      </p>
-                      <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                        Authorization: Bearer YOUR_API_TOKEN
-                      </pre>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Les tokens API peuvent être générés et gérés dans la section Admin > API de l'application.
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Formats de données</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        L'API utilise le format JSON pour toutes les requêtes et réponses.
-                        Assurez-vous d'inclure l'en-tête Content-Type approprié pour les requêtes POST.
-                      </p>
-                      <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                        Content-Type: application/json
-                      </pre>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Gestion des erreurs</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        En cas d'erreur, l'API renvoie un code d'état HTTP approprié et un objet JSON 
-                        contenant des détails sur l'erreur.
-                      </p>
-                      <ScrollArea className="h-[200px] rounded-md border p-4">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-muted">
-                              <th className="border p-2 text-left">Code HTTP</th>
-                              <th className="border p-2 text-left">Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td className="border p-2 font-medium">200/201</td>
-                              <td className="border p-2">Requête réussie</td>
-                            </tr>
-                            <tr>
-                              <td className="border p-2 font-medium">400</td>
-                              <td className="border p-2">Requête incorrecte (paramètres manquants ou invalides)</td>
-                            </tr>
-                            <tr>
-                              <td className="border p-2 font-medium">401</td>
-                              <td className="border p-2">Authentification manquante ou invalide</td>
-                            </tr>
-                            <tr>
-                              <td className="border p-2 font-medium">404</td>
-                              <td className="border p-2">Ressource non trouvée</td>
-                            </tr>
-                            <tr>
-                              <td className="border p-2 font-medium">405</td>
-                              <td className="border p-2">Méthode non autorisée</td>
-                            </tr>
-                            <tr>
-                              <td className="border p-2 font-medium">500</td>
-                              <td className="border p-2">Erreur serveur interne</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </ScrollArea>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </DashboardLayout>
-    </AuthProvider>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Missions Data</h1>
+
+      {/* Filters */}
+      <div className="mb-4 flex space-x-2">
+        {/* Date Range Picker */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={"outline"}
+              className={cn(
+                "w-[200px] justify-start text-left font-normal",
+                !date?.from && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date?.from ? (
+                date.to ? (
+                  `${format(date.from, "LLL dd, yyyy")} - ${format(
+                    date.to,
+                    "LLL dd, yyyy"
+                  )}`
+                ) : (
+                  format(date.from, "LLL dd, yyyy")
+                )
+              ) : (
+                <span>Pick a date</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="center">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={handleDateChange}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Driver ID Filter */}
+        <Input
+          type="number"
+          placeholder="Driver ID"
+          className="w-24"
+          onChange={(e) => setDriverId(Number(e.target.value) || null)}
+        />
+
+        {/* Status Filter */}
+        <Select onValueChange={(value) => setStatus(value)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Fetch Missions Button */}
+        <Button onClick={fetchMissions}>Fetch Missions</Button>
+      </div>
+
+      {/* Missions Table */}
+      <div className="overflow-x-auto">
+        <Table>
+          <TableCaption>A list of your missions.</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">ID</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Start Date</TableHead>
+              <TableHead>End Date</TableHead>
+              <TableHead>Driver ID</TableHead>
+              <TableHead>Vehicle ID</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Details</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {missions.map((mission) => (
+              <TableRow key={mission.id}>
+                <TableCell className="font-medium">{mission.id}</TableCell>
+                <TableCell>{mission.created_at}</TableCell>
+                <TableCell>{mission.start_date}</TableCell>
+                <TableCell>{mission.end_date}</TableCell>
+                <TableCell>{mission.driver_id}</TableCell>
+                <TableCell>{mission.vehicle_id}</TableCell>
+                <TableCell>{mission.status}</TableCell>
+                <TableCell>{mission.details}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Example API Usage Instructions */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-2">API Usage Example</h2>
+        <p className="mb-2">
+          You can directly query the Supabase API to fetch missions with
+          specific filters. Here are some example queries:
+        </p>
+        <ul className="list-disc pl-5">
+          <li>
+            Fetch all missions:
+            <code>GET /rest/v1/missions?select=*</code>
+          </li>
+          <li>
+            Fetch missions for a specific driver:
+            <code>GET /rest/v1/missions?select=*&driver_id=eq.123</code>
+          </li>
+          <li>
+            Fetch missions with a specific status:
+            <code>GET /rest/v1/missions?select=*&status=eq.pending</code>
+          </li>
+          <li>
+            Fetch missions within a date range:
+            <code>GET /rest/v1/missions?select=*&start_date=gte.2023-01-01&end_date=lte.2023-01-31</code>
+          </li>
+          <li>
+            Fetch missions for a specific driver with missions starting after a certain date:
+            <code>GET /rest/v1/missions?select=*&driver_id=eq.123&start_date=gte.2023-01-01</code>
+          </li>
+          <li>
+            Fetch missions with a start date greater than or equal to a certain date:
+            <code>GET /rest/v1/missions?select=*&driver_id=eq.123&status=eq.{"\u003E":'2023-01-01'}</code>
+          </li>
+        </ul>
+        <p className="mt-2">
+          Remember to include the <code>apikey</code> and{" "}
+          <code>Authorization</code> headers with your Supabase API key.
+        </p>
+      </div>
+    </div>
   );
-}
+};
+
+export default MissionsAPI;
