@@ -28,6 +28,8 @@ import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Driver } from "@/types/driver";
+import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
+import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
 
 // Schéma de validation pour le formulaire d'édition de chauffeur
 const driverFormSchema = z.object({
@@ -56,6 +58,8 @@ interface EditDriverFormProps {
 
 export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditDriverFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { vehicleTypes, updateVehicleTypes } = useDriverVehicleTypes(driver.ID_Chauffeur);
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>(vehicleTypes || []);
 
   const form = useForm<z.infer<typeof driverFormSchema>>({
     resolver: zodResolver(driverFormSchema),
@@ -115,6 +119,9 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
       if (updateError) {
         throw new Error("Erreur lors de la mise à jour du chauffeur");
       }
+
+      // Mise à jour des types de véhicules
+      updateVehicleTypes(selectedVehicleTypes);
 
       toast.success("Chauffeur mis à jour avec succès");
       onSuccess();
@@ -287,6 +294,15 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
             </FormItem>
           )}
         />
+
+        <div className="space-y-2">
+          <FormLabel>Types de véhicules (max 6)</FormLabel>
+          <VehicleTypeSelector 
+            selectedTypes={selectedVehicleTypes} 
+            onChange={setSelectedVehicleTypes} 
+            maxSelections={6} 
+          />
+        </div>
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" type="button" onClick={onCancel}>

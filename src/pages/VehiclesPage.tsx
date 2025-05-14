@@ -11,8 +11,10 @@ export default function VehiclesPage() {
       <DashboardLayout>
         <div className="w-full max-w-full overflow-hidden">
           <h1 className="text-2xl font-bold mb-6 truncate">Gestion des véhicules</h1>
-          <ScrollArea className="w-full">
-            <VehiclesManagement />
+          <ScrollArea className="w-full h-[calc(100vh-160px)]">
+            <div className="pr-4 pb-8">
+              <VehiclesManagement />
+            </div>
           </ScrollArea>
         </div>
       </DashboardLayout>

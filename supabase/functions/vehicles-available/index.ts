@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
     const dateParam = url.searchParams.get('date');
     const typeParam = url.searchParams.get('type');
     const fleetIdParam = url.searchParams.get('fleet_id');
+    const vehicleTypeParam = url.searchParams.get('vehicle_type'); // Nouveau paramètre pour filtrer par type énuméré
     
     const searchDate = dateParam ? new Date(dateParam) : new Date();
     
@@ -42,11 +43,17 @@ Deno.serve(async (req) => {
     // Construire la requête pour récupérer les véhicules
     let query = supabase
       .from('vehicles')
-      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status')
+      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status, vehicle_type')
       .eq('status', 'Disponible');
       
+    // Filtrer par type classique (champ 'type')
     if (typeParam) {
       query = query.eq('type', typeParam);
+    }
+    
+    // Filtrer par type énuméré (nouveau champ 'vehicle_type')
+    if (vehicleTypeParam) {
+      query = query.eq('vehicle_type', vehicleTypeParam);
     }
     
     // Si un fleet_id est fourni, filtrer par flotte
@@ -101,12 +108,31 @@ Deno.serve(async (req) => {
     const busyVehicleIds = missions.map(mission => mission.vehicle_id);
     const availableVehicles = allVehicles.filter(vehicle => !busyVehicleIds.includes(vehicle.id));
     
+    // Récupérer les informations sur les types de véhicules standardisés
+    const { data: vehicleTypes, error: vehicleTypesError } = await supabase
+      .from('vehicle_types')
+      .select('*');
+    
+    if (vehicleTypesError) {
+      throw new Error(`Erreur lors de la récupération des types de véhicules: ${vehicleTypesError.message}`);
+    }
+    
+    // Enrichir les données des véhicules avec les informations de type
+    const enrichedVehicles = availableVehicles.map(vehicle => {
+      const vehicleTypeInfo = vehicleTypes?.find(vt => vt.type === vehicle.vehicle_type);
+      return {
+        ...vehicle,
+        vehicle_type_info: vehicleTypeInfo || null
+      };
+    });
+    
     return new Response(
       JSON.stringify({ 
         date: formattedDate,
         type: typeParam || 'all',
+        vehicle_type: vehicleTypeParam || 'all',
         fleet_id: fleetIdParam || null,
-        vehicles: availableVehicles
+        vehicles: enrichedVehicles
       }),
       {
         status: 200,

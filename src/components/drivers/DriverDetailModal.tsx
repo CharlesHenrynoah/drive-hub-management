@@ -11,6 +11,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { EditDriverForm } from "./EditDriverForm";
 import { Pencil } from "lucide-react";
+import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
+import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -20,6 +22,13 @@ interface DriverDetailModalProps {
 
 export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: DriverDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingVehicleTypes, setIsEditingVehicleTypes] = useState(false);
+  const { 
+    vehicleTypes, 
+    isLoading: isLoadingVehicleTypes, 
+    updateVehicleTypes,
+    isUpdating
+  } = useDriverVehicleTypes(driver.ID_Chauffeur);
 
   // Format date if it's a string
   const formatDate = (date: Date | string) => {
@@ -46,6 +55,11 @@ export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: D
     if (onDriverUpdated) {
       onDriverUpdated();
     }
+  };
+
+  const handleSaveVehicleTypes = (selectedTypes: string[]) => {
+    updateVehicleTypes(selectedTypes);
+    setIsEditingVehicleTypes(false);
   };
 
   if (isEditing) {
@@ -180,6 +194,67 @@ export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: D
         </div>
         
         <div className="space-y-4">
+          <div>
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-medium text-muted-foreground">Types de véhicules</h3>
+              {!isEditingVehicleTypes && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsEditingVehicleTypes(true)}
+                  className="h-7 px-2"
+                >
+                  Modifier
+                </Button>
+              )}
+            </div>
+            <Separator className="my-2" />
+            
+            {isEditingVehicleTypes ? (
+              <div className="space-y-4">
+                <VehicleTypeSelector
+                  selectedTypes={vehicleTypes}
+                  onChange={handleSaveVehicleTypes}
+                  maxSelections={6}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsEditingVehicleTypes(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleSaveVehicleTypes(vehicleTypes)}
+                    disabled={isUpdating}
+                  >
+                    Enregistrer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="pt-1">
+                {isLoadingVehicleTypes ? (
+                  <div className="text-sm text-muted-foreground">Chargement des types...</div>
+                ) : vehicleTypes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {vehicleTypes.map((type) => (
+                      <Badge key={type} variant="outline" className="bg-secondary">
+                        {type}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    Aucun type de véhicule assigné
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">Missions futures</h3>
             <Separator className="my-2" />

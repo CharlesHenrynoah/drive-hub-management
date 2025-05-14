@@ -98,6 +98,35 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_vehicle_types: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicle_types_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           certificat_medical: string
@@ -330,6 +359,36 @@ export type Database = {
           },
         ]
       }
+      vehicle_types: {
+        Row: {
+          capacity_max: number
+          capacity_min: number
+          created_at: string
+          description: string
+          id: number
+          image_url: string | null
+          type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Insert: {
+          capacity_max: number
+          capacity_min: number
+          created_at?: string
+          description: string
+          id?: number
+          image_url?: string | null
+          type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Update: {
+          capacity_max?: number
+          capacity_min?: number
+          created_at?: string
+          description?: string
+          id?: number
+          image_url?: string | null
+          type?: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Relationships: []
+      }
       vehicles: {
         Row: {
           brand: string
@@ -348,6 +407,7 @@ export type Database = {
           status: string | null
           type: string
           updated_at: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"] | null
           year: number | null
         }
         Insert: {
@@ -367,6 +427,7 @@ export type Database = {
           status?: string | null
           type: string
           updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"] | null
           year?: number | null
         }
         Update: {
@@ -386,6 +447,7 @@ export type Database = {
           status?: string | null
           type?: string
           updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"] | null
           year?: number | null
         }
         Relationships: []
@@ -398,7 +460,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      vehicle_type:
+        | "Minibus"
+        | "Minicar"
+        | "Autocar Standard"
+        | "Autocar Grand Tourisme"
+        | "Berline"
+        | "Van"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -513,6 +581,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      vehicle_type: [
+        "Minibus",
+        "Minicar",
+        "Autocar Standard",
+        "Autocar Grand Tourisme",
+        "Berline",
+        "Van",
+      ],
+    },
   },
 } as const
