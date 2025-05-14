@@ -6,6 +6,18 @@ enabled = true
 port = 54321
 schemas = ["public", "storage", "graphql_public"]
 
-# Déclarer la fonction create-mission
+# Déclarer les fonctions
 [functions.create-mission]
+verify_jwt = false
+
+[functions.api-auth]
+verify_jwt = false
+
+[functions.drivers-available]
+verify_jwt = false
+
+[functions.vehicles-available]
+verify_jwt = false
+
+[functions.fleets-vehicles]
 verify_jwt = false

@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Shield, Users, Settings, Database, Mail, ChartBar } from "lucide-react";
+import { Shield, KeyRound } from "lucide-react";
 
 export function AdminSidebar() {
   const location = useLocation();
@@ -30,40 +30,8 @@ export function AdminSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link to="/admin" className={location.pathname === "/admin" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <ChartBar className="h-5 w-5" />
-                <span>Tableau de bord</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/admin/utilisateurs" className={location.pathname === "/admin/utilisateurs" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <Users className="h-5 w-5" />
-                <span>Utilisateurs</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/admin/parametres" className={location.pathname === "/admin/parametres" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <Settings className="h-5 w-5" />
-                <span>Paramètres</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/admin/donnees" className={location.pathname === "/admin/donnees" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <Database className="h-5 w-5" />
-                <span>Base de données</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/admin/communication" className={location.pathname === "/admin/communication" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <Mail className="h-5 w-5" />
-                <span>Communication</span>
+                <KeyRound className="h-5 w-5" />
+                <span>Gestion API</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

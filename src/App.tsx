@@ -16,11 +16,7 @@ import MissionsPage from "./pages/MissionsPage";
 import MissionsAPI from "./pages/MissionsAPI";
 
 // Import des pages d'administration spécifiques
-import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import AdminUsersPage from "./pages/admin/AdminUsersPage";
-import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
-import AdminDatabasePage from "./pages/admin/AdminDatabasePage";
-import AdminCommunicationPage from "./pages/admin/AdminCommunicationPage";
+import AdminApiPage from "./pages/admin/AdminApiPage";
 
 const queryClient = new QueryClient();
 
@@ -40,12 +36,8 @@ const App = () => (
             <Route path="/missions" element={<ProtectedRoute><MissionsPage /></ProtectedRoute>} />
             <Route path="/api-missions" element={<ProtectedRoute><MissionsAPI /></ProtectedRoute>} />
             
-            {/* Routes d'administration avec des pages spécifiques */}
-            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboardPage /></ProtectedRoute>} />
-            <Route path="/admin/utilisateurs" element={<ProtectedRoute requiredRole="admin"><AdminUsersPage /></ProtectedRoute>} />
-            <Route path="/admin/parametres" element={<ProtectedRoute requiredRole="admin"><AdminSettingsPage /></ProtectedRoute>} />
-            <Route path="/admin/donnees" element={<ProtectedRoute requiredRole="admin"><AdminDatabasePage /></ProtectedRoute>} />
-            <Route path="/admin/communication" element={<ProtectedRoute requiredRole="admin"><AdminCommunicationPage /></ProtectedRoute>} />
+            {/* Nouvelle route d'administration */}
+            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminApiPage /></ProtectedRoute>} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
