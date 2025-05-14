@@ -18,7 +18,7 @@ interface DatePickerProps {
   setDate: (date: Date | undefined) => void
   placeholder?: string
   disabled?: boolean
-  className?: string // Added className prop
+  className?: string
 }
 
 export function DatePicker({ 
@@ -35,7 +35,7 @@ export function DatePicker({
           <Button
             variant={"outline"}
             className={cn(
-              "w-full pl-3 text-left font-normal",
+              "w-full pl-3 text-left font-normal border-dashed border-gray-300 min-h-10",
               !date && "text-muted-foreground",
               className
             )}
@@ -52,6 +52,7 @@ export function DatePicker({
           selected={date}
           onSelect={setDate}
           initialFocus
+          className="pointer-events-auto"
         />
       </PopoverContent>
     </Popover>
