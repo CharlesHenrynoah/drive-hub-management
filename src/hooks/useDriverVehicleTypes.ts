@@ -2,6 +2,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
+
+// Définir le type VehicleType basé sur l'enum de la base de données
+type VehicleType = Database["public"]["Enums"]["vehicle_type"];
 
 export function useDriverVehicleTypes(driverId?: string) {
   const queryClient = useQueryClient();
@@ -41,9 +45,10 @@ export function useDriverVehicleTypes(driverId?: string) {
       
       // Créer les nouvelles associations
       if (vehicleTypes.length > 0) {
+        // Convertir les strings en valeurs de l'enum
         const newAssociations = vehicleTypes.map(type => ({
           driver_id: driverId,
-          vehicle_type: type
+          vehicle_type: type as VehicleType
         }));
         
         const { error: insertError } = await supabase
