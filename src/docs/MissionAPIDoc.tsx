@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 export function MissionAPIDoc() {
   return (
@@ -15,15 +16,16 @@ export function MissionAPIDoc() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="docs" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="docs">Documentation</TabsTrigger>
             <TabsTrigger value="examples">Exemples</TabsTrigger>
+            <TabsTrigger value="responses">Réponses & Erreurs</TabsTrigger>
           </TabsList>
           
           <TabsContent value="docs" className="space-y-4">
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Endpoint</h3>
-              <p className="text-sm text-muted-foreground font-mono">
+              <p className="text-sm text-muted-foreground font-mono break-all">
                 POST https://nsfphygihklucqjiwngl.supabase.co/functions/v1/create-mission
               </p>
             </div>
@@ -63,6 +65,51 @@ Authorization: Bearer VOTRE_CLE_API`}
             </div>
             
             <div className="space-y-2">
+              <h3 className="text-lg font-medium">Champs disponibles</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="text-md font-medium">Informations principales</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li><span className="font-semibold">title</span> <Badge variant="outline">Requis</Badge> - Titre de la mission</li>
+                    <li><span className="font-semibold">date</span> <Badge variant="outline">Requis</Badge> - Date et heure de départ</li>
+                    <li><span className="font-semibold">arrival_date</span> - Date et heure d'arrivée estimée</li>
+                    <li><span className="font-semibold">description</span> - Description générale</li>
+                    <li><span className="font-semibold">additional_details</span> - Informations supplémentaires</li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-md font-medium">Informations client</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li><span className="font-semibold">client</span> - Nom du client/entreprise</li>
+                    <li><span className="font-semibold">client_email</span> - Email de contact</li>
+                    <li><span className="font-semibold">client_phone</span> - Téléphone de contact</li>
+                    <li><span className="font-semibold">passengers</span> - Nombre de passagers</li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-md font-medium">Localisation</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li><span className="font-semibold">start_location</span> - Lieu de départ</li>
+                    <li><span className="font-semibold">end_location</span> - Lieu d'arrivée</li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-md font-medium">Associations</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li><span className="font-semibold">driver_id</span> - ID du chauffeur assigné</li>
+                    <li><span className="font-semibold">vehicle_id</span> - ID du véhicule assigné</li>
+                    <li><span className="font-semibold">fleet_id</span> - ID de la flotte associée</li>
+                    <li><span className="font-semibold">company_id</span> - ID de l'entreprise cliente</li>
+                    <li><span className="font-semibold">status</span> - État (en_cours, terminee, annulee)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
               <h3 className="text-lg font-medium">Réponse en cas de succès (201 Created)</h3>
               <pre className="bg-muted p-2 rounded-md text-xs">
 {`{
@@ -74,16 +121,6 @@ Authorization: Bearer VOTRE_CLE_API`}
   }
 }`}
               </pre>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="text-lg font-medium">Erreurs possibles</h3>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><span className="font-semibold">400</span> - Données invalides ou incomplètes</li>
-                <li><span className="font-semibold">401</span> - Clé API manquante ou invalide</li>
-                <li><span className="font-semibold">405</span> - Méthode non autorisée (seul POST est accepté)</li>
-                <li><span className="font-semibold">500</span> - Erreur interne du serveur</li>
-              </ul>
             </div>
           </TabsContent>
           
@@ -166,6 +203,74 @@ payload = {
 response = requests.post(url, headers=headers, data=json.dumps(payload))
 print(response.json())`}
               </pre>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="responses" className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">Codes de réponse</h3>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-muted">
+                    <th className="border p-2 text-left">Code HTTP</th>
+                    <th className="border p-2 text-left">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border p-2 font-medium">201</td>
+                    <td className="border p-2">Mission créée avec succès</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-2 font-medium">400</td>
+                    <td className="border p-2">Données invalides ou incomplètes</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-2 font-medium">401</td>
+                    <td className="border p-2">Clé API manquante ou invalide</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-2 font-medium">405</td>
+                    <td className="border p-2">Méthode non autorisée (seul POST est accepté)</td>
+                  </tr>
+                  <tr>
+                    <td className="border p-2 font-medium">500</td>
+                    <td className="border p-2">Erreur interne du serveur</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">Exemples d'erreurs</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-md font-medium">Données manquantes (400)</h4>
+                  <pre className="bg-muted p-2 rounded-md text-xs">
+{`{
+  "error": "Missing required fields: title and date are required"
+}`}
+                  </pre>
+                </div>
+                
+                <div>
+                  <h4 className="text-md font-medium">Authentification invalide (401)</h4>
+                  <pre className="bg-muted p-2 rounded-md text-xs">
+{`{
+  "error": "Missing or invalid API key"
+}`}
+                  </pre>
+                </div>
+                
+                <div>
+                  <h4 className="text-md font-medium">Erreur de création (400)</h4>
+                  <pre className="bg-muted p-2 rounded-md text-xs">
+{`{
+  "error": "Failed to create mission: [détails de l'erreur]"
+}`}
+                  </pre>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
