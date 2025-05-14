@@ -14,6 +14,7 @@ import DriversPage from "./pages/DriversPage";
 import FleetsPage from "./pages/FleetsPage";
 import MissionsPage from "./pages/MissionsPage";
 import MissionsAPI from "./pages/MissionsAPI";
+import LandingPage from "./pages/LandingPage";
 
 // Import des pages d'administration spécifiques
 import AdminApiPage from "./pages/admin/AdminApiPage";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/flottes" element={<ProtectedRoute><FleetsPage /></ProtectedRoute>} />
             <Route path="/missions" element={<ProtectedRoute><MissionsPage /></ProtectedRoute>} />
             <Route path="/api-missions" element={<ProtectedRoute><MissionsAPI /></ProtectedRoute>} />
+            <Route path="/site-web" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
             
             {/* Nouvelle route d'administration */}
             <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminApiPage /></ProtectedRoute>} />
