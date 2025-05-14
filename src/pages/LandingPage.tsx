@@ -3,8 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const LandingPage = () => {
+  const [searchInput, setSearchInput] = useState("");
+  const navigate = useNavigate();
+
+  const handleSearch = () => {
+    if (searchInput.trim()) {
+      navigate("/chatbotOtto", { state: { initialMessage: searchInput } });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-black">
       {/* Header */}
@@ -39,8 +50,13 @@ const LandingPage = () => {
             <Input 
               className="w-full p-4 mb-4" 
               placeholder="Exemple: Je souhaite effectuer un déplacement de Paris à Lyon le 10 juillet 2025, nous sommes un groupe de 25 personnes..." 
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
-            <Button className="w-full md:w-auto bg-hermes-green text-black hover:bg-hermes-green/80">
+            <Button 
+              className="w-full md:w-auto bg-hermes-green text-black hover:bg-hermes-green/80"
+              onClick={handleSearch}
+            >
               Chercher
             </Button>
           </div>
@@ -249,7 +265,10 @@ const LandingPage = () => {
           </div>
 
           <div className="text-center mt-8">
-            <Button className="bg-gray-800 hover:bg-gray-700 text-white">
+            <Button 
+              className="bg-gray-800 hover:bg-gray-700 text-white"
+              onClick={() => navigate("/chatbotOtto")}
+            >
               <MessageSquare className="mr-2 h-4 w-4" />
               Discuter avec Otto
             </Button>
