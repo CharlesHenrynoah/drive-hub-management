@@ -237,7 +237,7 @@ const MissionsAPI = () => {
           </li>
           <li>
             Fetch missions with a start date greater than or equal to a certain date:
-            <code>GET /rest/v1/missions?select=*&driver_id=eq.123&status=eq.{"gt":"2023-01-01"}</code>
+            <code>GET /rest/v1/missions?select=*&driver_id=eq.123&status=eq.{'{gt:"2023-01-01"}'}</code>
           </li>
         </ul>
         <p className="mt-2">
