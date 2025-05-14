@@ -2,17 +2,160 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare } from "lucide-react";
+import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { DatePicker } from "@/components/ui/date-picker";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+
+interface Fleet {
+  id: string;
+  name: string;
+  description?: string;
+  company_name?: string;
+}
+
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  type: string;
+  capacity: number;
+  registration: string;
+  photo_url?: string;
+}
+
+interface Driver {
+  id: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  photo?: string;
+}
+
+interface FleetRecommendation {
+  fleet: Fleet;
+  availableDrivers: Driver[];
+  availableVehicles: Vehicle[];
+}
 
 const LandingPage = () => {
-  const [searchInput, setSearchInput] = useState("");
+  const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date());
+  const [passengerCount, setPassengerCount] = useState<string>("20");
+  const [departure, setDeparture] = useState<string>("");
+  const [destination, setDestination] = useState<string>("");
+  const [additionalInfo, setAdditionalInfo] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [recommendations, setRecommendations] = useState<FleetRecommendation[]>([]);
+  const [searchPerformed, setSearchPerformed] = useState<boolean>(false);
+  
   const navigate = useNavigate();
 
-  const handleSearch = () => {
-    if (searchInput.trim()) {
-      navigate("/chatbotOtto", { state: { initialMessage: searchInput } });
+  const handleChatWithOtto = () => {
+    const message = `Je souhaite effectuer un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes. ${additionalInfo}`;
+    navigate("/chatbotOtto", { state: { initialMessage: message } });
+  };
+
+  const handleSearch = async () => {
+    if (!departureDate) {
+      toast.error("Veuillez sélectionner une date de départ");
+      return;
+    }
+
+    setLoading(true);
+    setSearchPerformed(true);
+    
+    try {
+      // Formatage de la date pour l'API
+      const formattedDate = format(departureDate, "yyyy-MM-dd");
+      
+      // 1. Récupérer les chauffeurs disponibles à cette date
+      const driversResponse = await fetch(
+        `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=${formattedDate}`, 
+        {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
+          }
+        }
+      );
+      
+      if (!driversResponse.ok) throw new Error("Échec de récupération des chauffeurs disponibles");
+      const driversData = await driversResponse.json();
+      const availableDrivers = driversData.drivers || [];
+      
+      // 2. Récupérer les flottes et leurs véhicules
+      const { data: fleets, error: fleetError } = await supabase
+        .from('fleets')
+        .select('id, name, description, company_id');
+      
+      if (fleetError) throw fleetError;
+      
+      // 3. Pour chaque flotte, récupérer le nom de l'entreprise et les véhicules
+      const fleetRecommendations: FleetRecommendation[] = [];
+      
+      for (const fleet of fleets) {
+        // Récupérer les véhicules de la flotte
+        const vehiclesResponse = await fetch(
+          `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/fleets-vehicles/${fleet.id}/vehicles`,
+          {
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
+            }
+          }
+        );
+        
+        if (!vehiclesResponse.ok) continue;
+        const vehiclesData = await vehiclesResponse.json();
+        
+        // Récupérer le nom de l'entreprise
+        const { data: company } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', fleet.company_id)
+          .single();
+        
+        // Filtrer les véhicules qui ont une capacité suffisante
+        const filteredVehicles = vehiclesData.vehicles.filter(
+          (v: Vehicle) => v.capacity >= parseInt(passengerCount)
+        );
+        
+        // Récupérer les chauffeurs associés à cette flotte
+        const { data: fleetDriversData } = await supabase
+          .from('fleet_drivers')
+          .select('driver_id')
+          .eq('fleet_id', fleet.id);
+        
+        // Filtrer les chauffeurs disponibles pour cette flotte
+        const fleetDriverIds = fleetDriversData?.map(d => d.driver_id) || [];
+        const fleetAvailableDrivers = availableDrivers.filter(
+          (driver: Driver) => fleetDriverIds.includes(driver.id)
+        );
+        
+        // Ajouter la recommandation seulement si nous avons des véhicules et des chauffeurs disponibles
+        if (filteredVehicles.length > 0 && fleetAvailableDrivers.length > 0) {
+          fleetRecommendations.push({
+            fleet: {
+              ...fleet,
+              company_name: company?.name || "Entreprise inconnue"
+            },
+            availableDrivers: fleetAvailableDrivers,
+            availableVehicles: filteredVehicles
+          });
+        }
+      }
+      
+      setRecommendations(fleetRecommendations);
+    } catch (error) {
+      console.error("Erreur lors de la recherche:", error);
+      toast.error("Une erreur est survenue lors de la recherche");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,22 +189,182 @@ const LandingPage = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-8">
             Location autocar, bus, minibus avec chauffeur
           </h1>
-          <div className="max-w-3xl mx-auto bg-white rounded-lg p-4">
-            <Input 
-              className="w-full p-4 mb-4" 
-              placeholder="Exemple: Je souhaite effectuer un déplacement de Paris à Lyon le 10 juillet 2025, nous sommes un groupe de 25 personnes..." 
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-            <Button 
-              className="w-full md:w-auto bg-hermes-green text-black hover:bg-hermes-green/80"
-              onClick={handleSearch}
-            >
-              Chercher
-            </Button>
+          <div className="max-w-3xl mx-auto bg-white rounded-lg p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Date de départ</label>
+                <DatePicker date={departureDate} setDate={setDepartureDate} placeholder="Sélectionnez une date" className="w-full" />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Nombre de passagers</label>
+                <Input 
+                  type="number" 
+                  placeholder="Nombre de passagers" 
+                  value={passengerCount}
+                  onChange={(e) => setPassengerCount(e.target.value)}
+                  min="1"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Lieu de départ</label>
+                <Input 
+                  placeholder="Ville ou adresse de départ" 
+                  value={departure}
+                  onChange={(e) => setDeparture(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Destination</label>
+                <Input 
+                  placeholder="Ville ou adresse d'arrivée" 
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-1 font-medium">Informations supplémentaires</label>
+              <Textarea 
+                placeholder="Précisez vos besoins (durée, équipements souhaités, etc.)" 
+                value={additionalInfo}
+                onChange={(e) => setAdditionalInfo(e.target.value)}
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+            <div className="flex flex-col md:flex-row gap-3 justify-center">
+              <Button 
+                className="w-full md:w-auto bg-hermes-green text-black hover:bg-hermes-green/80"
+                onClick={handleSearch}
+                disabled={loading}
+              >
+                {loading ? "Recherche en cours..." : "Rechercher"}
+              </Button>
+              <Button 
+                className="w-full md:w-auto bg-gray-700 hover:bg-gray-600"
+                onClick={handleChatWithOtto}
+              >
+                Discuter avec Otto
+              </Button>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Recommendations Section - appears after search */}
+      {searchPerformed && (
+        <section className="py-12 container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-8">
+            {recommendations.length > 0 ? "Recommandations pour votre trajet" : "Aucune recommandation disponible"}
+          </h2>
+          
+          {recommendations.length > 0 ? (
+            <Carousel className="w-full max-w-5xl mx-auto">
+              <CarouselContent>
+                {recommendations.map((recommendation, index) => (
+                  <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/2">
+                    <div className="p-2">
+                      <Card className="h-full">
+                        <CardContent className="p-6 flex flex-col h-full">
+                          <div className="mb-4">
+                            <h3 className="text-xl font-bold">{recommendation.fleet.name}</h3>
+                            <p className="text-gray-500">{recommendation.fleet.company_name}</p>
+                            {recommendation.fleet.description && <p className="mt-2">{recommendation.fleet.description}</p>}
+                          </div>
+                          
+                          <div className="mb-4 flex-grow">
+                            <h4 className="font-medium mb-2 flex items-center">
+                              <Bus className="h-4 w-4 mr-1" /> 
+                              Véhicules disponibles ({recommendation.availableVehicles.length})
+                            </h4>
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {recommendation.availableVehicles.slice(0, 3).map((vehicle, idx) => (
+                                <div key={idx} className="flex items-center p-2 bg-gray-50 rounded">
+                                  {vehicle.photo_url ? (
+                                    <img 
+                                      src={vehicle.photo_url} 
+                                      alt={`${vehicle.brand} ${vehicle.model}`}
+                                      className="h-8 w-12 object-cover mr-2 rounded"
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-12 bg-gray-200 mr-2 rounded flex items-center justify-center">
+                                      <Bus className="h-4 w-4 text-gray-500" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-sm font-medium">{vehicle.brand} {vehicle.model}</p>
+                                    <p className="text-xs text-gray-500">{vehicle.capacity} passagers</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {recommendation.availableVehicles.length > 3 && (
+                                <p className="text-xs text-gray-500 italic">
+                                  + {recommendation.availableVehicles.length - 3} autres véhicules
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="mb-4">
+                            <h4 className="font-medium mb-2 flex items-center">
+                              <Users className="h-4 w-4 mr-1" /> 
+                              Chauffeurs disponibles ({recommendation.availableDrivers.length})
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {recommendation.availableDrivers.slice(0, 3).map((driver, idx) => (
+                                <div key={idx} className="flex items-center">
+                                  {driver.photo ? (
+                                    <img 
+                                      src={driver.photo} 
+                                      alt={`${driver.prenom} ${driver.nom}`}
+                                      className="h-8 w-8 rounded-full mr-1"
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-8 bg-gray-200 rounded-full mr-1 flex items-center justify-center">
+                                      <Users className="h-4 w-4 text-gray-500" />
+                                    </div>
+                                  )}
+                                  <span className="text-sm">{driver.prenom} {driver.nom.charAt(0)}.</span>
+                                </div>
+                              ))}
+                              {recommendation.availableDrivers.length > 3 && (
+                                <span className="text-xs text-gray-500 italic">
+                                  + {recommendation.availableDrivers.length - 3} autres
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <Button className="mt-auto" onClick={() => {
+                            const message = `Je souhaite réserver avec la flotte ${recommendation.fleet.name} pour un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes. ${additionalInfo}`;
+                            navigate("/chatbotOtto", { state: { initialMessage: message } });
+                          }}>
+                            Demander un devis
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <div className="flex justify-end space-x-2 mt-4">
+                <CarouselPrevious className="static transform-none" />
+                <CarouselNext className="static transform-none" />
+              </div>
+            </Carousel>
+          ) : (
+            <div className="text-center max-w-md mx-auto">
+              <p className="mb-4">
+                Aucune flotte disponible ne correspond à vos critères. Veuillez modifier votre recherche ou contacter notre service client.
+              </p>
+              <Button onClick={handleChatWithOtto}>
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Discuter avec Otto
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Features */}
       <section className="py-12 container mx-auto px-4">
