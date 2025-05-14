@@ -86,7 +86,7 @@ export default function MissionsAPI() {
                       Récupérez tous les véhicules d'une flotte spécifique
                     </p>
                     <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                      GET https://nsfphygihklucqjiwngl.supabase.co/functions/v1/fleets/{'{fleet_id}'}/vehicles
+                      GET https://nsfphygihklucqjiwngl.supabase.co/functions/v1/fleets/{"{fleet_id}"}/vehicles
                     </pre>
                   </div>
                 </CardContent>
