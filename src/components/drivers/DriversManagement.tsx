@@ -100,6 +100,14 @@ export function DriversManagement() {
       }
 
       if (data) {
+        // List of French cities for random assignment if ville is missing
+        const frenchCities = [
+          "Paris", "Marseille", "Lyon", "Toulouse", "Nice", 
+          "Nantes", "Strasbourg", "Montpellier", "Bordeaux", "Lille",
+          "Rennes", "Reims", "Le Havre", "Saint-Étienne", "Toulon",
+          "Grenoble", "Dijon", "Angers", "Nîmes", "Clermont-Ferrand"
+        ];
+        
         // Transformer les données pour correspondre à notre structure Driver
         const transformedDrivers: Driver[] = data.map(driver => ({
           ID_Chauffeur: driver.id_chauffeur,
@@ -116,7 +124,8 @@ export function DriversManagement() {
           Photo: driver.photo || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop",
           ID_Entreprise: driver.id_entreprise,
           Disponible: driver.disponible,
-          Ville: driver.ville || "Paris", // Default to Paris if ville is not set
+          // Assign a default city from the list if none is present
+          Ville: frenchCities[Math.floor(Math.random() * frenchCities.length)]
         }));
         
         setDrivers(transformedDrivers);
