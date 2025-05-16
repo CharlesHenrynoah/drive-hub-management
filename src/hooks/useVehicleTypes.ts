@@ -95,28 +95,33 @@ export function useVehicleTypes() {
         ];
       }
       
-      // Strict validation: ensure no empty strings in type field
+      // Strict validation: ensure no empty strings in type field and provide fallbacks
       const validatedTypes = data
         .filter(vt => {
-          // Filter out null, undefined or empty strings
-          return vt && 
-                typeof vt.type === 'string' && 
-                vt.type.trim() !== '' &&
-                vt.id !== null && 
-                vt.id !== undefined;
+          // Filter out null, undefined or empty type entries
+          if (!vt || vt.type === undefined || vt.type === null) return false;
+          
+          // Ensure proper type data
+          return vt.id !== null && 
+                 vt.id !== undefined &&
+                 typeof vt.type === 'string';
         })
         .map(vt => {
           // Ensure the type value is never an empty string
-          let typeValue = vt.type.trim();
+          let typeValue = (typeof vt.type === 'string') ? vt.type.trim() : `Type ${vt.id}`;
+          
           // If somehow type is empty after trimming, provide a fallback using the ID
           if (typeValue === '') {
             typeValue = `Type ${vt.id}`;
           }
+          
           return {
             ...vt,
             type: typeValue
           };
         });
+      
+      console.log("Validated vehicle types:", validatedTypes);
       
       // Extra safety check - if we somehow ended up with empty types, return default types
       if (validatedTypes.length === 0) {

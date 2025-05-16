@@ -220,14 +220,34 @@ export function VehiclesManagement() {
     return matchesSearch && matchesType && matchesStatus && matchesLocation;
   });
 
+  // Obtenir des valeurs uniques pour les filtres et s'assurer qu'elles ne sont jamais vides
+  const getUniqueValues = (field: keyof Vehicle): string[] => {
+    const uniqueValues = Array.from(
+      new Set(
+        vehicles
+          .map((v) => v[field] as string)
+          .filter((value): value is string => Boolean(value && value.trim() !== ''))
+      )
+    );
+    return ["Tous", ...uniqueValues];
+  };
+
   // Types de véhicules uniques pour le filtre
-  const vehicleTypes = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.type)))];
+  const vehicleTypes = getUniqueValues("type");
   
   // Statuts de véhicules uniques pour le filtre
-  const vehicleStatuses = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.status)))];
+  const vehicleStatuses = getUniqueValues("status");
   
   // Localisations uniques pour le filtre
-  const vehicleLocations = ["Toutes", ...Array.from(new Set(vehicles.filter(v => v.location).map((v) => v.location as string)))];
+  const vehicleLocations = ["Toutes"].concat(
+    Array.from(
+      new Set(
+        vehicles
+          .map((v) => v.location)
+          .filter((location): location is string => Boolean(location && location.trim() !== ''))
+      )
+    )
+  );
 
   return (
     <div className="space-y-4">
@@ -286,7 +306,6 @@ export function VehiclesManagement() {
             Exporter
           </Button>
           
-          {/* Ensure the AddVehicleForm is properly used here */}
           <AddVehicleForm onSuccess={fetchVehicles} />
         </div>
       </div>

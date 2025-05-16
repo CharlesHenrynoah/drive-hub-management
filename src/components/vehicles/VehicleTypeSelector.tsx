@@ -20,6 +20,7 @@ export function VehicleTypeSelector({
 }: VehicleTypeSelectorProps) {
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
+  const [internalSelectedTypes, setInternalSelectedTypes] = useState<string[]>([]);
 
   // Ensure all vehicle types are valid (no empty strings)
   const validVehicleTypes = vehicleTypes.filter(vt => 
@@ -30,23 +31,40 @@ export function VehicleTypeSelector({
     vt.id !== undefined
   );
   
+  // Use effect to initialize internal state and sync with parent
+  useEffect(() => {
+    if (!selectedTypes) {
+      setInternalSelectedTypes([]);
+      return;
+    }
+    
+    // Filter out any empty values
+    const validSelections = selectedTypes.filter(type => type && type.trim() !== '');
+    setInternalSelectedTypes(validSelections);
+    
+    // If we filtered anything, update parent
+    if (validSelections.length !== selectedTypes.length) {
+      onChange(validSelections);
+    }
+  }, [selectedTypes, onChange]);
+  
   // Clean up any invalid selections whenever vehicle types change
   useEffect(() => {
-    if (validVehicleTypes.length > 0 && selectedTypes.length > 0) {
+    if (validVehicleTypes.length > 0 && internalSelectedTypes.length > 0) {
       // Filter out any invalid or empty selected types
-      const validSelectedTypes = selectedTypes.filter(type => 
+      const validSelectedTypes = internalSelectedTypes.filter(type => 
         type && 
-        typeof type === 'string' &&
         type.trim() !== '' && 
         validVehicleTypes.some(vt => vt.type === type)
       );
       
       // Update selected types if any were filtered out
-      if (validSelectedTypes.length !== selectedTypes.length) {
+      if (validSelectedTypes.length !== internalSelectedTypes.length) {
+        setInternalSelectedTypes(validSelectedTypes);
         onChange(validSelectedTypes);
       }
     }
-  }, [validVehicleTypes, selectedTypes, onChange]);
+  }, [validVehicleTypes, internalSelectedTypes, onChange]);
 
   const handleTypeClick = (type: string) => {
     if (!type || type.trim() === '') {
@@ -55,20 +73,24 @@ export function VehicleTypeSelector({
     }
     
     // Check if already selected
-    const isSelected = selectedTypes.includes(type);
+    const isSelected = internalSelectedTypes.includes(type);
     
     if (isSelected) {
       // Remove from selection
-      onChange(selectedTypes.filter(t => t !== type));
+      const newSelectedTypes = internalSelectedTypes.filter(t => t !== type);
+      setInternalSelectedTypes(newSelectedTypes);
+      onChange(newSelectedTypes);
       setError(null);
     } else {
       // Add to selection if under max limit
-      if (selectedTypes.length >= maxSelections) {
+      if (internalSelectedTypes.length >= maxSelections) {
         setError(`Vous pouvez sélectionner maximum ${maxSelections} types de véhicules`);
         return;
       }
       
-      onChange([...selectedTypes, type]);
+      const newSelectedTypes = [...internalSelectedTypes, type];
+      setInternalSelectedTypes(newSelectedTypes);
+      onChange(newSelectedTypes);
       setError(null);
     }
   };
@@ -81,18 +103,11 @@ export function VehicleTypeSelector({
     return <div>Aucun type de véhicule disponible</div>;
   }
 
-  // Ensure selected types are all valid
-  const safeSelectedTypes = selectedTypes.filter(type => 
-    type && 
-    type.trim() !== '' && 
-    validVehicleTypes.some(vt => vt.type === type)
-  );
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2 mb-2">
-        {safeSelectedTypes.length > 0 ? (
-          safeSelectedTypes.map((type) => (
+        {internalSelectedTypes.length > 0 ? (
+          internalSelectedTypes.map((type) => (
             <Badge key={type} variant="outline" className="bg-primary/10">
               {type}
             </Badge>
@@ -118,7 +133,7 @@ export function VehicleTypeSelector({
                 onClick={() => handleTypeClick(vehicleType.type)}
                 className={cn(
                   "flex items-start justify-between p-3 h-auto",
-                  safeSelectedTypes.includes(vehicleType.type) && "border-primary ring-1 ring-primary"
+                  internalSelectedTypes.includes(vehicleType.type) && "border-primary ring-1 ring-primary"
                 )}
               >
                 <div className="flex flex-col items-start text-left">
@@ -130,7 +145,7 @@ export function VehicleTypeSelector({
                     Capacité: {vehicleType.capacity_min} - {vehicleType.capacity_max} passagers
                   </span>
                 </div>
-                {safeSelectedTypes.includes(vehicleType.type) && (
+                {internalSelectedTypes.includes(vehicleType.type) && (
                   <CheckIcon className="h-4 w-4 text-primary" />
                 )}
               </Button>

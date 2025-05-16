@@ -52,6 +52,9 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
     vt.id !== undefined
   );
   
+  console.log("Valid vehicle types:", validVehicleTypes);
+  console.log("Current selected value:", value);
+  
   // Initialize with valid vehicle type on mount
   useEffect(() => {
     // Only proceed if we have valid vehicle types
@@ -67,15 +70,19 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
         const firstType = validVehicleTypes[0].type;
         setSafeValue(firstType);
         onChange(firstType); // Inform parent component
+        console.log("Setting default value:", firstType);
       } else {
         // Current value is valid, use it
         setSafeValue(value);
+        console.log("Using existing value:", value);
       }
     }
   }, [validVehicleTypes, value, onChange]);
 
   // Handle selection change safely
   const handleChange = (newValue: string) => {
+    console.log("Selection changed to:", newValue);
+    
     // Extra validation to ensure we never set an empty value
     if (newValue && newValue.trim() !== '') {
       setSafeValue(newValue);
@@ -84,18 +91,27 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
       // If somehow we got an empty value, fallback to first valid type
       if (validVehicleTypes.length > 0) {
         const fallbackType = validVehicleTypes[0].type;
+        console.log("Using fallback value:", fallbackType);
         setSafeValue(fallbackType);
         onChange(fallbackType);
       }
     }
   };
 
+  if (isLoading) {
+    return <div className="flex items-center py-2"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Chargement des types de véhicules...</div>;
+  }
+
+  if (validVehicleTypes.length === 0) {
+    return <div>Aucun type de véhicule disponible</div>;
+  }
+
   return (
     <FormItem>
       <Select
-        value={safeValue}
+        value={safeValue || (validVehicleTypes[0]?.type || "Minibus")}
         onValueChange={handleChange}
-        disabled={disabled || isLoading || validVehicleTypes.length === 0}
+        disabled={disabled}
       >
         <FormControl>
           <SelectTrigger className="w-full">
@@ -103,33 +119,27 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
           </SelectTrigger>
         </FormControl>
         <SelectContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-            </div>
-          ) : (
-            validVehicleTypes.map((vehicleType) => (
-              <SelectItem 
-                key={vehicleType.id} 
-                value={vehicleType.type || `Type-${vehicleType.id}`}
-                className="py-2"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
-                  <div className="flex flex-col">
-                    <span>{vehicleType.type}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {vehicleType.capacity_min} - {vehicleType.capacity_max} places
-                    </span>
-                  </div>
+          {validVehicleTypes.map((vehicleType) => (
+            <SelectItem 
+              key={vehicleType.id} 
+              value={vehicleType.type || `Type-${vehicleType.id}`}
+              className="py-2"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
+                <div className="flex flex-col">
+                  <span>{vehicleType.type}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {vehicleType.capacity_min} - {vehicleType.capacity_max} places
+                  </span>
                 </div>
-              </SelectItem>
-            ))
-          )}
+              </div>
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       
-      {safeValue && !isLoading && (
+      {safeValue && (
         <div className="mt-2">
           {validVehicleTypes.find(vt => vt.type === safeValue) && (
             <Badge variant="outline" className="bg-secondary flex items-center gap-1">
