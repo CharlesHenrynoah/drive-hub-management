@@ -47,6 +47,30 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_DOC_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"];
 
+// Liste des villes par défaut
+const DEFAULT_CITIES = [
+  "Paris",
+  "Marseille",
+  "Lyon",
+  "Toulouse",
+  "Nice",
+  "Nantes",
+  "Strasbourg",
+  "Montpellier",
+  "Bordeaux",
+  "Lille",
+  "Rennes",
+  "Reims",
+  "Le Havre",
+  "Saint-Étienne",
+  "Toulon",
+  "Grenoble",
+  "Dijon",
+  "Angers",
+  "Nîmes",
+  "Clermont-Ferrand",
+];
+
 const formSchema = z.object({
   nom: z.string().min(2, {
     message: "Le nom doit contenir au moins 2 caractères",
@@ -67,6 +91,9 @@ const formSchema = z.object({
     required_error: "Veuillez sélectionner une entreprise",
   }),
   disponible: z.boolean().default(true),
+  ville: z.string({
+    required_error: "Veuillez sélectionner une ville",
+  }),
   photo: z
     .instanceof(File)
     .refine((file) => file.size <= MAX_FILE_SIZE, "La taille maximale est de 5MB.")
@@ -149,6 +176,12 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
     }
   }, [open]);
   
+  // Sélection aléatoire d'une ville par défaut
+  const getRandomCity = () => {
+    const randomIndex = Math.floor(Math.random() * DEFAULT_CITIES.length);
+    return DEFAULT_CITIES[randomIndex];
+  };
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -158,6 +191,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       telephone: "",
       entrepriseId: "",
       disponible: true,
+      ville: getRandomCity(),
       photo: undefined,
       permisConduire: undefined,
       carteVTC: undefined,
@@ -303,6 +337,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         prenom: values.prenom,
         email: values.email,
         telephone: values.telephone,
+        ville: values.ville,
         piece_identite: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
         justificatif_domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
@@ -356,6 +391,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         Prénom: values.prenom,
         Email: values.email,
         Téléphone: values.telephone,
+        Ville: values.ville,
         Pièce_Identité: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         Certificat_Médical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
         Justificatif_Domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
@@ -380,7 +416,18 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       setPermisPreview(null);
       setCarteVTCPreview(null);
       setSelectedVehicleTypes([]);
-      form.reset();
+      form.reset({
+        nom: "",
+        prenom: "",
+        email: "",
+        telephone: "",
+        entrepriseId: "",
+        disponible: true,
+        ville: getRandomCity(),
+        photo: undefined,
+        permisConduire: undefined,
+        carteVTC: undefined,
+      });
       setOpen(false);
     } catch (error) {
       console.error("Erreur lors de l'ajout du chauffeur:", error);
@@ -515,6 +562,34 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                         <Input placeholder="06 12 34 56 78" {...field} />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="ville"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ville</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionnez une ville" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DEFAULT_CITIES.map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      <FormDescription>
+                        Ville où le chauffeur opère principalement
+                      </FormDescription>
                     </FormItem>
                   )}
                 />

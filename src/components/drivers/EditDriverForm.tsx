@@ -35,6 +35,30 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_DOC_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"];
 
+// Liste des villes disponibles
+const CITIES = [
+  "Paris",
+  "Marseille",
+  "Lyon",
+  "Toulouse",
+  "Nice",
+  "Nantes",
+  "Strasbourg",
+  "Montpellier",
+  "Bordeaux",
+  "Lille",
+  "Rennes",
+  "Reims",
+  "Le Havre",
+  "Saint-Étienne",
+  "Toulon",
+  "Grenoble",
+  "Dijon",
+  "Angers",
+  "Nîmes",
+  "Clermont-Ferrand",
+];
+
 // Schéma de validation pour le formulaire d'édition de chauffeur
 const driverFormSchema = z.object({
   nom: z.string().min(1, "Le nom est requis"),
@@ -46,6 +70,7 @@ const driverFormSchema = z.object({
   }),
   id_entreprise: z.string().min(1, "L'entreprise est requise"),
   disponible: z.boolean().default(true),
+  ville: z.string().min(1, "La ville est requise"),
   piece_identite: z.string().min(1, "Le numéro de pièce d'identité est requis"),
   certificat_medical: z.string().min(1, "Le certificat médical est requis"),
   justificatif_domicile: z.string().min(1, "Le justificatif de domicile est requis"),
@@ -83,6 +108,7 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
         : driver.Date_Debut_Activité,
       id_entreprise: driver.ID_Entreprise,
       disponible: driver.Disponible,
+      ville: driver.Ville || "Paris", // Valeur par défaut si la ville n'est pas définie
       piece_identite: driver.Pièce_Identité,
       certificat_medical: driver.Certificat_Médical,
       justificatif_domicile: driver.Justificatif_Domicile,
@@ -151,6 +177,7 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
           date_debut_activite: format(data.date_debut_activite, 'yyyy-MM-dd'),
           id_entreprise: data.id_entreprise,
           disponible: data.disponible,
+          ville: data.ville, // Mise à jour de la ville
           piece_identite: data.piece_identite,
           certificat_medical: data.certificat_medical,
           justificatif_domicile: data.justificatif_domicile,
@@ -326,6 +353,35 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
             )}
           />
         </div>
+
+        {/* Ajout du champ ville */}
+        <FormField
+          control={form.control}
+          name="ville"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ville</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={field.onChange}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une ville" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {CITIES.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField

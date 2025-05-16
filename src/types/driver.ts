@@ -14,4 +14,5 @@ export interface Driver {
   Photo: string;
   ID_Entreprise: string;
   Disponible: boolean;
+  Ville: string;
 }
