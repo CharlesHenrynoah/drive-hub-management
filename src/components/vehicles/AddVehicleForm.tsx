@@ -130,7 +130,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent form submission
+    e.preventDefault();
     setLoading(true);
 
     try {
@@ -141,7 +141,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         return;
       }
 
-      // Si nous éditons un véhicule existant
+      // Si nous édits un véhicule existant
       if (vehicleToEdit) {
         const { error } = await supabase
           .from("vehicles")
@@ -224,20 +224,14 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     if (onOpenChange) onOpenChange(newOpen);
   };
 
-  // Le changement critique: utiliser un bouton ordinaire comme déclencheur pour éviter
-  // la soumission du formulaire
+  // Changement critique : correction du déclencheur du modal
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!vehicleToEdit && (
         <DialogTrigger asChild>
           <Button 
-            type="button" 
+            type="button"
             className="flex items-center gap-1"
-            onClick={(e) => {
-              e.preventDefault(); // Empêche tout comportement par défaut
-              e.stopPropagation(); // Empêche la propagation de l'événement
-              setOpen(true);
-            }}
           >
             <Plus className="h-4 w-4" />
             Ajouter un véhicule
