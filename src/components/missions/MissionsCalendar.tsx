@@ -30,6 +30,8 @@ export interface Mission {
   start_location?: string;
   end_location?: string;
   client?: string;
+  client_email?: string;
+  client_phone?: string;
   arrival_date?: Date;
   passengers?: number;
   additional_details?: string;

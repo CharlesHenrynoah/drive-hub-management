@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -37,6 +36,9 @@ type Mission = {
   vehicle_id: number;
   status: string;
   details: string;
+  client?: string;
+  client_email?: string;
+  client_phone?: string;
 };
 
 const MissionsAPI = () => {
