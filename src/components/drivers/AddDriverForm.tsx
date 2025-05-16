@@ -337,7 +337,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         prenom: values.prenom,
         email: values.email,
         telephone: values.telephone,
-        ville: values.ville,
+        ville: values.ville,  // S'assurer que la ville est bien incluse
         piece_identite: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
         justificatif_domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
@@ -348,7 +348,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         disponible: values.disponible,
       };
       
-      console.log("Insertion du chauffeur:", driverData);
+      console.log("Insertion du chauffeur avec ces données:", driverData);
       
       // Insérer le chauffeur dans la base de données
       const { data: insertedDriver, error: insertError } = await supabase
@@ -359,7 +359,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       
       if (insertError) {
         console.error("Erreur lors de l'insertion du chauffeur:", insertError);
-        toast.error("Impossible d'ajouter le chauffeur à la base de données");
+        toast.error("Impossible d'ajouter le chauffeur à la base de données: " + insertError.message);
         setIsSubmitting(false);
         return;
       }
