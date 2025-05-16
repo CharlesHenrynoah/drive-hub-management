@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -285,6 +286,7 @@ export function VehiclesManagement() {
             Exporter
           </Button>
           
+          {/* Ensure the AddVehicleForm is properly used here */}
           <AddVehicleForm onSuccess={fetchVehicles} />
         </div>
       </div>

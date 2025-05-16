@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -225,7 +224,8 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     if (onOpenChange) onOpenChange(newOpen);
   };
 
-  // The critical fix: Use a regular button as the trigger to prevent form submission
+  // Le changement critique: utiliser un bouton ordinaire comme déclencheur pour éviter
+  // la soumission du formulaire
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!vehicleToEdit && (
@@ -234,7 +234,8 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             type="button" 
             className="flex items-center gap-1"
             onClick={(e) => {
-              e.preventDefault(); // Prevent any default behavior
+              e.preventDefault(); // Empêche tout comportement par défaut
+              e.stopPropagation(); // Empêche la propagation de l'événement
               setOpen(true);
             }}
           >
