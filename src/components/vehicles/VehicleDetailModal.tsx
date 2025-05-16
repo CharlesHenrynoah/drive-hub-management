@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Edit, MapPin } from "lucide-react";
 import { Vehicle } from "./VehiclesManagement";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle;
@@ -15,6 +17,39 @@ interface VehicleDetailModalProps {
 }
 
 export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: VehicleDetailModalProps) {
+  const [futureMissions, setFutureMissions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchFutureMissions = async () => {
+      if (!vehicle.id) return;
+      
+      setIsLoading(true);
+      try {
+        const today = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('missions')
+          .select('id, title, date, start_location, end_location, status')
+          .eq('vehicle_id', vehicle.id)
+          .gte('date', today)
+          .order('date', { ascending: true });
+          
+        if (error) {
+          console.error('Erreur lors du chargement des missions futures:', error);
+          return;
+        }
+        
+        setFutureMissions(data || []);
+      } catch (err) {
+        console.error('Erreur inattendue:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchFutureMissions();
+  }, [vehicle.id]);
+  
   // Helper pour déterminer la classe de couleur selon le score écologique
   const getScoreColorClass = (score: number) => {
     if (score >= 80) return "bg-success";
@@ -33,6 +68,13 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non défini";
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Format mission date with time
+  const formatMissionDate = (dateString: string) => {
+    if (!dateString) return "Date inconnue";
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().substring(0, 5);
   };
 
   return (
@@ -189,6 +231,35 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
                 </>
               ) : null}
             </dl>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground">Missions futures</h3>
+            <Separator className="my-2" />
+            {isLoading ? (
+              <p className="text-muted-foreground text-center py-3">Chargement des missions...</p>
+            ) : futureMissions.length > 0 ? (
+              <ul className="space-y-2">
+                {futureMissions.map((mission) => (
+                  <li key={mission.id} className="flex flex-col px-3 py-2 bg-secondary/50 rounded-md text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium truncate">{mission.title}</span>
+                      <Badge variant="outline" className={mission.status === 'en_cours' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+                        {mission.status === 'en_cours' ? 'En cours' : 'Planifiée'}
+                      </Badge>
+                    </div>
+                    <div className="text-muted-foreground mt-1">
+                      {formatMissionDate(mission.date)}
+                    </div>
+                    <div className="text-xs mt-1 text-muted-foreground">
+                      {mission.start_location} → {mission.end_location}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground">Aucune mission planifiée</p>
+            )}
           </div>
         </div>
       </div>
