@@ -35,28 +35,7 @@ function getVehicleEmoji(type: string): React.ReactNode {
     case "Van":
       return "🚐";
     default:
-      return null;
-  }
-}
-
-// Fonction pour obtenir la capacité du véhicule
-function getVehicleCapacity(type: string): string {
-  switch (type) {
-    case "Minibus":
-      return "19 places";
-    case "Minicar":
-      return "38 places";
-    case "Autocar Standard":
-      return "65 places";
-    case "Autocar Grand Tourisme":
-      return "93 places";
-    case "VTC":
-    case "Berline":
-      return "3 à 4 places";
-    case "Van":
-      return "8 à 9 places";
-    default:
-      return "";
+      return "🚙";
   }
 }
 
@@ -66,7 +45,7 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
   return (
     <FormItem>
       <Select
-        value={value}
+        value={value || undefined}
         onValueChange={onChange}
         disabled={disabled || isLoading}
       >

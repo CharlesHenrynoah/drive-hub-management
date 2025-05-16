@@ -63,6 +63,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   const [calculatingScore, setCalculatingScore] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     brand: "",
     model: "",
@@ -111,7 +112,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         location: vehicleToEdit.location || ""
       });
       
-      if (vehicleToEdit.photo_url) {
+      if (vehicleToEdit.photo_url && !vehicleToEdit.photo_url.startsWith('blob:')) {
         setPhotoPreview(vehicleToEdit.photo_url);
       }
     }
@@ -135,7 +136,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   // Recalculer le score écologique quand les informations pertinentes changent
   useEffect(() => {
     // Ne pas calculer si certaines valeurs essentielles sont manquantes
-    if (!formData.type || !formData.fuel_type || formData.capacity <= 0) {
+    if (!formData.type || !formData.fuel_type || !formData.capacity) {
       return;
     }
     
@@ -204,38 +205,49 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     }
     
     setUploadingPhoto(true);
+    setPhotoFile(file);
     
     try {
       // Créer une prévisualisation
       const reader = new FileReader();
       reader.onload = (e) => {
-        setPhotoPreview(e.target?.result as string);
+        const result = e.target?.result as string;
+        setPhotoPreview(result);
       };
       reader.readAsDataURL(file);
       
+      toast.success("Photo prête à être téléchargée");
+    } catch (error) {
+      console.error("Error preparing photo:", error);
+      toast.error("Erreur lors de la préparation de la photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const uploadPhotoToStorage = async (file: File): Promise<string | null> => {
+    try {
       // Générer un nom de fichier unique
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `vehicle_photos/${fileName}`;
       
-      // Télécharger vers une URL (simulé pour l'instant)
-      // Dans une implémentation réelle, vous utiliseriez Supabase Storage ou un autre service de stockage
-      // const { data, error } = await supabase.storage.from('vehicles').upload(filePath, file);
+      // Télécharger vers Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('vehicles')
+        .upload(filePath, file);
       
-      // Pour l'instant, on simule un succès avec l'URL du fichier (en production, ce serait l'URL de Supabase Storage)
-      const photo_url = photoPreview;
+      if (error) throw error;
       
-      setFormData(prev => ({
-        ...prev,
-        photo_url
-      }));
+      // Construire l'URL publique
+      const { data: publicUrl } = supabase.storage
+        .from('vehicles')
+        .getPublicUrl(filePath);
       
-      toast.success("Photo téléchargée avec succès");
+      return publicUrl.publicUrl;
     } catch (error) {
-      console.error("Error uploading photo:", error);
-      toast.error("Erreur lors du téléchargement de la photo");
-    } finally {
-      setUploadingPhoto(false);
+      console.error("Error uploading to storage:", error);
+      return null;
     }
   };
 
@@ -250,8 +262,17 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         setLoading(false);
         return;
       }
+      
+      // Gestion de la photo
+      let finalPhotoUrl = formData.photo_url;
+      if (photoFile) {
+        const uploadedUrl = await uploadPhotoToStorage(photoFile);
+        if (uploadedUrl) {
+          finalPhotoUrl = uploadedUrl;
+        }
+      }
 
-      // Si nous édits un véhicule existant
+      // Si nous éditons un véhicule existant
       if (vehicleToEdit) {
         const { error } = await supabase
           .from("vehicles")
@@ -260,7 +281,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             model: formData.model,
             type: formData.type,
             registration: formData.registration,
-            capacity: formData.capacity,
+            capacity: formData.capacity || 0,
             fuel_type: formData.fuel_type,
             year: formData.year,
             mileage: formData.mileage,
@@ -268,7 +289,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             status: formData.status,
             ecological_score: formData.ecological_score,
             company_id: formData.company_id,
-            photo_url: formData.photo_url,
+            photo_url: finalPhotoUrl,
             location: formData.location || null
           })
           .eq("id", vehicleToEdit.id);
@@ -282,7 +303,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             model: formData.model,
             type: formData.type,
             registration: formData.registration,
-            capacity: formData.capacity,
+            capacity: formData.capacity || 0,
             fuel_type: formData.fuel_type,
             year: formData.year,
             mileage: formData.mileage,
@@ -290,7 +311,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             status: formData.status,
             ecological_score: formData.ecological_score,
             company_id: formData.company_id === "none" ? null : formData.company_id,
-            photo_url: formData.photo_url,
+            photo_url: finalPhotoUrl,
             location: formData.location === "aucune" ? null : formData.location
         });
 
@@ -317,6 +338,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
           location: ""
         });
         setPhotoPreview(null);
+        setPhotoFile(null);
       }
 
       setOpen(false);
@@ -381,6 +403,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                     className="absolute bottom-2 right-2 opacity-70 hover:opacity-100 bg-white"
                     onClick={() => {
                       setPhotoPreview(null);
+                      setPhotoFile(null);
                       setFormData(prev => ({ ...prev, photo_url: null }));
                     }}
                   >
@@ -439,8 +462,8 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 id="capacity"
                 type="number"
                 min="1"
-                value={formData.capacity}
-                onChange={(e) => handleChange("capacity", parseInt(e.target.value))}
+                value={formData.capacity || ""}
+                onChange={(e) => handleChange("capacity", parseInt(e.target.value) || 0)}
               />
             </div>
 
@@ -481,8 +504,8 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 type="number"
                 min="1900"
                 max={new Date().getFullYear() + 1}
-                value={formData.year}
-                onChange={(e) => handleChange("year", parseInt(e.target.value))}
+                value={formData.year || ""}
+                onChange={(e) => handleChange("year", parseInt(e.target.value) || new Date().getFullYear())}
               />
             </div>
 
@@ -511,8 +534,8 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 id="mileage"
                 type="number"
                 min="0"
-                value={formData.mileage}
-                onChange={(e) => handleChange("mileage", parseInt(e.target.value))}
+                value={formData.mileage || ""}
+                onChange={(e) => handleChange("mileage", parseInt(e.target.value) || 0)}
               />
             </div>
 
@@ -555,9 +578,9 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 type="number"
                 min="0"
                 max="100"
-                value={formData.ecological_score}
+                value={formData.ecological_score || ""}
                 onChange={(e) =>
-                  handleChange("ecological_score", parseInt(e.target.value))
+                  handleChange("ecological_score", parseInt(e.target.value) || 0)
                 }
                 className={calculatingScore ? "bg-muted" : ""}
                 disabled={calculatingScore}

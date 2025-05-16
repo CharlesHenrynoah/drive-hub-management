@@ -3,8 +3,40 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { VehiclesManagement } from "@/components/vehicles/VehiclesManagement";
 import { Helmet } from "react-helmet-async";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function VehiclesPage() {
+  // Création du bucket de stockage pour les images de véhicules si nécessaire
+  useEffect(() => {
+    const initStorage = async () => {
+      try {
+        // Vérifier si le bucket existe
+        const { data, error } = await supabase.storage.getBucket('vehicles');
+        
+        // Si le bucket n'existe pas, le créer
+        if (error && error.message.includes('does not exist')) {
+          const { data, error: createError } = await supabase.storage.createBucket('vehicles', {
+            public: true,
+            fileSizeLimit: 5242880, // 5MB
+            allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif']
+          });
+          
+          if (createError) {
+            console.error('Erreur lors de la création du bucket:', createError);
+          } else {
+            console.log('Bucket de stockage "vehicles" créé avec succès');
+          }
+        }
+      } catch (err) {
+        console.error('Erreur lors de l\'initialisation du stockage:', err);
+      }
+    };
+
+    initStorage();
+  }, []);
+
   return (
     <>
       <Helmet>
