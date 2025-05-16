@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -115,6 +116,7 @@ export function DriversManagement() {
           Photo: driver.photo || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop",
           ID_Entreprise: driver.id_entreprise,
           Disponible: driver.disponible,
+          Ville: driver.ville || "Paris", // Default to Paris if ville is not set
         }));
         
         setDrivers(transformedDrivers);
