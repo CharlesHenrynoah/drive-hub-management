@@ -62,7 +62,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     brand: "",
     model: "",
     type: "",
-    vehicle_type: "",
     registration: "",
     capacity: 0,
     fuel_type: "Diesel",
@@ -71,8 +70,8 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     last_maintenance: new Date().toISOString().split("T")[0],
     status: "Disponible",
     ecological_score: 50,
-    company_id: null,
-    photo_url: null,
+    company_id: null as string | null,
+    photo_url: null as string | null,
     location: ""
   });
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
@@ -92,7 +91,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         brand: vehicleToEdit.brand || "",
         model: vehicleToEdit.model || "",
         type: vehicleToEdit.type || "",
-        vehicle_type: vehicleToEdit.vehicle_type || "",
         registration: vehicleToEdit.registration || "",
         capacity: vehicleToEdit.capacity || 0,
         fuel_type: vehicleToEdit.fuel_type || "Diesel",
@@ -151,7 +149,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             brand: formData.brand,
             model: formData.model,
             type: formData.type,
-            vehicle_type: formData.vehicle_type || null,
             registration: formData.registration,
             capacity: formData.capacity,
             fuel_type: formData.fuel_type,
@@ -170,12 +167,10 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         toast.success("Véhicule modifié avec succès");
       } else {
         // Sinon, nous créons un nouveau véhicule
-        const { error } = await supabase.from("vehicles").insert([
-          {
+        const { error } = await supabase.from("vehicles").insert({
             brand: formData.brand,
             model: formData.model,
             type: formData.type,
-            vehicle_type: formData.vehicle_type || null,
             registration: formData.registration,
             capacity: formData.capacity,
             fuel_type: formData.fuel_type,
@@ -187,8 +182,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             company_id: formData.company_id,
             photo_url: formData.photo_url,
             location: formData.location || null
-          },
-        ]);
+        });
 
         if (error) throw error;
         toast.success("Véhicule ajouté avec succès");
@@ -200,7 +194,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
           brand: "",
           model: "",
           type: "",
-          vehicle_type: "",
           registration: "",
           capacity: 0,
           fuel_type: "Diesel",
@@ -313,13 +306,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Type de véhicule standardisé */}
-            <VehicleTypeSelector
-              value={formData.vehicle_type}
-              onChange={(value) => handleChange("vehicle_type", value)}
-              vehicleTypes={vehicleTypes || []}
-            />
 
             <div className="space-y-2">
               <Label htmlFor="capacity">Capacité (passagers)</Label>
