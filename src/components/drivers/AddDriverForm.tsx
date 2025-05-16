@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -200,6 +201,10 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
       
       let photoUrl = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop"; // Photo par défaut
+      let permisUrl = ""; // URL du permis de conduire
+      let carteVTCUrl = ""; // URL de la carte VTC
+      
+      console.log("Début du téléchargement des fichiers");
       
       // Télécharger la photo si disponible
       if (values.photo) {
@@ -208,18 +213,17 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         const fileName = `${newDriverId}-photo-${Date.now()}.${fileExt}`;
         
         try {
+          console.log("Téléchargement de la photo vers le bucket:", fileName);
           // Téléchargement de la photo sur Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('drivers_documents')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
+            .upload(fileName, file);
           
           if (uploadError) {
             console.error("Erreur lors du téléchargement de la photo:", uploadError);
             toast.error("Impossible de télécharger la photo");
           } else if (uploadData) {
+            console.log("Photo téléchargée avec succès:", uploadData);
             // Récupérer l'URL publique de la photo
             const { data: urlData } = supabase.storage
               .from('drivers_documents')
@@ -227,11 +231,68 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
             
             if (urlData) {
               photoUrl = urlData.publicUrl;
+              console.log("URL publique de la photo:", photoUrl);
             }
           }
         } catch (error) {
           console.error("Exception lors du téléchargement de la photo:", error);
           toast.error("Erreur lors du téléchargement de la photo");
+        }
+      }
+      
+      // Téléchargement du permis de conduire
+      if (values.permisConduire) {
+        const file = values.permisConduire;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${newDriverId}-permis-${Date.now()}.${fileExt}`;
+        
+        try {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('drivers_documents')
+            .upload(fileName, file);
+          
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement du permis:", uploadError);
+          } else if (uploadData) {
+            const { data: urlData } = supabase.storage
+              .from('drivers_documents')
+              .getPublicUrl(fileName);
+            
+            if (urlData) {
+              permisUrl = urlData.publicUrl;
+              console.log("URL publique du permis:", permisUrl);
+            }
+          }
+        } catch (error) {
+          console.error("Exception lors du téléchargement du permis:", error);
+        }
+      }
+      
+      // Téléchargement de la carte VTC
+      if (values.carteVTC) {
+        const file = values.carteVTC;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${newDriverId}-vtc-${Date.now()}.${fileExt}`;
+        
+        try {
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('drivers_documents')
+            .upload(fileName, file);
+          
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement de la carte VTC:", uploadError);
+          } else if (uploadData) {
+            const { data: urlData } = supabase.storage
+              .from('drivers_documents')
+              .getPublicUrl(fileName);
+            
+            if (urlData) {
+              carteVTCUrl = urlData.publicUrl;
+              console.log("URL publique de la carte VTC:", carteVTCUrl);
+            }
+          }
+        } catch (error) {
+          console.error("Exception lors du téléchargement de la carte VTC:", error);
         }
       }
       
@@ -242,9 +303,9 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         prenom: values.prenom,
         email: values.email,
         telephone: values.telephone,
-        piece_identite: `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
+        piece_identite: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
-        justificatif_domicile: `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
+        justificatif_domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
         date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0],
         note_chauffeur: 0,
         photo: photoUrl,
@@ -295,9 +356,9 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         Prénom: values.prenom,
         Email: values.email,
         Téléphone: values.telephone,
-        Pièce_Identité: `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
+        Pièce_Identité: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         Certificat_Médical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
-        Justificatif_Domicile: `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
+        Justificatif_Domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
         Date_Debut_Activité: values.dateDebutActivite,
         Note_Chauffeur: 0, // Pas encore noté
         Missions_Futures: [],
@@ -603,18 +664,110 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FileUploadField 
-                    name="permisConduire" 
-                    label="Permis de conduire" 
-                    accept="image/*,application/pdf" 
-                    preview={permisPreview} 
+                  <FormField
+                    control={form.control}
+                    name="permisConduire"
+                    render={({ field: { value, onChange, ...fieldProps } }) => (
+                      <FormItem>
+                        <FormLabel>Permis de conduire</FormLabel>
+                        <FormControl>
+                          <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                            <Input
+                              id="permisConduire"
+                              type="file"
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(e, 'permisConduire')}
+                              {...fieldProps}
+                            />
+                            <label htmlFor="permisConduire" className="cursor-pointer h-full">
+                              {permisPreview ? (
+                                <div className="flex justify-center">
+                                  {permisPreview.startsWith('data:image/') ? (
+                                    <img 
+                                      src={permisPreview} 
+                                      alt="Aperçu permis" 
+                                      className="object-cover h-24 rounded-md" 
+                                    />
+                                  ) : (
+                                    <div className="flex flex-col items-center space-y-2">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <span className="text-sm">Document téléchargé</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center space-y-2">
+                                  <UploadCloud className="h-8 w-8 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    Glissez et déposez ou cliquez pour sélectionner
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    PNG, JPG, WEBP, PDF (max 5MB)
+                                  </span>
+                                </div>
+                              )}
+                            </label>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
 
-                  <FileUploadField 
-                    name="carteVTC" 
-                    label="Carte VTC" 
-                    accept="image/*,application/pdf" 
-                    preview={carteVTCPreview}
+                  <FormField
+                    control={form.control}
+                    name="carteVTC"
+                    render={({ field: { value, onChange, ...fieldProps } }) => (
+                      <FormItem>
+                        <FormLabel>Carte VTC</FormLabel>
+                        <FormControl>
+                          <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                            <Input
+                              id="carteVTC"
+                              type="file"
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(e, 'carteVTC')}
+                              {...fieldProps}
+                            />
+                            <label htmlFor="carteVTC" className="cursor-pointer h-full">
+                              {carteVTCPreview ? (
+                                <div className="flex justify-center">
+                                  {carteVTCPreview.startsWith('data:image/') ? (
+                                    <img 
+                                      src={carteVTCPreview} 
+                                      alt="Aperçu carte VTC" 
+                                      className="object-cover h-24 rounded-md" 
+                                    />
+                                  ) : (
+                                    <div className="flex flex-col items-center space-y-2">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <span className="text-sm">Document téléchargé</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center space-y-2">
+                                  <UploadCloud className="h-8 w-8 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    Glissez et déposez ou cliquez pour sélectionner
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    PNG, JPG, WEBP, PDF (max 5MB)
+                                  </span>
+                                </div>
+                              )}
+                            </label>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
               </div>
