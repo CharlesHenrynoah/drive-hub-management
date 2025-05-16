@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 interface NewMissionFormProps {
   onSuccess: () => void;
@@ -44,12 +45,11 @@ interface NewMissionFormProps {
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
-  arrivalDate: z.date().optional(),
   driver: z.string().min(1, "Le chauffeur est requis"),
   vehicle: z.string().min(1, "Le véhicule est requis"),
   company: z.string().min(1, "L'entreprise est requise"),
-  startLocation: z.string().optional(),
-  endLocation: z.string().optional(),
+  startLocation: z.string().min(1, "Le lieu de départ est requis"),
+  endLocation: z.string().min(1, "La destination est requise"),
   client: z.string().optional(),
   clientEmail: z.string().email("Email invalide").optional().or(z.literal('')),
   clientPhone: z.string().optional(),
@@ -57,6 +57,74 @@ const formSchema = z.object({
   description: z.string().optional(),
   additionalDetails: z.string().optional(),
 });
+
+// Villes françaises et européennes pour les suggestions
+const frenchCities = [
+  { label: "🇫🇷 Paris", value: "Paris" },
+  { label: "🇫🇷 Marseille", value: "Marseille" },
+  { label: "🇫🇷 Lyon", value: "Lyon" },
+  { label: "🇫🇷 Toulouse", value: "Toulouse" },
+  { label: "🇫🇷 Nice", value: "Nice" },
+  { label: "🇫🇷 Nantes", value: "Nantes" },
+  { label: "🇫🇷 Strasbourg", value: "Strasbourg" },
+  { label: "🇫🇷 Montpellier", value: "Montpellier" },
+  { label: "🇫🇷 Bordeaux", value: "Bordeaux" },
+  { label: "🇫🇷 Lille", value: "Lille" },
+  { label: "🇫🇷 Rennes", value: "Rennes" },
+  { label: "🇫🇷 Reims", value: "Reims" },
+  { label: "🇫🇷 Le Havre", value: "Le Havre" },
+  { label: "🇫🇷 Saint-Étienne", value: "Saint-Étienne" },
+  { label: "🇫🇷 Toulon", value: "Toulon" },
+  { label: "🇫🇷 Grenoble", value: "Grenoble" },
+  { label: "🇫🇷 Dijon", value: "Dijon" },
+  { label: "🇫🇷 Angers", value: "Angers" },
+  { label: "🇫🇷 Nîmes", value: "Nîmes" },
+  { label: "🇫🇷 Clermont-Ferrand", value: "Clermont-Ferrand" },
+];
+
+const europeanCities = [
+  { label: "🇩🇪 Berlin", value: "Berlin" },
+  { label: "🇦🇹 Vienne", value: "Vienne" },
+  { label: "🇧🇪 Bruxelles", value: "Bruxelles" },
+  { label: "🇧🇬 Sofia", value: "Sofia" },
+  { label: "🇨🇾 Nicosie", value: "Nicosie" },
+  { label: "🇭🇷 Zagreb", value: "Zagreb" },
+  { label: "🇩🇰 Copenhague", value: "Copenhague" },
+  { label: "🇪🇸 Madrid", value: "Madrid" },
+  { label: "🇪🇪 Tallinn", value: "Tallinn" },
+  { label: "🇫🇮 Helsinki", value: "Helsinki" },
+  { label: "🇬🇷 Athènes", value: "Athènes" },
+  { label: "🇭🇺 Budapest", value: "Budapest" },
+  { label: "🇮🇪 Dublin", value: "Dublin" },
+  { label: "🇮🇹 Rome", value: "Rome" },
+  { label: "🇱🇻 Riga", value: "Riga" },
+  { label: "🇱🇹 Vilnius", value: "Vilnius" },
+  { label: "🇱🇺 Luxembourg", value: "Luxembourg" },
+  { label: "🇲🇹 La Valette", value: "La Valette" },
+  { label: "🇳🇱 Amsterdam", value: "Amsterdam" },
+  { label: "🇵🇱 Varsovie", value: "Varsovie" },
+  { label: "🇵🇹 Lisbonne", value: "Lisbonne" },
+  { label: "🇨🇿 Prague", value: "Prague" },
+  { label: "🇷🇴 Bucarest", value: "Bucarest" },
+  { label: "🇸🇰 Bratislava", value: "Bratislava" },
+  { label: "🇸🇮 Ljubljana", value: "Ljubljana" },
+  { label: "🇸🇪 Stockholm", value: "Stockholm" },
+  { label: "🇳🇴 Oslo", value: "Oslo" },
+  { label: "🇨🇭 Berne", value: "Berne" },
+  { label: "🇬🇧 Londres", value: "Londres" },
+  { label: "🇮🇸 Reykjavik", value: "Reykjavik" },
+  { label: "🇦🇱 Tirana", value: "Tirana" },
+  { label: "🇷🇸 Belgrade", value: "Belgrade" },
+  { label: "🇧🇦 Sarajevo", value: "Sarajevo" },
+  { label: "🇲🇪 Podgorica", value: "Podgorica" },
+  { label: "🇲🇰 Skopje", value: "Skopje" },
+  { label: "🇽🇰 Pristina", value: "Pristina" },
+  { label: "🇺🇦 Kyiv", value: "Kyiv" },
+  { label: "🇲🇩 Chisinau", value: "Chisinau" },
+];
+
+// Combinaison de toutes les villes pour la recherche
+const allCities = [...frenchCities, ...europeanCities];
 
 // Fetch companies from Supabase
 const fetchCompanies = async () => {
@@ -96,7 +164,6 @@ const fetchVehiclesByCompany = async (companyId: string) => {
 
 export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
-  const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -108,6 +175,8 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
       company: "",
       driver: "",
       vehicle: "",
+      startLocation: "",
+      endLocation: "",
     },
   });
 
@@ -149,7 +218,6 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
         .insert({
           title: data.title,
           date: data.date.toISOString(),
-          arrival_date: data.arrivalDate?.toISOString(),
           driver_id: data.driver,
           vehicle_id: data.vehicle,
           company_id: data.company,
@@ -252,114 +320,113 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
         
+        {/* Locations - Now before date/time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Departure Date and Time */}
+          {/* Start Location */}
           <FormField
             control={form.control}
-            name="date"
+            name="startLocation"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date et heure de départ</FormLabel>
-                <div className="flex gap-2">
-                  <DatePicker 
-                    date={field.value} 
-                    setDate={(date) => {
-                      if (date) field.onChange(date);
-                    }}
-                    placeholder="Date de départ"
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Lieu de départ (Point A)
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Combobox
+                    items={frenchCities}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Point de départ"
+                    emptyMessage="Aucune ville trouvée"
                   />
-                  <Popover open={timePopoverOpen} onOpenChange={setTimePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[120px] pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? format(field.value, "HH:mm") : "Heure"}
-                        <Clock className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <div className="h-[200px] overflow-y-auto p-2">
-                        {timeOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            variant="ghost"
-                            className="w-full justify-start font-normal"
-                            onClick={() => {
-                              const newDate = updateTimeInDate(field.value, option.value);
-                              if (newDate) field.onChange(newDate);
-                              setTimePopoverOpen(false);
-                            }}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Arrival Date and Time */}
+          {/* End Location */}
           <FormField
             control={form.control}
-            name="arrivalDate"
+            name="endLocation"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date et heure d'arrivée (optionnel)</FormLabel>
-                <div className="flex gap-2">
-                  <DatePicker 
-                    date={field.value} 
-                    setDate={(date) => {
-                      field.onChange(date || undefined);
-                    }}
-                    placeholder="Date d'arrivée"
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Destination (Point B)
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Combobox
+                    items={allCities}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Point d'arrivée"
+                    emptyMessage="Aucune ville trouvée"
                   />
-                  <Popover open={arrivalTimePopoverOpen} onOpenChange={setArrivalTimePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[120px] pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        disabled={!field.value}
-                      >
-                        {field.value ? format(field.value, "HH:mm") : "Heure"}
-                        <Clock className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <div className="h-[200px] overflow-y-auto p-2">
-                        {timeOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            variant="ghost"
-                            className="w-full justify-start font-normal"
-                            onClick={() => {
-                              const newDate = updateTimeInDate(field.value, option.value);
-                              if (newDate) field.onChange(newDate);
-                              setArrivalTimePopoverOpen(false);
-                            }}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
+        
+        {/* Departure Date and Time only */}
+        <FormField
+          control={form.control}
+          name="date"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Date et heure de départ</FormLabel>
+              <div className="flex gap-2">
+                <DatePicker 
+                  date={field.value} 
+                  setDate={(date) => {
+                    if (date) field.onChange(date);
+                  }}
+                  placeholder="Date de départ"
+                />
+                <Popover open={timePopoverOpen} onOpenChange={setTimePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[120px] pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? format(field.value, "HH:mm") : "Heure"}
+                      <Clock className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <div className="h-[200px] overflow-y-auto p-2">
+                      {timeOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          variant="ghost"
+                          className="w-full justify-start font-normal"
+                          onClick={() => {
+                            const newDate = updateTimeInDate(field.value, option.value);
+                            if (newDate) field.onChange(newDate);
+                            setTimePopoverOpen(false);
+                          }}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Driver - Now dependent on company */}
@@ -433,48 +500,6 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Start Location */}
-          <FormField
-            control={form.control}
-            name="startLocation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Lieu de départ (Point A)
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Point de départ" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* End Location */}
-          <FormField
-            control={form.control}
-            name="endLocation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Destination (Point B)
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Point d'arrivée" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Client */}
           <FormField
@@ -496,7 +521,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Client Email - New Field */}
+          {/* Client Email */}
           <FormField
             control={form.control}
             name="clientEmail"
@@ -521,7 +546,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Client Phone - New Field */}
+          {/* Client Phone */}
           <FormField
             control={form.control}
             name="clientPhone"

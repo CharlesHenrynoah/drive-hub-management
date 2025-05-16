@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 interface EditMissionFormProps {
   mission: Mission;
@@ -46,12 +47,11 @@ interface EditMissionFormProps {
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
-  arrivalDate: z.date().optional(),
   driver: z.string().min(1, "Le chauffeur est requis"),
   vehicle: z.string().min(1, "Le véhicule est requis"),
   company: z.string().min(1, "L'entreprise est requise"),
-  startLocation: z.string().optional(),
-  endLocation: z.string().optional(),
+  startLocation: z.string().min(1, "Le lieu de départ est requis"),
+  endLocation: z.string().min(1, "La destination est requise"),
   client: z.string().optional(),
   clientEmail: z.string().email("Email invalide").optional().or(z.literal('')),
   clientPhone: z.string().optional(),
@@ -60,6 +60,74 @@ const formSchema = z.object({
   additionalDetails: z.string().optional(),
   status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
 });
+
+// Villes françaises et européennes pour les suggestions
+const frenchCities = [
+  { label: "🇫🇷 Paris", value: "Paris" },
+  { label: "🇫🇷 Marseille", value: "Marseille" },
+  { label: "🇫🇷 Lyon", value: "Lyon" },
+  { label: "🇫🇷 Toulouse", value: "Toulouse" },
+  { label: "🇫🇷 Nice", value: "Nice" },
+  { label: "🇫🇷 Nantes", value: "Nantes" },
+  { label: "🇫🇷 Strasbourg", value: "Strasbourg" },
+  { label: "🇫🇷 Montpellier", value: "Montpellier" },
+  { label: "🇫🇷 Bordeaux", value: "Bordeaux" },
+  { label: "🇫🇷 Lille", value: "Lille" },
+  { label: "🇫🇷 Rennes", value: "Rennes" },
+  { label: "🇫🇷 Reims", value: "Reims" },
+  { label: "🇫🇷 Le Havre", value: "Le Havre" },
+  { label: "🇫🇷 Saint-Étienne", value: "Saint-Étienne" },
+  { label: "🇫🇷 Toulon", value: "Toulon" },
+  { label: "🇫🇷 Grenoble", value: "Grenoble" },
+  { label: "🇫🇷 Dijon", value: "Dijon" },
+  { label: "🇫🇷 Angers", value: "Angers" },
+  { label: "🇫🇷 Nîmes", value: "Nîmes" },
+  { label: "🇫🇷 Clermont-Ferrand", value: "Clermont-Ferrand" },
+];
+
+const europeanCities = [
+  { label: "🇩🇪 Berlin", value: "Berlin" },
+  { label: "🇦🇹 Vienne", value: "Vienne" },
+  { label: "🇧🇪 Bruxelles", value: "Bruxelles" },
+  { label: "🇧🇬 Sofia", value: "Sofia" },
+  { label: "🇨🇾 Nicosie", value: "Nicosie" },
+  { label: "🇭🇷 Zagreb", value: "Zagreb" },
+  { label: "🇩🇰 Copenhague", value: "Copenhague" },
+  { label: "🇪🇸 Madrid", value: "Madrid" },
+  { label: "🇪🇪 Tallinn", value: "Tallinn" },
+  { label: "🇫🇮 Helsinki", value: "Helsinki" },
+  { label: "🇬🇷 Athènes", value: "Athènes" },
+  { label: "🇭🇺 Budapest", value: "Budapest" },
+  { label: "🇮🇪 Dublin", value: "Dublin" },
+  { label: "🇮🇹 Rome", value: "Rome" },
+  { label: "🇱🇻 Riga", value: "Riga" },
+  { label: "🇱🇹 Vilnius", value: "Vilnius" },
+  { label: "🇱🇺 Luxembourg", value: "Luxembourg" },
+  { label: "🇲🇹 La Valette", value: "La Valette" },
+  { label: "🇳🇱 Amsterdam", value: "Amsterdam" },
+  { label: "🇵🇱 Varsovie", value: "Varsovie" },
+  { label: "🇵🇹 Lisbonne", value: "Lisbonne" },
+  { label: "🇨🇿 Prague", value: "Prague" },
+  { label: "🇷🇴 Bucarest", value: "Bucarest" },
+  { label: "🇸🇰 Bratislava", value: "Bratislava" },
+  { label: "🇸🇮 Ljubljana", value: "Ljubljana" },
+  { label: "🇸🇪 Stockholm", value: "Stockholm" },
+  { label: "🇳🇴 Oslo", value: "Oslo" },
+  { label: "🇨🇭 Berne", value: "Berne" },
+  { label: "🇬🇧 Londres", value: "Londres" },
+  { label: "🇮🇸 Reykjavik", value: "Reykjavik" },
+  { label: "🇦🇱 Tirana", value: "Tirana" },
+  { label: "🇷🇸 Belgrade", value: "Belgrade" },
+  { label: "🇧🇦 Sarajevo", value: "Sarajevo" },
+  { label: "🇲🇪 Podgorica", value: "Podgorica" },
+  { label: "🇲🇰 Skopje", value: "Skopje" },
+  { label: "🇽🇰 Pristina", value: "Pristina" },
+  { label: "🇺🇦 Kyiv", value: "Kyiv" },
+  { label: "🇲🇩 Chisinau", value: "Chisinau" },
+];
+
+// Combinaison de toutes les villes pour la recherche
+const allCities = [...frenchCities, ...europeanCities];
 
 // Fetch companies from Supabase
 const fetchCompanies = async () => {
@@ -99,7 +167,6 @@ const fetchVehiclesByCompany = async (companyId: string) => {
 
 export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
-  const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>(mission.company_id || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -108,7 +175,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     defaultValues: {
       title: mission.title,
       date: mission.date,
-      arrivalDate: mission.arrival_date,
       driver: mission.driver_id || "",
       vehicle: mission.vehicle_id || "",
       company: mission.company_id || "",
@@ -164,7 +230,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
         .update({
           title: data.title,
           date: data.date.toISOString(),
-          arrival_date: data.arrivalDate?.toISOString(),
           driver_id: data.driver,
           vehicle_id: data.vehicle,
           company_id: data.company,
@@ -268,8 +333,63 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           )}
         />
         
+        {/* Locations - Now before date/time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Departure Date and Time */}
+          {/* Start Location */}
+          <FormField
+            control={form.control}
+            name="startLocation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Lieu de départ (Point A)
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Combobox
+                    items={frenchCities}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Point de départ"
+                    emptyMessage="Aucune ville trouvée"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* End Location */}
+          <FormField
+            control={form.control}
+            name="endLocation"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Destination (Point B)
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Combobox
+                    items={allCities}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Point d'arrivée"
+                    emptyMessage="Aucune ville trouvée"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        
+        {/* Departure Date and Time only */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="date"
@@ -322,87 +442,33 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
 
-          {/* Arrival Date and Time */}
+          {/* Status */}
           <FormField
             control={form.control}
-            name="arrivalDate"
+            name="status"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date et heure d'arrivée (optionnel)</FormLabel>
-                <div className="flex gap-2">
-                  <DatePicker 
-                    date={field.value} 
-                    setDate={(date) => {
-                      field.onChange(date || undefined);
-                    }}
-                    placeholder="Date d'arrivée"
-                  />
-                  <Popover open={arrivalTimePopoverOpen} onOpenChange={setArrivalTimePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[120px] pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        disabled={!field.value}
-                      >
-                        {field.value ? format(field.value, "HH:mm") : "Heure"}
-                        <Clock className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <div className="h-[200px] overflow-y-auto p-2">
-                        {timeOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            variant="ghost"
-                            className="w-full justify-start font-normal"
-                            onClick={() => {
-                              const newDate = updateTimeInDate(field.value, option.value);
-                              if (newDate) field.onChange(newDate);
-                              setArrivalTimePopoverOpen(false);
-                            }}
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+              <FormItem>
+                <FormLabel>Statut</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un statut" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="en_cours">En cours</SelectItem>
+                    <SelectItem value="terminee">Terminée</SelectItem>
+                    <SelectItem value="annulee">Annulée</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-
-        {/* Status */}
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Statut</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un statut" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="en_cours">En cours</SelectItem>
-                  <SelectItem value="terminee">Terminée</SelectItem>
-                  <SelectItem value="annulee">Annulée</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Driver - Now dependent on company */}
@@ -470,48 +536,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                     ))}
                   </SelectContent>
                 </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Start Location */}
-          <FormField
-            control={form.control}
-            name="startLocation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Lieu de départ (Point A)
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Point de départ" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* End Location */}
-          <FormField
-            control={form.control}
-            name="endLocation"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Destination (Point B)
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Point d'arrivée" {...field} value={field.value || ""} />
-                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -590,37 +614,35 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Passengers */}
-          <FormField
-            control={form.control}
-            name="passengers"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Nombre de passagers
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    placeholder="Nombre de passagers" 
-                    {...field} 
-                    value={field.value === undefined ? "" : field.value} 
-                    onChange={(e) => {
-                      const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
-                      field.onChange(value);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {/* Passengers */}
+        <FormField
+          control={form.control}
+          name="passengers"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Nombre de passagers
+                </span>
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  placeholder="Nombre de passagers" 
+                  {...field} 
+                  value={field.value === undefined ? "" : field.value} 
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
+                    field.onChange(value);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Description */}
         <FormField
