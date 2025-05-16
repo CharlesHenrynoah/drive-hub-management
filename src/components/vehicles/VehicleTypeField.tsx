@@ -41,24 +41,37 @@ function getVehicleEmoji(type: string): React.ReactNode {
 
 export function VehicleTypeField({ value, onChange, disabled = false }: VehicleTypeFieldProps) {
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
-  const [safeValue, setSafeValue] = useState<string>(value || "");
+  const [safeValue, setSafeValue] = useState<string>("");
+  
+  // Ensure we have valid vehicle types before processing
+  const validVehicleTypes = vehicleTypes.filter(vt => 
+    vt && typeof vt.type === 'string' && vt.type.trim() !== ''
+  );
   
   // Validate the initial value when component mounts or vehicleTypes change
   useEffect(() => {
-    if (vehicleTypes.length > 0) {
+    if (validVehicleTypes.length > 0) {
       // Check if the current value is valid (exists in vehicleTypes)
-      const isValidValue = value && vehicleTypes.some(vt => vt.type === value);
+      const isValidValue = value && 
+                          typeof value === 'string' && 
+                          value.trim() !== '' && 
+                          validVehicleTypes.some(vt => vt.type === value);
       
-      if (!isValidValue && vehicleTypes.length > 0) {
+      if (!isValidValue) {
         // If current value is invalid, select the first available type
-        const firstValidType = vehicleTypes[0].type;
+        const firstValidType = validVehicleTypes[0].type;
         setSafeValue(firstValidType);
         onChange(firstValidType);
-      } else if (value) {
+      } else if (value && value.trim() !== '') {
         setSafeValue(value);
+      } else {
+        // If value is empty but we have valid types, set to first type
+        const firstValidType = validVehicleTypes[0].type;
+        setSafeValue(firstValidType);
+        onChange(firstValidType);
       }
     }
-  }, [vehicleTypes, value, onChange]);
+  }, [validVehicleTypes, value, onChange]);
 
   // Ensure we have a valid value
   const handleChange = (newValue: string) => {
@@ -68,17 +81,12 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
     }
   };
 
-  // Filter out any vehicle types with empty values before rendering
-  const validVehicleTypes = vehicleTypes.filter(vt => 
-    vt && typeof vt.type === 'string' && vt.type.trim() !== ''
-  );
-
   return (
     <FormItem>
       <Select
-        value={safeValue || undefined}
+        value={safeValue}
         onValueChange={handleChange}
-        disabled={disabled || isLoading}
+        disabled={disabled || isLoading || validVehicleTypes.length === 0}
       >
         <FormControl>
           <SelectTrigger className="w-full">

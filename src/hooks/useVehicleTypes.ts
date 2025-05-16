@@ -97,14 +97,18 @@ export function useVehicleTypes() {
       
       // Create a validated list of vehicle types with guaranteed non-empty string values
       return data.filter(vt => {
-        // Filter out any vehicle types with null, undefined, or empty string type values
-        return vt && typeof vt.type === 'string' && vt.type.trim() !== '';
+        // More strict filtering: ensure type exists and is a non-empty string
+        return vt && 
+               typeof vt.type === 'string' && 
+               vt.type.trim() !== '' &&
+               vt.id !== null && 
+               vt.id !== undefined;
       }).map(vt => {
         // Create a safe copy with guaranteed non-empty type value
         return {
           ...vt,
-          // Even though we've already filtered, ensure type is trimmed
-          type: vt.type.trim()
+          // Ensure type is trimmed and defaulted if somehow empty
+          type: vt.type.trim() || `Type ${vt.id}`
         };
       });
     },

@@ -21,22 +21,32 @@ export function VehicleTypeSelector({
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
 
+  // Filter out any vehicle types with empty values before rendering
+  const validVehicleTypes = vehicleTypes.filter(vt => 
+    vt && 
+    typeof vt.type === 'string' && 
+    vt.type.trim() !== '' &&
+    vt.id !== null && 
+    vt.id !== undefined
+  );
+  
   // Validate selected types whenever vehicle types data changes
   useEffect(() => {
-    if (vehicleTypes && selectedTypes.length > 0) {
+    if (validVehicleTypes && selectedTypes.length > 0) {
       // Filter out any invalid or empty types
-      const validTypes = selectedTypes.filter(type => 
+      const validSelectedTypes = selectedTypes.filter(type => 
         type && 
+        typeof type === 'string' &&
         type.trim() !== '' && 
-        vehicleTypes.some(vt => vt.type === type)
+        validVehicleTypes.some(vt => vt.type === type)
       );
       
-      if (validTypes.length !== selectedTypes.length) {
+      if (validSelectedTypes.length !== selectedTypes.length) {
         // Update with only valid types if any were filtered out
-        onChange(validTypes);
+        onChange(validSelectedTypes);
       }
     }
-  }, [vehicleTypes, selectedTypes, onChange]);
+  }, [validVehicleTypes, selectedTypes, onChange]);
 
   const handleTypeClick = (type: string) => {
     if (!type || type.trim() === '') {
@@ -61,11 +71,6 @@ export function VehicleTypeSelector({
     }
   };
 
-  // Filter out any vehicle types with empty values before rendering
-  const validVehicleTypes = vehicleTypes.filter(vt => 
-    vt && typeof vt.type === 'string' && vt.type.trim() !== ''
-  );
-
   if (isLoading) {
     return <div>Chargement des types de véhicules...</div>;
   }
@@ -74,11 +79,14 @@ export function VehicleTypeSelector({
     return <div>Aucun type de véhicule disponible</div>;
   }
 
+  // Filter out any empty values from selectedTypes
+  const safeSelectedTypes = selectedTypes.filter(type => type && type.trim() !== '');
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2 mb-2">
-        {selectedTypes.length > 0 ? (
-          selectedTypes.filter(type => type && type.trim() !== '').map((type) => (
+        {safeSelectedTypes.length > 0 ? (
+          safeSelectedTypes.map((type) => (
             <Badge key={type} variant="outline" className="bg-primary/10">
               {type}
             </Badge>
@@ -98,7 +106,7 @@ export function VehicleTypeSelector({
               onClick={() => handleTypeClick(vehicleType.type)}
               className={cn(
                 "flex items-start justify-between p-3 h-auto",
-                selectedTypes.includes(vehicleType.type) && "border-primary ring-1 ring-primary"
+                safeSelectedTypes.includes(vehicleType.type) && "border-primary ring-1 ring-primary"
               )}
             >
               <div className="flex flex-col items-start text-left">
@@ -110,7 +118,7 @@ export function VehicleTypeSelector({
                   Capacité: {vehicleType.capacity_min} - {vehicleType.capacity_max} passagers
                 </span>
               </div>
-              {selectedTypes.includes(vehicleType.type) && (
+              {safeSelectedTypes.includes(vehicleType.type) && (
                 <CheckIcon className="h-4 w-4 text-primary" />
               )}
             </Button>
