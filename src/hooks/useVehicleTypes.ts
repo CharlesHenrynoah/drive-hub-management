@@ -95,13 +95,16 @@ export function useVehicleTypes() {
         ];
       }
       
-      // Ensure all vehicle types have valid non-empty string values
-      return data.map(vt => {
+      // Create a validated list of vehicle types with guaranteed non-empty string values
+      return data.filter(vt => {
+        // Filter out any vehicle types with null, undefined, or empty string type values
+        return vt && typeof vt.type === 'string' && vt.type.trim() !== '';
+      }).map(vt => {
         // Create a safe copy with guaranteed non-empty type value
         return {
           ...vt,
-          // Ensure type is never empty or undefined - use a string prefixed with the ID if empty
-          type: vt.type && vt.type.trim() !== '' ? vt.type.trim() : `Type ${vt.id}`
+          // Even though we've already filtered, ensure type is trimmed
+          type: vt.type.trim()
         };
       });
     },

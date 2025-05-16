@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 import { FormControl, FormItem, FormLabel, FormMessage } from "../ui/form";
 import {
@@ -41,18 +41,42 @@ function getVehicleEmoji(type: string): React.ReactNode {
 
 export function VehicleTypeField({ value, onChange, disabled = false }: VehicleTypeFieldProps) {
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
+  const [safeValue, setSafeValue] = useState<string>(value || "");
   
+  // Validate the initial value when component mounts or vehicleTypes change
+  useEffect(() => {
+    if (vehicleTypes.length > 0) {
+      // Check if the current value is valid (exists in vehicleTypes)
+      const isValidValue = value && vehicleTypes.some(vt => vt.type === value);
+      
+      if (!isValidValue && vehicleTypes.length > 0) {
+        // If current value is invalid, select the first available type
+        const firstValidType = vehicleTypes[0].type;
+        setSafeValue(firstValidType);
+        onChange(firstValidType);
+      } else if (value) {
+        setSafeValue(value);
+      }
+    }
+  }, [vehicleTypes, value, onChange]);
+
   // Ensure we have a valid value
   const handleChange = (newValue: string) => {
     if (newValue && newValue.trim() !== '') {
+      setSafeValue(newValue);
       onChange(newValue);
     }
   };
 
+  // Filter out any vehicle types with empty values before rendering
+  const validVehicleTypes = vehicleTypes.filter(vt => 
+    vt && typeof vt.type === 'string' && vt.type.trim() !== ''
+  );
+
   return (
     <FormItem>
       <Select
-        value={value || undefined}
+        value={safeValue || undefined}
         onValueChange={handleChange}
         disabled={disabled || isLoading}
       >
@@ -67,45 +91,34 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : (
-            vehicleTypes
-              .filter(vehicleType => {
-                // Ensure we only include vehicle types with valid values
-                const typeValue = vehicleType.type || `Type ${vehicleType.id}`;
-                return typeValue && typeValue.trim() !== '';
-              })
-              .map((vehicleType) => {
-                // Create a guaranteed non-empty value
-                const itemValue = vehicleType.type || `Type ${vehicleType.id}`;
-                
-                return (
-                  <SelectItem 
-                    key={vehicleType.id} 
-                    value={itemValue}
-                    className="py-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
-                      <div className="flex flex-col">
-                        <span>{itemValue}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {vehicleType.capacity_min} - {vehicleType.capacity_max} places
-                        </span>
-                      </div>
-                    </div>
-                  </SelectItem>
-                );
-              })
+            validVehicleTypes.map((vehicleType) => (
+              <SelectItem 
+                key={vehicleType.id} 
+                value={vehicleType.type}
+                className="py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
+                  <div className="flex flex-col">
+                    <span>{vehicleType.type}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {vehicleType.capacity_min} - {vehicleType.capacity_max} places
+                    </span>
+                  </div>
+                </div>
+              </SelectItem>
+            ))
           )}
         </SelectContent>
       </Select>
       
-      {value && !isLoading && (
+      {safeValue && !isLoading && (
         <div className="mt-2">
-          {vehicleTypes.find(vt => (vt.type || `Type ${vt.id}`) === value) && (
+          {validVehicleTypes.find(vt => vt.type === safeValue) && (
             <Badge variant="outline" className="bg-secondary flex items-center gap-1">
-              {getVehicleEmoji(value)}
-              {vehicleTypes.find(vt => (vt.type || `Type ${vt.id}`) === value)?.capacity_min} - 
-              {vehicleTypes.find(vt => (vt.type || `Type ${vt.id}`) === value)?.capacity_max} passagers
+              {getVehicleEmoji(safeValue)}
+              {validVehicleTypes.find(vt => vt.type === safeValue)?.capacity_min} - 
+              {validVehicleTypes.find(vt => vt.type === safeValue)?.capacity_max} passagers
             </Badge>
           )}
         </div>
