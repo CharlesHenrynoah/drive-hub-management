@@ -16,6 +16,7 @@ import MissionsPage from "./pages/MissionsPage";
 import MissionsAPI from "./pages/MissionsAPI";
 import LandingPage from "./pages/LandingPage";
 import ChatbotOtto from "./pages/ChatbotOtto";
+import CompaniesPage from "./pages/CompaniesPage";
 
 // Import des pages d'administration spécifiques
 import AdminApiPage from "./pages/admin/AdminApiPage";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/vehicules" element={<ProtectedRoute><VehiclesPage /></ProtectedRoute>} />
             <Route path="/chauffeurs" element={<ProtectedRoute><DriversPage /></ProtectedRoute>} />
             <Route path="/flottes" element={<ProtectedRoute><FleetsPage /></ProtectedRoute>} />
+            <Route path="/entreprises" element={<ProtectedRoute><CompaniesPage /></ProtectedRoute>} />
             <Route path="/missions" element={<ProtectedRoute><MissionsPage /></ProtectedRoute>} />
             <Route path="/api-missions" element={<ProtectedRoute><MissionsAPI /></ProtectedRoute>} />
             <Route path="/site-web" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
