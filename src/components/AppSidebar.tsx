@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Home, Car, User, Users, Calendar, Globe, Building } from "lucide-react";
+import { Home, User, Users, Calendar, Globe, Building } from "lucide-react";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -19,7 +19,6 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="px-4 py-6">
         <div className="flex items-center gap-2">
-          <Car className="h-8 w-8 text-primary" />
           <div>
             <h1 className="text-lg font-bold text-white">Hermes</h1>
           </div>
@@ -32,14 +31,6 @@ export function AppSidebar() {
               <Link to="/" className={location.pathname === "/" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
                 <Home className="h-5 w-5" />
                 <span>Tableau de bord</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to="/vehicules" className={location.pathname === "/vehicules" ? "text-sidebar-primary bg-sidebar-accent/50" : "text-white"}>
-                <Car className="h-5 w-5" />
-                <span>Véhicules</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

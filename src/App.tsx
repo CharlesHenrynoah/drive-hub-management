@@ -9,7 +9,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import VehiclesPage from "./pages/VehiclesPage";
 import DriversPage from "./pages/DriversPage";
 import FleetsPage from "./pages/FleetsPage";
 import MissionsPage from "./pages/MissionsPage";
@@ -33,7 +32,6 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/vehicules" element={<ProtectedRoute><VehiclesPage /></ProtectedRoute>} />
             <Route path="/chauffeurs" element={<ProtectedRoute><DriversPage /></ProtectedRoute>} />
             <Route path="/flottes" element={<ProtectedRoute><FleetsPage /></ProtectedRoute>} />
             <Route path="/entreprises" element={<ProtectedRoute><CompaniesPage /></ProtectedRoute>} />
