@@ -45,7 +45,11 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
   
   // Ensure all vehicle types are valid (no empty strings)
   const validVehicleTypes = vehicleTypes.filter(vt => 
-    vt && typeof vt.type === 'string' && vt.type.trim() !== ''
+    vt && 
+    typeof vt.type === 'string' && 
+    vt.type.trim() !== '' &&
+    vt.id !== null && 
+    vt.id !== undefined
   );
   
   // Initialize with valid vehicle type on mount
@@ -107,7 +111,7 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
             validVehicleTypes.map((vehicleType) => (
               <SelectItem 
                 key={vehicleType.id} 
-                value={vehicleType.type}
+                value={vehicleType.type || `Type-${vehicleType.id}`}
                 className="py-2"
               >
                 <div className="flex items-center gap-2">

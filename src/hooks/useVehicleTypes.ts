@@ -98,6 +98,7 @@ export function useVehicleTypes() {
       // Strict validation: ensure no empty strings in type field
       const validatedTypes = data
         .filter(vt => {
+          // Filter out null, undefined or empty strings
           return vt && 
                 typeof vt.type === 'string' && 
                 vt.type.trim() !== '' &&
@@ -106,10 +107,14 @@ export function useVehicleTypes() {
         })
         .map(vt => {
           // Ensure the type value is never an empty string
-          const typeValue = vt.type.trim();
+          let typeValue = vt.type.trim();
+          // If somehow type is empty after trimming, provide a fallback using the ID
+          if (typeValue === '') {
+            typeValue = `Type ${vt.id}`;
+          }
           return {
             ...vt,
-            type: typeValue || `Type ${vt.id}` // Fallback to "Type {id}" if type is somehow empty
+            type: typeValue
           };
         });
       
