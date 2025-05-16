@@ -1,7 +1,7 @@
 
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { VehiclesManagement } from "@/components/vehicles/VehiclesManagement";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 
 export default function VehiclesPage() {
   return (
