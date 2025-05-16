@@ -63,13 +63,13 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
             vehicleTypes.map((vehicleType) => (
               <SelectItem 
                 key={vehicleType.id} 
-                value={vehicleType.type}
+                value={vehicleType.type || `type_${vehicleType.id}`} // Assurer qu'il n'y a jamais de valeur vide
                 className="py-2"
               >
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
                   <div className="flex flex-col">
-                    <span>{vehicleType.type}</span>
+                    <span>{vehicleType.type || `Type #${vehicleType.id}`}</span>
                     <span className="text-xs text-muted-foreground">
                       {vehicleType.capacity_min} - {vehicleType.capacity_max} places
                     </span>
