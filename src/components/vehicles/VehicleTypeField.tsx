@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bus, Car, Loader2, MapPin } from "lucide-react";
+import { Bus, Car, Loader2 } from "lucide-react";
 
 interface VehicleTypeFieldProps {
   value: string;
@@ -43,41 +43,46 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
   const [safeValue, setSafeValue] = useState<string>("");
   
-  // Ensure we have valid vehicle types before processing
+  // Ensure all vehicle types are valid (no empty strings)
   const validVehicleTypes = vehicleTypes.filter(vt => 
     vt && typeof vt.type === 'string' && vt.type.trim() !== ''
   );
   
-  // Validate the initial value when component mounts or vehicleTypes change
+  // Initialize with valid vehicle type on mount
   useEffect(() => {
+    // Only proceed if we have valid vehicle types
     if (validVehicleTypes.length > 0) {
-      // Check if the current value is valid (exists in vehicleTypes)
-      const isValidValue = value && 
+      // Check if current value is valid
+      const isValidCurrentValue = value && 
                           typeof value === 'string' && 
                           value.trim() !== '' && 
                           validVehicleTypes.some(vt => vt.type === value);
       
-      if (!isValidValue) {
-        // If current value is invalid, select the first available type
-        const firstValidType = validVehicleTypes[0].type;
-        setSafeValue(firstValidType);
-        onChange(firstValidType);
-      } else if (value && value.trim() !== '') {
-        setSafeValue(value);
+      if (!isValidCurrentValue) {
+        // Select first valid type if current value is not valid
+        const firstType = validVehicleTypes[0].type;
+        setSafeValue(firstType);
+        onChange(firstType); // Inform parent component
       } else {
-        // If value is empty but we have valid types, set to first type
-        const firstValidType = validVehicleTypes[0].type;
-        setSafeValue(firstValidType);
-        onChange(firstValidType);
+        // Current value is valid, use it
+        setSafeValue(value);
       }
     }
   }, [validVehicleTypes, value, onChange]);
 
-  // Ensure we have a valid value
+  // Handle selection change safely
   const handleChange = (newValue: string) => {
+    // Extra validation to ensure we never set an empty value
     if (newValue && newValue.trim() !== '') {
       setSafeValue(newValue);
       onChange(newValue);
+    } else {
+      // If somehow we got an empty value, fallback to first valid type
+      if (validVehicleTypes.length > 0) {
+        const fallbackType = validVehicleTypes[0].type;
+        setSafeValue(fallbackType);
+        onChange(fallbackType);
+      }
     }
   };
 

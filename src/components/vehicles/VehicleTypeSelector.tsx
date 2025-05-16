@@ -21,7 +21,7 @@ export function VehicleTypeSelector({
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
 
-  // Filter out any vehicle types with empty values before rendering
+  // Ensure all vehicle types are valid
   const validVehicleTypes = vehicleTypes.filter(vt => 
     vt && 
     typeof vt.type === 'string' && 
@@ -30,10 +30,10 @@ export function VehicleTypeSelector({
     vt.id !== undefined
   );
   
-  // Validate selected types whenever vehicle types data changes
+  // Clean up any invalid selections whenever vehicle types change
   useEffect(() => {
-    if (validVehicleTypes && selectedTypes.length > 0) {
-      // Filter out any invalid or empty types
+    if (validVehicleTypes.length > 0 && selectedTypes.length > 0) {
+      // Filter out any invalid or empty selected types
       const validSelectedTypes = selectedTypes.filter(type => 
         type && 
         typeof type === 'string' &&
@@ -41,8 +41,8 @@ export function VehicleTypeSelector({
         validVehicleTypes.some(vt => vt.type === type)
       );
       
+      // Update selected types if any were filtered out
       if (validSelectedTypes.length !== selectedTypes.length) {
-        // Update with only valid types if any were filtered out
         onChange(validSelectedTypes);
       }
     }
@@ -50,17 +50,19 @@ export function VehicleTypeSelector({
 
   const handleTypeClick = (type: string) => {
     if (!type || type.trim() === '') {
-      return; // Don't process empty types
+      console.warn("Attempted to select empty vehicle type");
+      return;
     }
     
+    // Check if already selected
     const isSelected = selectedTypes.includes(type);
     
     if (isSelected) {
-      // Remove the type
+      // Remove from selection
       onChange(selectedTypes.filter(t => t !== type));
       setError(null);
     } else {
-      // Add the type if we haven't reached the max
+      // Add to selection if under max limit
       if (selectedTypes.length >= maxSelections) {
         setError(`Vous pouvez sélectionner maximum ${maxSelections} types de véhicules`);
         return;
@@ -79,8 +81,12 @@ export function VehicleTypeSelector({
     return <div>Aucun type de véhicule disponible</div>;
   }
 
-  // Filter out any empty values from selectedTypes
-  const safeSelectedTypes = selectedTypes.filter(type => type && type.trim() !== '');
+  // Ensure selected types are all valid
+  const safeSelectedTypes = selectedTypes.filter(type => 
+    type && 
+    type.trim() !== '' && 
+    validVehicleTypes.some(vt => vt.type === type)
+  );
 
   return (
     <div className="flex flex-col gap-3">

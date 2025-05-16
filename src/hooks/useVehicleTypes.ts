@@ -95,22 +95,41 @@ export function useVehicleTypes() {
         ];
       }
       
-      // Create a validated list of vehicle types with guaranteed non-empty string values
-      return data.filter(vt => {
-        // More strict filtering: ensure type exists and is a non-empty string
-        return vt && 
-               typeof vt.type === 'string' && 
-               vt.type.trim() !== '' &&
-               vt.id !== null && 
-               vt.id !== undefined;
-      }).map(vt => {
-        // Create a safe copy with guaranteed non-empty type value
-        return {
-          ...vt,
-          // Ensure type is trimmed and defaulted if somehow empty
-          type: vt.type.trim() || `Type ${vt.id}`
-        };
-      });
+      // Strict validation: ensure no empty strings in type field
+      const validatedTypes = data
+        .filter(vt => {
+          return vt && 
+                typeof vt.type === 'string' && 
+                vt.type.trim() !== '' &&
+                vt.id !== null && 
+                vt.id !== undefined;
+        })
+        .map(vt => {
+          // Ensure the type value is never an empty string
+          const typeValue = vt.type.trim();
+          return {
+            ...vt,
+            type: typeValue || `Type ${vt.id}` // Fallback to "Type {id}" if type is somehow empty
+          };
+        });
+      
+      // Extra safety check - if we somehow ended up with empty types, return default types
+      if (validatedTypes.length === 0) {
+        console.warn("No valid vehicle types found after validation, using defaults");
+        return [
+          {
+            id: 1,
+            type: "Minibus",
+            description: "Type par défaut",
+            capacity_min: 15,
+            capacity_max: 19,
+            image_url: null,
+            created_at: new Date().toISOString()
+          }
+        ];
+      }
+      
+      return validatedTypes;
     },
   });
 }
