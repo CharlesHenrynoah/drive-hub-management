@@ -356,8 +356,9 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
                       </div>
                       
                       {drivers.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-2">
-                          Aucun chauffeur disponible pour cette entreprise.
+                        <div className="text-sm text-amber-500 py-2 border border-amber-200 bg-amber-50 rounded-md p-2">
+                          <p>Aucun chauffeur disponible pour cette entreprise.</p>
+                          <p className="mt-1">Vous pouvez tout de même créer la flotte et y ajouter des chauffeurs ultérieurement.</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
