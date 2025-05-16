@@ -1,12 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { format, addHours } from "date-fns";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
-import { CalendarIcon, Clock, MapPin, UserRound, Truck, Users, Mail, Phone } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -41,46 +41,13 @@ interface NewMissionFormProps {
   onCancel: () => void;
 }
 
-// Define types for our data to avoid circular references
-interface Driver {
-  id: string;
-  nom: string;
-  prenom: string;
-  disponible: boolean;
-}
-
-interface Vehicle {
-  id: string;
-  brand: string;
-  model: string;
-  registration: string;
-  disponible: boolean;
-}
-
-interface Fleet {
-  id: string;
-  name: string;
-  company_id: string;
-  description?: string;
-}
-
-interface Company {
-  id: string;
-  name: string;
-}
-
-// Combined type for fleet with company name
-interface FleetWithCompany extends Fleet {
-  company_name?: string;
-}
-
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
   arrivalDate: z.date().optional(),
   driver: z.string().min(1, "Le chauffeur est requis"),
   vehicle: z.string().min(1, "Le véhicule est requis"),
-  fleet: z.string().min(1, "La flotte est requise"),
+  company: z.string().min(1, "L'entreprise est requise"),
   startLocation: z.string().optional(),
   endLocation: z.string().optional(),
   client: z.string().optional(),
@@ -89,184 +56,85 @@ const formSchema = z.object({
   passengers: z.coerce.number().int().nonnegative().optional(),
   description: z.string().optional(),
   additionalDetails: z.string().optional(),
-  status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
 });
 
-// Fetch fleets from Supabase with company names
-const fetchFleetsWithCompanies = async (): Promise<FleetWithCompany[]> => {
-  // First fetch fleets
-  const { data: fleets, error } = await supabase
-    .from('fleets')
+// Fetch companies from Supabase
+const fetchCompanies = async () => {
+  const { data, error } = await supabase
+    .from('companies')
     .select('*');
   
   if (error) throw error;
-  if (!fleets) return [];
-  
-  // Get all unique company IDs
-  const companyIds = [...new Set(fleets.map(fleet => fleet.company_id))];
-  
-  // Fetch companies
-  const { data: companies, error: companiesError } = await supabase
-    .from('companies')
-    .select('id, name')
-    .in('id', companyIds);
-    
-  if (companiesError) {
-    console.error('Error fetching companies:', companiesError);
-    return fleets;
-  }
-  
-  // Create a lookup map for companies
-  const companyMap = new Map();
-  companies?.forEach(company => {
-    companyMap.set(company.id, company.name);
-  });
-  
-  // Combine fleet with company name
-  const fleetsWithCompanies = fleets.map(fleet => ({
-    ...fleet,
-    company_name: companyMap.get(fleet.company_id) || 'Entreprise inconnue'
-  }));
-  
-  return fleetsWithCompanies;
+  return data || [];
 };
 
-// Fetch drivers based on fleet
-const fetchDriversByFleet = async (fleetId: string): Promise<Driver[]> => {
-  if (!fleetId) return [];
+// Fetch drivers based on company
+const fetchDriversByCompany = async (companyId: string) => {
+  if (!companyId) return [];
   
-  // Get available drivers in the fleet
   const { data, error } = await supabase
-    .from('fleet_drivers')
-    .select('driver_id')
-    .eq('fleet_id', fleetId);
-  
-  if (error) {
-    console.error('Error fetching fleet drivers:', error);
-    return [];
-  }
-  
-  if (!data || data.length === 0) return [];
-  
-  const driverIds = data.map(item => item.driver_id);
-  
-  // Get the available drivers from these IDs
-  const { data: drivers, error: driversError } = await supabase
     .from('drivers')
-    .select('id, nom, prenom, disponible')
-    .in('id', driverIds)
-    .eq('disponible', true);
+    .select('*')
+    .eq('id_entreprise', companyId);
   
-  if (driversError) throw driversError;
-  return drivers || [];
+  if (error) throw error;
+  return data || [];
 };
 
-// Fetch vehicles based on fleet
-const fetchVehiclesByFleet = async (fleetId: string): Promise<Vehicle[]> => {
-  if (!fleetId) return [];
+// Fetch vehicles based on company
+const fetchVehiclesByCompany = async (companyId: string) => {
+  if (!companyId) return [];
   
   const { data, error } = await supabase
-    .from('fleet_vehicles')
-    .select('vehicle_id')
-    .eq('fleet_id', fleetId);
-  
-  if (error) {
-    console.error('Error fetching fleet vehicles:', error);
-    return [];
-  }
-  
-  if (!data || data.length === 0) return [];
-  
-  const vehicleIds = data.map(item => item.vehicle_id);
-  
-  // Fixed: Only select fields we need and explicitly add disponible field
-  const { data: vehiclesData, error: vehiclesError } = await supabase
     .from('vehicles')
-    .select('id, brand, model, registration')
-    .in('id', vehicleIds);
+    .select('*')
+    .eq('company_id', companyId);
   
-  if (vehiclesError) throw vehiclesError;
-  
-  // Add the disponible property to match our Vehicle interface
-  const vehicles: Vehicle[] = (vehiclesData || []).map(vehicle => ({
-    id: vehicle.id,
-    brand: vehicle.brand,
-    model: vehicle.model,
-    registration: vehicle.registration,
-    disponible: true // We'll assume all fetched vehicles are available
-  }));
-  
-  return vehicles;
-};
-
-// Fetch company info for a fleet
-const fetchCompanyForFleet = async (fleetId: string): Promise<string | null> => {
-  if (!fleetId) return null;
-  
-  const { data, error } = await supabase
-    .from('fleets')
-    .select('company_id')
-    .eq('id', fleetId)
-    .single();
-  
-  if (error) {
-    console.error('Error fetching company for fleet:', error);
-    return null;
-  }
-  
-  return data?.company_id || null;
+  if (error) throw error;
+  return data || [];
 };
 
 export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
-  const [selectedFleet, setSelectedFleet] = useState<string>("");
+  const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const defaultDate = new Date();
-  defaultDate.setMinutes(Math.ceil(defaultDate.getMinutes() / 15) * 15); // Round to next 15 min
-  
-  const defaultArrivalDate = addHours(defaultDate, 1); // Default 1 hour duration
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      date: defaultDate,
-      arrivalDate: defaultArrivalDate,
+      date: new Date(),
+      company: "",
       driver: "",
       vehicle: "",
-      fleet: "",
-      clientEmail: "",
-      clientPhone: "",
-      status: "en_cours",
     },
   });
 
-  // Query for fleets with company names
-  const { data: fleets = [] } = useQuery({
-    queryKey: ['fleets-with-companies'],
-    queryFn: fetchFleetsWithCompanies,
+  // Query for companies
+  const { data: companies = [] } = useQuery({
+    queryKey: ['companies'],
+    queryFn: fetchCompanies,
   });
 
-  // Query for drivers based on selected fleet
+  // Query for drivers based on selected company
   const { data: drivers = [] } = useQuery({
-    queryKey: ['drivers', selectedFleet],
-    queryFn: () => fetchDriversByFleet(selectedFleet),
-    enabled: !!selectedFleet,
+    queryKey: ['drivers', selectedCompany],
+    queryFn: () => fetchDriversByCompany(selectedCompany),
+    enabled: !!selectedCompany,
   });
 
-  // Query for vehicles based on selected fleet
+  // Query for vehicles based on selected company
   const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', selectedFleet],
-    queryFn: () => fetchVehiclesByFleet(selectedFleet),
-    enabled: !!selectedFleet,
+    queryKey: ['vehicles', selectedCompany],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany),
+    enabled: !!selectedCompany,
   });
 
-  // Handle fleet selection
-  const handleFleetChange = (value: string) => {
-    setSelectedFleet(value);
-    // Reset driver and vehicle fields when fleet changes
+  // Handle company selection
+  const handleCompanyChange = (value: string) => {
+    setSelectedCompany(value);
+    // Reset driver and vehicle fields when company changes
     form.setValue('driver', '');
     form.setValue('vehicle', '');
   };
@@ -275,11 +143,8 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     try {
       setIsSubmitting(true);
       
-      // Get company_id from the selected fleet
-      const companyId = await fetchCompanyForFleet(data.fleet);
-      
-      // Insérer la nouvelle mission dans la base de données
-      const { data: mission, error } = await supabase
+      // Create a new mission in the database
+      const { error } = await supabase
         .from('missions')
         .insert({
           title: data.title,
@@ -287,19 +152,17 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           arrival_date: data.arrivalDate?.toISOString(),
           driver_id: data.driver,
           vehicle_id: data.vehicle,
-          company_id: companyId,
-          status: data.status,
+          company_id: data.company,
+          status: 'en_cours',
           start_location: data.startLocation || null,
           end_location: data.endLocation || null,
           client: data.client || null,
-          client_email: data.clientEmail || null, 
+          client_email: data.clientEmail || null,
           client_phone: data.clientPhone || null,
           passengers: data.passengers || null,
           description: data.description || null,
           additional_details: data.additionalDetails || null
-        })
-        .select('id')
-        .single();
+        });
 
       if (error) {
         throw error;
@@ -352,34 +215,34 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
 
-        {/* Fleet - Now as the first selection field */}
+        {/* Company - Now as the first selection field */}
         <FormField
           control={form.control}
-          name="fleet"
+          name="company"
           render={({ field }) => (
             <FormItem>
               <FormLabel>
                 <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Flotte
+                  <Building2 className="h-4 w-4" />
+                  Entreprise
                 </span>
               </FormLabel>
               <Select
                 onValueChange={(value) => {
                   field.onChange(value);
-                  handleFleetChange(value);
+                  handleCompanyChange(value);
                 }}
                 value={field.value}
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une flotte" />
+                    <SelectValue placeholder="Sélectionner une entreprise" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="max-h-[200px] overflow-y-auto">
-                  {fleets.map((fleet) => (
-                    <SelectItem key={fleet.id} value={fleet.id}>
-                      {fleet.name} - {fleet.company_name}
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -497,36 +360,9 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
         </div>
-
-        {/* Status */}
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Statut</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un statut" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="en_cours">En cours</SelectItem>
-                  <SelectItem value="terminee">Terminée</SelectItem>
-                  <SelectItem value="annulee">Annulée</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Driver - Now dependent on fleet */}
+          {/* Driver - Now dependent on company */}
           <FormField
             control={form.control}
             name="driver"
@@ -541,7 +377,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedFleet}
+                  disabled={!selectedCompany}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -561,7 +397,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Vehicle - Now dependent on fleet */}
+          {/* Vehicle - Now dependent on company */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -576,7 +412,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedFleet}
+                  disabled={!selectedCompany}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -639,28 +475,28 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
-        {/* Client information section */}
-        <FormField
-          control={form.control}
-          name="client"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <span className="flex items-center gap-2">
-                  <UserRound className="h-4 w-4" />
-                  Client
-                </span>
-              </FormLabel>
-              <FormControl>
-                <Input placeholder="Nom du client" {...field} value={field.value || ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Client */}
+          <FormField
+            control={form.control}
+            name="client"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <UserRound className="h-4 w-4" />
+                    Client
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Nom du client" {...field} value={field.value || ""} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Client Email - New field */}
+          {/* Client Email - New Field */}
           <FormField
             control={form.control}
             name="clientEmail"
@@ -685,7 +521,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Client Phone - New field */}
+          {/* Client Phone - New Field */}
           <FormField
             control={form.control}
             name="clientPhone"
@@ -711,37 +547,35 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Passengers */}
-          <FormField
-            control={form.control}
-            name="passengers"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <span className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Nombre de passagers
-                  </span>
-                </FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    placeholder="Nombre de passagers" 
-                    {...field} 
-                    value={field.value === undefined ? "" : field.value} 
-                    onChange={(e) => {
-                      const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
-                      field.onChange(value);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {/* Passengers */}
+        <FormField
+          control={form.control}
+          name="passengers"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Nombre de passagers
+                </span>
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  placeholder="Nombre de passagers" 
+                  {...field} 
+                  value={field.value === undefined ? "" : field.value} 
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
+                    field.onChange(value);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Description */}
         <FormField

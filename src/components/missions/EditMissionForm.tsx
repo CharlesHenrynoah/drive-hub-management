@@ -6,7 +6,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
-import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -53,6 +53,8 @@ const formSchema = z.object({
   startLocation: z.string().optional(),
   endLocation: z.string().optional(),
   client: z.string().optional(),
+  clientEmail: z.string().email("Email invalide").optional().or(z.literal('')),
+  clientPhone: z.string().optional(),
   passengers: z.coerce.number().int().nonnegative().optional(),
   description: z.string().optional(),
   additionalDetails: z.string().optional(),
@@ -113,6 +115,8 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       startLocation: mission.start_location || "",
       endLocation: mission.end_location || "",
       client: mission.client || "",
+      clientEmail: mission.client_email || "",
+      clientPhone: mission.client_phone || "",
       passengers: mission.passengers,
       description: mission.description || "",
       additionalDetails: mission.additional_details || "",
@@ -168,6 +172,8 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           start_location: data.startLocation || null,
           end_location: data.endLocation || null,
           client: data.client || null,
+          client_email: data.clientEmail || null,
+          client_phone: data.clientPhone || null,
           passengers: data.passengers || null,
           description: data.description || null,
           additional_details: data.additionalDetails || null
@@ -512,7 +518,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Client */}
           <FormField
             control={form.control}
@@ -533,6 +539,58 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
 
+          {/* Client Email */}
+          <FormField
+            control={form.control}
+            name="clientEmail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email du client
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="email" 
+                    placeholder="Email du client" 
+                    {...field} 
+                    value={field.value || ""} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Client Phone */}
+          <FormField
+            control={form.control}
+            name="clientPhone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  <span className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Téléphone du client
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="tel" 
+                    placeholder="Téléphone du client" 
+                    {...field} 
+                    value={field.value || ""} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Passengers */}
           <FormField
             control={form.control}

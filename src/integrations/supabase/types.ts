@@ -285,6 +285,8 @@ export type Database = {
           additional_details: string | null
           arrival_date: string | null
           client: string | null
+          client_email: string | null
+          client_phone: string | null
           company_id: string | null
           created_at: string
           date: string
@@ -303,6 +305,8 @@ export type Database = {
           additional_details?: string | null
           arrival_date?: string | null
           client?: string | null
+          client_email?: string | null
+          client_phone?: string | null
           company_id?: string | null
           created_at?: string
           date: string
@@ -321,6 +325,8 @@ export type Database = {
           additional_details?: string | null
           arrival_date?: string | null
           client?: string | null
+          client_email?: string | null
+          client_phone?: string | null
           company_id?: string | null
           created_at?: string
           date?: string

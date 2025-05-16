@@ -188,6 +188,9 @@ const MissionsAPI = () => {
               <TableHead>Vehicle ID</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Details</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Client Email</TableHead>
+              <TableHead>Client Phone</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -201,6 +204,9 @@ const MissionsAPI = () => {
                 <TableCell>{mission.vehicle_id}</TableCell>
                 <TableCell>{mission.status}</TableCell>
                 <TableCell>{mission.details}</TableCell>
+                <TableCell>{mission.client}</TableCell>
+                <TableCell>{mission.client_email}</TableCell>
+                <TableCell>{mission.client_phone}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -236,8 +242,8 @@ const MissionsAPI = () => {
             <code>GET /rest/v1/missions?select=*&driver_id=eq.123&start_date=gte.2023-01-01</code>
           </li>
           <li>
-            Fetch missions with a start date greater than or equal to a certain date:
-            <code>GET /rest/v1/missions?select=*&driver_id=eq.123&status=eq.{'{gt:"2023-01-01"}'}</code>
+            Fetch missions with a specific client email:
+            <code>GET /rest/v1/missions?select=*&client_email=eq.client@example.com</code>
           </li>
         </ul>
         <p className="mt-2">

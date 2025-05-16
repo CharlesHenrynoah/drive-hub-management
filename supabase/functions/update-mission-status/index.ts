@@ -41,12 +41,12 @@ serve(async (req) => {
       throw error;
     }
     
-    console.log(`Updated ${count} missions to 'terminee' status`);
+    console.log(`Updated ${count || 0} missions to 'terminee' status`);
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Updated ${count} missions to 'terminee' status`,
+        message: `Updated ${count || 0} missions to 'terminee' status`,
         updatedMissions: data
       }),
       { 
