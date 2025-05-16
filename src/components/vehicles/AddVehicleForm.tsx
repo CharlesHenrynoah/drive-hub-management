@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +36,8 @@ import { Vehicle } from "./VehiclesManagement";
 import { Image, Upload } from "lucide-react";
 import { DatePicker } from "../ui/date-picker";
 import { Switch } from "@/components/ui/switch";
+import { useVehicleTypes } from "@/hooks/useVehicleTypes";
+import { VehicleTypeField } from "./VehicleTypeField";
 
 const formSchema = z.object({
   marque: z.string().min(2, {
@@ -48,7 +49,7 @@ const formSchema = z.object({
   immatriculation: z.string().min(5, {
     message: "L'immatriculation doit être valide",
   }),
-  typeVehicule: z.enum(["Mini Bus", "Bus"], {
+  typeVehicule: z.string({
     required_error: "Veuillez sélectionner un type de véhicule",
   }),
   typeCarburant: z.string({
@@ -94,6 +95,7 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isEditing = !!vehicleToEdit;
+  const { data: vehicleTypes } = useVehicleTypes();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -101,7 +103,7 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
       marque: vehicleToEdit?.brand || "",
       modele: vehicleToEdit?.model || "",
       immatriculation: vehicleToEdit?.registration || "",
-      typeVehicule: (vehicleToEdit?.type as "Mini Bus" | "Bus") || "Mini Bus",
+      typeVehicule: vehicleToEdit?.type || "",
       typeCarburant: vehicleToEdit?.fuel_type || "",
       entrepriseId: vehicleToEdit?.company_id || "",
       capacite: vehicleToEdit?.capacity || 15,
@@ -127,6 +129,20 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
     }
   };
 
+  // Update capacity when vehicle type changes
+  const handleVehicleTypeChange = (type: string) => {
+    form.setValue("typeVehicule", type);
+    
+    // Find the vehicle type to set default capacity
+    const vehicleType = vehicleTypes?.find(vt => vt.type === type);
+    if (vehicleType) {
+      const avgCapacity = Math.floor((vehicleType.capacity_min + vehicleType.capacity_max) / 2);
+      form.setValue("capacite", avgCapacity);
+      form.setValue("placesAssises", Math.floor(avgCapacity * 0.9));
+      form.setValue("placesDebout", Math.ceil(avgCapacity * 0.1));
+    }
+  };
+
   useEffect(() => {
     if (isOpen !== undefined) {
       setOpen(isOpen);
@@ -143,13 +159,13 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
         marque: vehicleToEdit.brand,
         modele: vehicleToEdit.model,
         immatriculation: vehicleToEdit.registration,
-        typeVehicule: vehicleToEdit.type as "Mini Bus" | "Bus",
+        typeVehicule: vehicleToEdit.type,
         typeCarburant: vehicleToEdit.fuel_type,
         entrepriseId: vehicleToEdit.company_id || "",
         capacite: vehicleToEdit.capacity,
         placesAssises: Math.floor(vehicleToEdit.capacity * 0.9),
         placesDebout: Math.floor(vehicleToEdit.capacity * 0.1),
-        accessibilitePMR: vehicleToEdit.type === "Bus",
+        accessibilitePMR: vehicleToEdit.type === "Autocar Standard" || vehicleToEdit.type === "Autocar Grand Tourisme",
         kilometrage: vehicleToEdit.mileage || 0,
         annee: vehicleToEdit.year || undefined,
         photoUrl: vehicleToEdit.photo_url || "",
@@ -444,21 +460,10 @@ export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess 
                     control={form.control}
                     name="typeVehicule"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Type de véhicule</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionnez un type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Mini Bus">Mini Bus</SelectItem>
-                            <SelectItem value="Bus">Bus</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
+                      <VehicleTypeField 
+                        value={field.value} 
+                        onChange={handleVehicleTypeChange}
+                      />
                     )}
                   />
                   

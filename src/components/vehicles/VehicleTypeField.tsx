@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 interface VehicleTypeFieldProps {
   value: string;
@@ -34,14 +35,28 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
           </SelectTrigger>
         </FormControl>
         <SelectContent>
-          {vehicleTypes.map((vehicleType) => (
-            <SelectItem key={vehicleType.id} value={vehicleType.type}>
-              <div className="flex flex-col">
-                <span>{vehicleType.type}</span>
-                <span className="text-xs text-muted-foreground">{vehicleType.description}</span>
-              </div>
-            </SelectItem>
-          ))}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : (
+            vehicleTypes.map((vehicleType) => (
+              <SelectItem key={vehicleType.id} value={vehicleType.type}>
+                <div className="flex flex-col">
+                  <span>
+                    {vehicleType.type === "Minibus" && "🚐 "}
+                    {vehicleType.type === "Minicar" && "🚌 "}
+                    {vehicleType.type === "Autocar Standard" && "🚌 "}
+                    {vehicleType.type === "Autocar Grand Tourisme" && "🚌 "}
+                    {vehicleType.type === "Berline" && "🚗 "}
+                    {vehicleType.type === "Van" && "🚐 "}
+                    {vehicleType.type}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{vehicleType.description}</span>
+                </div>
+              </SelectItem>
+            ))
+          )}
         </SelectContent>
       </Select>
       
