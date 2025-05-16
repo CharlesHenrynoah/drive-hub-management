@@ -37,23 +37,66 @@ function getDefaultEcologicalScore(vehicleData: VehicleData): number {
   let score = 50; // Base score
   
   // Adjust based on vehicle type
-  if (vehicleData.type === "Mini Bus") {
-    score += 10; // Mini buses tend to be more efficient per passenger than regular buses
-  } else if (vehicleData.type === "Bus") {
-    score += 5; // Good for mass transit
+  switch (vehicleData.type) {
+    case "Minibus":
+      score += 10; // Better efficiency per passenger than larger buses
+      break;
+    case "Minicar":
+      score += 5; // Good for medium groups
+      break;
+    case "Autocar Standard":
+      score += 15; // Good efficiency per passenger for large groups
+      break;
+    case "Autocar Grand Tourisme":
+      score += 20; // Best efficiency per passenger for very large groups
+      break;
+    case "VTC":
+    case "Berline":
+      score -= 5; // Less efficient for very small groups
+      break;
+    case "Van":
+      score += 0; // Neutral, medium efficiency
+      break;
   }
   
   // Adjust based on fuel type
-  if (vehicleData.fuel === "Electrique") {
-    score += 30;
-  } else if (vehicleData.fuel === "Hybride") {
-    score += 20;
-  } else if (vehicleData.fuel === "Diesel") {
-    score -= 10;
+  switch (vehicleData.fuel) {
+    case "Electrique":
+      score += 30;
+      break;
+    case "Hybride":
+      score += 20;
+      break;
+    case "GNV": // Natural gas
+      score += 15;
+      break;
+    case "Biodiesel":
+      score += 10;
+      break;
+    case "Essence":
+      score -= 5;
+      break;
+    case "Diesel":
+      score -= 15;
+      break;
   }
   
   // Adjust based on capacity (more passengers = better efficiency per person)
   score += Math.min(15, Math.floor(vehicleData.capacity / 10) * 3);
+  
+  // Adjust based on vehicle age if provided
+  if (vehicleData.year) {
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - vehicleData.year;
+    
+    if (age <= 2) {
+      score += 10; // New vehicles are typically more efficient
+    } else if (age <= 5) {
+      score += 5;
+    } else if (age > 10) {
+      score -= 10; // Older vehicles are typically less efficient
+    }
+  }
   
   // Cap the score between 0 and 100
   return Math.max(0, Math.min(100, score));

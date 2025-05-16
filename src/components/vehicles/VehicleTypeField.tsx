@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bus, Car, Loader2 } from "lucide-react";
+import { Bus, Car, Loader2, MapPin } from "lucide-react";
 
 interface VehicleTypeFieldProps {
   value: string;
@@ -24,16 +24,39 @@ function getVehicleEmoji(type: string): React.ReactNode {
     case "Minibus":
       return "🚐";
     case "Minicar":
+      return "🚌";
     case "Autocar Standard":
+      return "🚌";
     case "Autocar Grand Tourisme":
       return "🚌";
-    case "Berline":
     case "VTC":
+    case "Berline":
       return "🚗";
     case "Van":
       return "🚐";
     default:
       return null;
+  }
+}
+
+// Fonction pour obtenir la capacité du véhicule
+function getVehicleCapacity(type: string): string {
+  switch (type) {
+    case "Minibus":
+      return "19 places";
+    case "Minicar":
+      return "38 places";
+    case "Autocar Standard":
+      return "65 places";
+    case "Autocar Grand Tourisme":
+      return "93 places";
+    case "VTC":
+    case "Berline":
+      return "3 à 4 places";
+    case "Van":
+      return "8 à 9 places";
+    default:
+      return "";
   }
 }
 
@@ -48,7 +71,7 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
         disabled={disabled || isLoading}
       >
         <FormControl>
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Sélectionner un type de véhicule" />
           </SelectTrigger>
         </FormControl>
@@ -59,7 +82,11 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
             </div>
           ) : (
             vehicleTypes.map((vehicleType) => (
-              <SelectItem key={vehicleType.id} value={vehicleType.type}>
+              <SelectItem 
+                key={vehicleType.id} 
+                value={vehicleType.type}
+                className="py-2"
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
                   <div className="flex flex-col">
