@@ -1,155 +1,174 @@
 
-import { useState } from "react";
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Driver } from "@/types/driver";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { EditDriverForm } from "./EditDriverForm";
-import { Pencil } from "lucide-react";
-import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
-import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
+import { Edit, MapPin, Phone, Mail } from "lucide-react";
+import { Driver } from "./DriversManagement";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface DriverDetailModalProps {
   driver: Driver;
-  companies?: Record<string, string>;
-  onDriverUpdated?: () => void;
+  onEdit: () => void;
+  onClose: () => void;
 }
 
-export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: DriverDetailModalProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isEditingVehicleTypes, setIsEditingVehicleTypes] = useState(false);
-  const { 
-    vehicleTypes, 
-    isLoading: isLoadingVehicleTypes, 
-    updateVehicleTypes,
-    isUpdating
-  } = useDriverVehicleTypes(driver.ID_Chauffeur);
+interface Mission {
+  id: string;
+  title: string;
+  date: string;
+  start_location: string;
+  end_location: string;
+  status: string;
+  driver: string | null;
+  vehicle: string | null;
+  vehicle_id: string;
+}
 
-  // Format date if it's a string
-  const formatDate = (date: Date | string) => {
-    if (date instanceof Date) {
-      return format(date, "dd/MM/yyyy", { locale: fr });
-    } else if (typeof date === 'string') {
-      // If it's an ISO string, convert to date first
+export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModalProps) {
+  const [futureMissions, setFutureMissions] = useState<Mission[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchFutureMissions = async () => {
+      if (!driver.id) return;
+      
+      setIsLoading(true);
       try {
-        return format(new Date(date), "dd/MM/yyyy", { locale: fr });
-      } catch (e) {
-        return date; // Return as is if not a valid date
+        const today = new Date().toISOString();
+        const { data, error } = await supabase
+          .from('missions')
+          .select(`
+            id, 
+            title, 
+            date, 
+            start_location, 
+            end_location, 
+            status,
+            vehicle_id,
+            vehicles:vehicle_id(brand, model)
+          `)
+          .eq('driver_id', driver.id)
+          .gte('date', today)
+          .order('date', { ascending: true });
+          
+        if (error) {
+          console.error('Erreur lors du chargement des missions futures:', error);
+          toast.error("Erreur lors du chargement des missions");
+          return;
+        }
+        
+        // Transform data to include vehicle name
+        const formattedMissions = data?.map(mission => ({
+          ...mission,
+          driver: `${driver.prenom} ${driver.nom}`,
+          vehicle: mission.vehicles ? `${mission.vehicles.brand} ${mission.vehicles.model}` : null
+        })) || [];
+        
+        setFutureMissions(formattedMissions);
+      } catch (err) {
+        console.error('Erreur inattendue:', err);
+        toast.error("Erreur inattendue lors du chargement des données");
+      } finally {
+        setIsLoading(false);
       }
-    }
-    return "Date inconnue";
+    };
+    
+    fetchFutureMissions();
+  }, [driver.id, driver.nom, driver.prenom]);
+
+  // Format mission date with time
+  const formatMissionDate = (dateString: string) => {
+    if (!dateString) return "Date inconnue";
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().substring(0, 5);
   };
 
-  // Obtenir le nom de l'entreprise à partir de son ID
-  const getCompanyName = (id: string): string => {
-    return companies[id] || "Entreprise inconnue";
+  // Format date
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Non défini";
+    return new Date(dateString).toLocaleDateString();
   };
 
-  const handleEditSuccess = () => {
-    setIsEditing(false);
-    if (onDriverUpdated) {
-      onDriverUpdated();
-    }
+  // Navigate to mission detail
+  const handleMissionClick = (mission: Mission) => {
+    onClose();
+    navigate('/missions', { state: { selectedMissionId: mission.id } });
   };
-
-  const handleSaveVehicleTypes = (selectedTypes: string[]) => {
-    updateVehicleTypes(selectedTypes);
-    setIsEditingVehicleTypes(false);
-  };
-
-  if (isEditing) {
-    return (
-      <DialogContent className="sm:max-w-[700px]">
-        <DialogHeader>
-          <DialogTitle>Modifier le chauffeur</DialogTitle>
-          <DialogDescription>
-            Modifiez les informations du chauffeur {driver.Prénom} {driver.Nom}
-          </DialogDescription>
-        </DialogHeader>
-        <EditDriverForm 
-          driver={driver} 
-          companies={companies} 
-          onSuccess={handleEditSuccess} 
-          onCancel={() => setIsEditing(false)} 
-        />
-      </DialogContent>
-    );
-  }
 
   return (
     <DialogContent className="sm:max-w-[600px]">
       <DialogHeader>
-        <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={driver.Photo} alt={`${driver.Prénom} ${driver.Nom}`} />
-            <AvatarFallback>{driver.Prénom.charAt(0)}{driver.Nom.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <DialogTitle className="text-xl">
-              {driver.Prénom} {driver.Nom}
-            </DialogTitle>
-            <DialogDescription>
-              {driver.ID_Chauffeur} - {getCompanyName(driver.ID_Entreprise)}
-            </DialogDescription>
-          </div>
-          <div>
-            <span className={driver.Disponible ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-              {driver.Disponible ? "Disponible" : "Indisponible"}
-            </span>
-            <div className="text-xs text-muted-foreground mt-1">
-              {!driver.Disponible && "A des missions planifiées"}
+        <div className="flex items-start justify-between w-full">
+          <div className="flex items-start sm:items-center gap-4 flex-col sm:flex-row">
+            <Avatar className="h-16 w-16">
+              <AvatarImage 
+                src={driver.photo || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"} 
+                alt={`${driver.prenom} ${driver.nom}`} 
+              />
+              <AvatarFallback>{driver.prenom?.charAt(0)}{driver.nom?.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <DialogTitle className="text-xl">
+                {driver.prenom} {driver.nom}
+              </DialogTitle>
+              <DialogDescription>
+                {driver.id_chauffeur} - {driver.disponible ? "Disponible" : "Indisponible"}
+              </DialogDescription>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={onEdit} className="flex items-center gap-1">
+            <Edit className="h-4 w-4" />
+            Modifier
+          </Button>
         </div>
       </DialogHeader>
-      
-      <div className="flex justify-end">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setIsEditing(true)}
-          className="flex items-center gap-1"
-        >
-          <Pencil className="h-4 w-4" />
-          Modifier
-        </Button>
-      </div>
-      
-      <div className="mt-4">
-        <img 
-          src={driver.Photo} 
-          alt={`${driver.Prénom} ${driver.Nom}`}
-          className="rounded-md w-full object-cover h-48 aspect-[16/9]" 
-        />
-      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Coordonnées</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Informations générales</h3>
             <Separator className="my-2" />
             <dl className="space-y-2">
               <div className="flex justify-between">
-                <dt className="font-medium">Email</dt>
-                <dd>{driver.Email}</dd>
+                <dt className="font-medium">Statut</dt>
+                <dd>
+                  <Badge
+                    variant="outline"
+                    className={driver.disponible ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}
+                  >
+                    {driver.disponible ? "Disponible" : "Indisponible"}
+                  </Badge>
+                </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-medium">Téléphone</dt>
-                <dd>{driver.Téléphone}</dd>
+                <dt className="font-medium">Note</dt>
+                <dd>{driver.note_chauffeur}/10</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Date de début d'activité</dt>
-                <dd>{formatDate(driver.Date_Debut_Activité)}</dd>
+                <dd>{formatDate(driver.date_debut_activite)}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="font-medium">Entreprise</dt>
-                <dd>{getCompanyName(driver.ID_Entreprise)}</dd>
+              <div className="flex items-center gap-2 mt-2">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>{driver.telephone || "Non défini"}</span>
               </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <span>{driver.email || "Non défini"}</span>
+              </div>
+              {driver.ville && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{driver.ville}</span>
+                </div>
+              )}
             </dl>
           </div>
           
@@ -159,35 +178,15 @@ export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: D
             <dl className="space-y-2">
               <div className="flex justify-between">
                 <dt className="font-medium">Pièce d'identité</dt>
-                <dd>{driver.Pièce_Identité}</dd>
+                <dd>{driver.piece_identite ? "✓" : "✗"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Certificat médical</dt>
-                <dd>{driver.Certificat_Médical}</dd>
+                <dd>{driver.certificat_medical ? "✓" : "✗"}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Justificatif de domicile</dt>
-                <dd>{driver.Justificatif_Domicile}</dd>
-              </div>
-            </dl>
-          </div>
-          
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Performance</h3>
-            <Separator className="my-2" />
-            <dl className="space-y-4">
-              <div>
-                <dt className="flex justify-between mb-1">
-                  <span>Note chauffeur</span>
-                  <span>{(driver.Note_Chauffeur / 20).toFixed(1)}/5</span>
-                </dt>
-                <dd>
-                  <Progress
-                    value={driver.Note_Chauffeur}
-                    max={100}
-                    className="h-2 bg-primary"
-                  />
-                </dd>
+                <dd>{driver.justificatif_domicile ? "✓" : "✗"}</dd>
               </div>
             </dl>
           </div>
@@ -195,80 +194,43 @@ export function DriverDetailModal({ driver, companies = {}, onDriverUpdated }: D
         
         <div className="space-y-4">
           <div>
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium text-muted-foreground">Types de véhicules</h3>
-              {!isEditingVehicleTypes && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setIsEditingVehicleTypes(true)}
-                  className="h-7 px-2"
-                >
-                  Modifier
-                </Button>
-              )}
-            </div>
-            <Separator className="my-2" />
-            
-            {isEditingVehicleTypes ? (
-              <div className="space-y-4">
-                <VehicleTypeSelector
-                  selectedTypes={vehicleTypes}
-                  onChange={handleSaveVehicleTypes}
-                  maxSelections={6}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setIsEditingVehicleTypes(false)}
-                  >
-                    Annuler
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleSaveVehicleTypes(vehicleTypes)}
-                    disabled={isUpdating}
-                  >
-                    Enregistrer
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="pt-1">
-                {isLoadingVehicleTypes ? (
-                  <div className="text-sm text-muted-foreground">Chargement des types...</div>
-                ) : vehicleTypes.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {vehicleTypes.map((type) => (
-                      <Badge key={type} variant="outline" className="bg-secondary">
-                        {type}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    Aucun type de véhicule assigné
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <div>
             <h3 className="text-sm font-medium text-muted-foreground">Missions futures</h3>
             <Separator className="my-2" />
-            {driver.Missions_Futures && driver.Missions_Futures.length > 0 ? (
-              <ul className="space-y-2">
-                {driver.Missions_Futures.map((mission, index) => (
-                  <li key={index} className="flex items-center justify-between px-3 py-2 bg-secondary/50 rounded-md">
-                    <span>{mission}</span>
-                    <Badge variant="outline">Planifiée</Badge>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                <p className="text-muted-foreground">Chargement des missions...</p>
+              </div>
+            ) : futureMissions.length > 0 ? (
+              <ul className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                {futureMissions.map((mission) => (
+                  <li 
+                    key={mission.id} 
+                    className="flex flex-col px-3 py-2 bg-secondary/50 rounded-md text-sm hover:bg-secondary cursor-pointer transition-colors"
+                    onClick={() => handleMissionClick(mission)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium truncate">{mission.title}</span>
+                      <Badge variant="outline" className={mission.status === 'en_cours' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+                        {mission.status === 'en_cours' ? 'En cours' : 'Planifiée'}
+                      </Badge>
+                    </div>
+                    <div className="text-muted-foreground mt-1">
+                      {formatMissionDate(mission.date)}
+                    </div>
+                    <div className="text-xs mt-1 text-muted-foreground">
+                      {mission.start_location} → {mission.end_location}
+                    </div>
+                    {mission.vehicle && (
+                      <div className="text-xs mt-1 text-muted-foreground">
+                        Véhicule: {mission.vehicle}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">Aucune mission planifiée</p>
+              <p className="text-muted-foreground text-center py-3">Aucune mission planifiée</p>
             )}
           </div>
         </div>

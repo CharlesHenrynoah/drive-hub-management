@@ -9,16 +9,33 @@ import { Edit, MapPin } from "lucide-react";
 import { Vehicle } from "./VehiclesManagement";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle;
   companyName?: string;
   onEdit: () => void;
+  onClose: () => void;
 }
 
-export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: VehicleDetailModalProps) {
-  const [futureMissions, setFutureMissions] = useState<any[]>([]);
+interface Mission {
+  id: string;
+  title: string;
+  date: string;
+  start_location: string;
+  end_location: string;
+  status: string;
+  driver: string | null;
+  vehicle: string | null;
+  vehicle_id: string;
+}
+
+export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit, onClose }: VehicleDetailModalProps) {
+  const [futureMissions, setFutureMissions] = useState<Mission[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchFutureMissions = async () => {
@@ -29,26 +46,44 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
         const today = new Date().toISOString();
         const { data, error } = await supabase
           .from('missions')
-          .select('id, title, date, start_location, end_location, status')
+          .select(`
+            id, 
+            title, 
+            date, 
+            start_location, 
+            end_location, 
+            status,
+            vehicle_id,
+            driver:driver_id(nom, prenom)
+          `)
           .eq('vehicle_id', vehicle.id)
           .gte('date', today)
           .order('date', { ascending: true });
           
         if (error) {
           console.error('Erreur lors du chargement des missions futures:', error);
+          toast.error("Erreur lors du chargement des missions");
           return;
         }
         
-        setFutureMissions(data || []);
+        // Transform data to include driver name
+        const formattedMissions = data?.map(mission => ({
+          ...mission,
+          driver: mission.driver ? `${mission.driver.prenom} ${mission.driver.nom}` : null,
+          vehicle: `${vehicle.brand} ${vehicle.model}`
+        })) || [];
+        
+        setFutureMissions(formattedMissions);
       } catch (err) {
         console.error('Erreur inattendue:', err);
+        toast.error("Erreur inattendue lors du chargement des données");
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchFutureMissions();
-  }, [vehicle.id]);
+  }, [vehicle.id, vehicle.brand, vehicle.model]);
   
   // Helper pour déterminer la classe de couleur selon le score écologique
   const getScoreColorClass = (score: number) => {
@@ -75,6 +110,12 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
     if (!dateString) return "Date inconnue";
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().substring(0, 5);
+  };
+
+  // Navigate to mission detail
+  const handleMissionClick = (mission: Mission) => {
+    onClose();
+    navigate('/missions', { state: { selectedMissionId: mission.id } });
   };
 
   return (
@@ -237,11 +278,18 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
             <h3 className="text-sm font-medium text-muted-foreground">Missions futures</h3>
             <Separator className="my-2" />
             {isLoading ? (
-              <p className="text-muted-foreground text-center py-3">Chargement des missions...</p>
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                <p className="text-muted-foreground">Chargement des missions...</p>
+              </div>
             ) : futureMissions.length > 0 ? (
-              <ul className="space-y-2">
+              <ul className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
                 {futureMissions.map((mission) => (
-                  <li key={mission.id} className="flex flex-col px-3 py-2 bg-secondary/50 rounded-md text-sm">
+                  <li 
+                    key={mission.id} 
+                    className="flex flex-col px-3 py-2 bg-secondary/50 rounded-md text-sm hover:bg-secondary cursor-pointer transition-colors"
+                    onClick={() => handleMissionClick(mission)}
+                  >
                     <div className="flex justify-between items-center">
                       <span className="font-medium truncate">{mission.title}</span>
                       <Badge variant="outline" className={mission.status === 'en_cours' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
@@ -254,11 +302,16 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
                     <div className="text-xs mt-1 text-muted-foreground">
                       {mission.start_location} → {mission.end_location}
                     </div>
+                    {mission.driver && (
+                      <div className="text-xs mt-1 text-muted-foreground">
+                        Chauffeur: {mission.driver}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">Aucune mission planifiée</p>
+              <p className="text-muted-foreground text-center py-3">Aucune mission planifiée</p>
             )}
           </div>
         </div>

@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays, parseISO, isSameDay, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,30 +17,31 @@ import { WeeklyMissionsView } from "./WeeklyMissionsView";
 export interface Mission {
   id: string;
   title: string;
-  date: Date;
-  driver_id?: string;
-  driver?: string;
-  vehicle_id?: string;
-  vehicle?: string;
-  company_id?: string;
-  company?: string;
-  status: "en_cours" | "terminee" | "annulee";
-  description?: string;
+  date: string;
+  arrival_date?: string;
   start_location?: string;
   end_location?: string;
+  status: string;
+  description?: string;
+  driver?: string;
+  vehicle?: string;
+  company?: string;
+  driver_id?: string;
+  vehicle_id?: string;
+  company_id?: string;
   client?: string;
-  client_email?: string;
-  client_phone?: string;
-  arrival_date?: Date;
   passengers?: number;
+  client_phone?: string;
+  client_email?: string;
   additional_details?: string;
 }
 
 interface MissionsCalendarProps {
   displayMode?: "month" | "week";
+  onMissionSelected?: (mission: Mission) => void;
 }
 
-export function MissionsCalendar({ displayMode = "month" }: MissionsCalendarProps) {
+export function MissionsCalendar({ displayMode = "month", onMissionSelected }: MissionsCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [missionToEdit, setMissionToEdit] = useState<Mission | null>(null);
@@ -81,18 +81,20 @@ export function MissionsCalendar({ displayMode = "month" }: MissionsCalendarProp
         id: mission.id,
         title: mission.title,
         date: parseISO(mission.date),
+        arrival_date: mission.arrival_date ? parseISO(mission.arrival_date) : undefined,
+        start_location: mission.start_location,
+        end_location: mission.end_location,
+        status: mission.status as "en_cours" | "terminee" | "annulee",
+        description: mission.description,
         driver_id: mission.driver_id,
         driver: mission.drivers ? `${mission.drivers.prenom} ${mission.drivers.nom}` : undefined,
         vehicle_id: mission.vehicle_id,
         vehicle: mission.vehicles ? `${mission.vehicles.brand} ${mission.vehicles.model} (${mission.vehicles.registration})` : undefined,
         company_id: mission.company_id,
         company: mission.companies?.name,
-        status: mission.status as "en_cours" | "terminee" | "annulee",
-        description: mission.description,
-        start_location: mission.start_location,
-        end_location: mission.end_location,
         client: mission.client,
-        arrival_date: mission.arrival_date ? parseISO(mission.arrival_date) : undefined,
+        client_email: mission.client_email,
+        client_phone: mission.client_phone,
         passengers: mission.passengers,
         additional_details: mission.additional_details
       }));
@@ -112,8 +114,12 @@ export function MissionsCalendar({ displayMode = "month" }: MissionsCalendarProp
   });
 
   const handleMissionClick = (mission: Mission) => {
-    setSelectedMission(mission);
-    setIsDetailModalOpen(true);
+    if (onMissionSelected) {
+      onMissionSelected(mission);
+    } else {
+      setSelectedMission(mission);
+      setIsDetailModalOpen(true);
+    }
   };
 
   const handleEditMission = (mission: Mission) => {
