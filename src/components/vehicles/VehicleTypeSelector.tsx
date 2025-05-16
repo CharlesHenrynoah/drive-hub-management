@@ -28,7 +28,10 @@ export function VehicleTypeSelector({
       const validTypes = selectedTypes.filter(type => {
         return type && 
                type.trim() !== '' && 
-               vehicleTypes.some(vt => (vt.type || `type_${vt.id}`) === type);
+               vehicleTypes.some(vt => {
+                 const validVehicleType = vt.type || `Type ${vt.id}`;
+                 return validVehicleType === type;
+               });
       });
       
       if (validTypes.length !== selectedTypes.length) {
@@ -85,41 +88,42 @@ export function VehicleTypeSelector({
       
       <ScrollArea className="h-[220px] pr-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {vehicleTypes.map((vehicleType) => {
-            // Create a guaranteed non-empty value
-            const itemValue = vehicleType.type || `type_${vehicleType.id}`;
-            
-            // Skip rendering if value would be empty (safety check)
-            if (!itemValue || itemValue.trim() === '') {
-              return null;
-            }
-            
-            return (
-              <Button
-                key={vehicleType.id}
-                type="button"
-                variant="outline"
-                onClick={() => handleTypeClick(itemValue)}
-                className={cn(
-                  "flex items-start justify-between p-3 h-auto",
-                  selectedTypes.includes(itemValue) && "border-primary ring-1 ring-primary"
-                )}
-              >
-                <div className="flex flex-col items-start text-left">
-                  <span className="font-medium">{vehicleType.type || `Type #${vehicleType.id}`}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {vehicleType.description}
-                  </span>
-                  <span className="text-xs mt-1">
-                    Capacité: {vehicleType.capacity_min} - {vehicleType.capacity_max} passagers
-                  </span>
-                </div>
-                {selectedTypes.includes(itemValue) && (
-                  <CheckIcon className="h-4 w-4 text-primary" />
-                )}
-              </Button>
-            );
-          }).filter(Boolean)} {/* Remove any null elements */}
+          {vehicleTypes
+            .filter(vehicleType => {
+              // Filter out any vehicle types with empty type values
+              const typeValue = vehicleType.type || `Type ${vehicleType.id}`;
+              return typeValue.trim() !== '';
+            })
+            .map((vehicleType) => {
+              // Create a guaranteed non-empty value
+              const itemValue = vehicleType.type || `Type ${vehicleType.id}`;
+              
+              return (
+                <Button
+                  key={vehicleType.id}
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleTypeClick(itemValue)}
+                  className={cn(
+                    "flex items-start justify-between p-3 h-auto",
+                    selectedTypes.includes(itemValue) && "border-primary ring-1 ring-primary"
+                  )}
+                >
+                  <div className="flex flex-col items-start text-left">
+                    <span className="font-medium">{itemValue}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {vehicleType.description}
+                    </span>
+                    <span className="text-xs mt-1">
+                      Capacité: {vehicleType.capacity_min} - {vehicleType.capacity_max} passagers
+                    </span>
+                  </div>
+                  {selectedTypes.includes(itemValue) && (
+                    <CheckIcon className="h-4 w-4 text-primary" />
+                  )}
+                </Button>
+              );
+            })}
         </div>
       </ScrollArea>
       

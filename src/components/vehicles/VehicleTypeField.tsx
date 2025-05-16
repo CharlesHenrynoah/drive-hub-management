@@ -67,45 +67,45 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : (
-            vehicleTypes.map((vehicleType) => {
-              // Create a guaranteed non-empty value
-              const itemValue = vehicleType.type || `type_${vehicleType.id}`;
-              
-              // Double check to make sure value is never empty
-              if (!itemValue || itemValue.trim() === '') {
-                console.warn(`Empty vehicle type detected for id ${vehicleType.id}, skipping item`);
-                return null; // Skip this item entirely rather than risking an empty value
-              }
-              
-              return (
-                <SelectItem 
-                  key={vehicleType.id} 
-                  value={itemValue}
-                  className="py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
-                    <div className="flex flex-col">
-                      <span>{vehicleType.type || `Type #${vehicleType.id}`}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {vehicleType.capacity_min} - {vehicleType.capacity_max} places
-                      </span>
+            vehicleTypes
+              .filter(vehicleType => {
+                // Ensure we only include vehicle types with valid values
+                const typeValue = vehicleType.type || `Type ${vehicleType.id}`;
+                return typeValue && typeValue.trim() !== '';
+              })
+              .map((vehicleType) => {
+                // Create a guaranteed non-empty value
+                const itemValue = vehicleType.type || `Type ${vehicleType.id}`;
+                
+                return (
+                  <SelectItem 
+                    key={vehicleType.id} 
+                    value={itemValue}
+                    className="py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
+                      <div className="flex flex-col">
+                        <span>{itemValue}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {vehicleType.capacity_min} - {vehicleType.capacity_max} places
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </SelectItem>
-              );
-            }).filter(Boolean) // Remove any null elements (skipped items)
+                  </SelectItem>
+                );
+              })
           )}
         </SelectContent>
       </Select>
       
       {value && !isLoading && (
         <div className="mt-2">
-          {vehicleTypes.find(vt => (vt.type || `type_${vt.id}`) === value) && (
+          {vehicleTypes.find(vt => (vt.type || `Type ${vt.id}`) === value) && (
             <Badge variant="outline" className="bg-secondary flex items-center gap-1">
               {getVehicleEmoji(value)}
-              {vehicleTypes.find(vt => (vt.type || `type_${vt.id}`) === value)?.capacity_min} - 
-              {vehicleTypes.find(vt => (vt.type || `type_${vt.id}`) === value)?.capacity_max} passagers
+              {vehicleTypes.find(vt => (vt.type || `Type ${vt.id}`) === value)?.capacity_min} - 
+              {vehicleTypes.find(vt => (vt.type || `Type ${vt.id}`) === value)?.capacity_max} passagers
             </Badge>
           )}
         </div>

@@ -100,8 +100,8 @@ export function useVehicleTypes() {
         // Create a safe copy with guaranteed non-empty type value
         return {
           ...vt,
-          // Ensure type is never empty or undefined
-          type: vt.type ? vt.type.trim() || `Type #${vt.id}` : `Type #${vt.id}`
+          // Ensure type is never empty or undefined - use a string prefixed with the ID if empty
+          type: vt.type && vt.type.trim() !== '' ? vt.type.trim() : `Type ${vt.id}`
         };
       });
     },
