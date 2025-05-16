@@ -3,7 +3,7 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, Shield, User, FileText, CreditCard } from "lucide-react";
+import { Users, UserPlus, User, FileText, CreditCard } from "lucide-react";
 
 export default function AdminUsersPage() {
   // Exemple de données utilisateurs

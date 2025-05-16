@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -201,20 +200,6 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
       
       let photoUrl = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop"; // Photo par défaut
-      let permisUrl = "";
-      let carteVTCUrl = "";
-      
-      // Télécharger les fichiers si disponibles
-      if (values.photo || values.permisConduire || values.carteVTC) {
-        // Création du bucket s'il n'existe pas déjà
-        const { error: bucketError } = await supabase.storage.createBucket('drivers_documents', {
-          public: true
-        });
-        
-        if (bucketError && bucketError.message !== "Bucket already exists") {
-          console.error("Erreur lors de la création du bucket:", bucketError);
-        }
-      }
       
       // Télécharger la photo si disponible
       if (values.photo) {
@@ -249,74 +234,6 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
           toast.error("Erreur lors du téléchargement de la photo");
         }
       }
-
-      // Télécharger le permis de conduire si disponible
-      if (values.permisConduire) {
-        const file = values.permisConduire;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${newDriverId}-permis-${Date.now()}.${fileExt}`;
-        
-        try {
-          // Téléchargement du permis sur Supabase Storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('drivers_documents')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
-          
-          if (uploadError) {
-            console.error("Erreur lors du téléchargement du permis:", uploadError);
-            toast.error("Impossible de télécharger le permis de conduire");
-          } else if (uploadData) {
-            // Récupérer l'URL publique du permis
-            const { data: urlData } = supabase.storage
-              .from('drivers_documents')
-              .getPublicUrl(fileName);
-            
-            if (urlData) {
-              permisUrl = urlData.publicUrl;
-            }
-          }
-        } catch (error) {
-          console.error("Exception lors du téléchargement du permis:", error);
-          toast.error("Erreur lors du téléchargement du permis de conduire");
-        }
-      }
-
-      // Télécharger la carte VTC si disponible
-      if (values.carteVTC) {
-        const file = values.carteVTC;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${newDriverId}-vtc-${Date.now()}.${fileExt}`;
-        
-        try {
-          // Téléchargement de la carte VTC sur Supabase Storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('drivers_documents')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
-          
-          if (uploadError) {
-            console.error("Erreur lors du téléchargement de la carte VTC:", uploadError);
-            toast.error("Impossible de télécharger la carte VTC");
-          } else if (uploadData) {
-            // Récupérer l'URL publique de la carte VTC
-            const { data: urlData } = supabase.storage
-              .from('drivers_documents')
-              .getPublicUrl(fileName);
-            
-            if (urlData) {
-              carteVTCUrl = urlData.publicUrl;
-            }
-          }
-        } catch (error) {
-          console.error("Exception lors du téléchargement de la carte VTC:", error);
-          toast.error("Erreur lors du téléchargement de la carte VTC");
-        }
-      }
       
       // Préparation des données du chauffeur pour l'insertion dans la base de données
       const driverData = {
@@ -331,8 +248,6 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0],
         note_chauffeur: 0,
         photo: photoUrl,
-        permis_conduire: permisUrl,
-        carte_vtc: carteVTCUrl,
         id_entreprise: values.entrepriseId,
         disponible: values.disponible,
       };
@@ -387,8 +302,6 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         Note_Chauffeur: 0, // Pas encore noté
         Missions_Futures: [],
         Photo: photoUrl,
-        Permis_Conduire: permisUrl,
-        Carte_VTC: carteVTCUrl,
         ID_Entreprise: values.entrepriseId,
         Disponible: values.disponible,
       };

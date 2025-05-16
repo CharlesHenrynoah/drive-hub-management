@@ -51,8 +51,6 @@ const driverFormSchema = z.object({
   justificatif_domicile: z.string().min(1, "Le justificatif de domicile est requis"),
   photo: z.string().optional(),
   note_chauffeur: z.number().min(0).max(100).default(0),
-  permis_conduire: z.any().optional(),
-  carte_vtc: z.any().optional(),
 });
 
 interface EditDriverFormProps {
@@ -70,8 +68,8 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
   const [permisFile, setPermisFile] = useState<File | null>(null);
   const [carteVTCFile, setCarteVTCFile] = useState<File | null>(null);
   
-  const [permisPreview, setPermisPreview] = useState<string | null>(driver.Permis_Conduire || null);
-  const [carteVTCPreview, setCarteVTCPreview] = useState<string | null>(driver.Carte_VTC || null);
+  const [permisPreview, setPermisPreview] = useState<string | null>(null);
+  const [carteVTCPreview, setCarteVTCPreview] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof driverFormSchema>>({
     resolver: zodResolver(driverFormSchema),
@@ -90,8 +88,6 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
       justificatif_domicile: driver.Justificatif_Domicile,
       photo: driver.Photo,
       note_chauffeur: driver.Note_Chauffeur,
-      permis_conduire: driver.Permis_Conduire || "",
-      carte_vtc: driver.Carte_VTC || "",
     },
   });
 
@@ -142,74 +138,7 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
       }
       
       const driverId = driverData.id;
-      let permisUrl = data.permis_conduire;
-      let carteVTCUrl = data.carte_vtc;
-      
-      // Traiter le téléchargement des fichiers si nécessaire
-      if (permisFile || carteVTCFile) {
-        // Création du bucket s'il n'existe pas déjà
-        const { error: bucketError } = await supabase.storage.createBucket('drivers_documents', {
-          public: true
-        });
-        
-        if (bucketError && bucketError.message !== "Bucket already exists") {
-          console.error("Erreur lors de la création du bucket:", bucketError);
-        }
-        
-        // Télécharger le permis de conduire
-        if (permisFile) {
-          const fileExt = permisFile.name.split('.').pop();
-          const fileName = `${driver.ID_Chauffeur}-permis-${Date.now()}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('drivers_documents')
-            .upload(fileName, permisFile, {
-              cacheControl: '3600',
-              upsert: false
-            });
-            
-          if (uploadError) {
-            console.error("Erreur lors du téléchargement du permis:", uploadError);
-            toast.error("Impossible de télécharger le permis de conduire");
-          } else if (uploadData) {
-            // Récupérer l'URL publique du fichier
-            const { data: urlData } = supabase.storage
-              .from('drivers_documents')
-              .getPublicUrl(fileName);
-              
-            if (urlData) {
-              permisUrl = urlData.publicUrl;
-            }
-          }
-        }
-        
-        // Télécharger la carte VTC
-        if (carteVTCFile) {
-          const fileExt = carteVTCFile.name.split('.').pop();
-          const fileName = `${driver.ID_Chauffeur}-vtc-${Date.now()}.${fileExt}`;
-          
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('drivers_documents')
-            .upload(fileName, carteVTCFile, {
-              cacheControl: '3600',
-              upsert: false
-            });
-            
-          if (uploadError) {
-            console.error("Erreur lors du téléchargement de la carte VTC:", uploadError);
-            toast.error("Impossible de télécharger la carte VTC");
-          } else if (uploadData) {
-            // Récupérer l'URL publique du fichier
-            const { data: urlData } = supabase.storage
-              .from('drivers_documents')
-              .getPublicUrl(fileName);
-              
-            if (urlData) {
-              carteVTCUrl = urlData.publicUrl;
-            }
-          }
-        }
-      }
+      let photoUrl = data.photo;
       
       // Mise à jour du chauffeur dans la base de données
       const { error: updateError } = await supabase
@@ -225,9 +154,7 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
           piece_identite: data.piece_identite,
           certificat_medical: data.certificat_medical,
           justificatif_domicile: data.justificatif_domicile,
-          photo: data.photo,
-          permis_conduire: permisUrl,
-          carte_vtc: carteVTCUrl,
+          photo: photoUrl,
           note_chauffeur: data.note_chauffeur,
         })
         .eq('id', driverId);
