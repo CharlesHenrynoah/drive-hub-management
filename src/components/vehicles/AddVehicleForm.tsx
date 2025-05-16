@@ -25,9 +25,10 @@ import { Vehicle } from "./VehiclesManagement";
 import { supabase } from "@/integrations/supabase/client";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 import { toast } from "sonner";
-import { Bus, Car, Image, Loader2, MapPin, Plus, Upload } from "lucide-react";
+import { Bus, Car, Gauge, Image, Loader2, MapPin, Plus, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
+import { Progress } from "@/components/ui/progress";
 
 // Liste des types de carburants
 const fuelTypes = [
@@ -361,6 +362,15 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   const openModal = () => {
     setOpen(true);
   };
+  
+  // Déterminer la couleur de la barre de progression en fonction du score écologique
+  const getProgressColor = (score: number) => {
+    if (score >= 80) return "bg-green-500"; // Très écologique
+    if (score >= 60) return "bg-green-400";
+    if (score >= 40) return "bg-yellow-400";
+    if (score >= 20) return "bg-orange-400";
+    return "bg-red-500"; // Peu écologique
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -568,25 +578,27 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 col-span-1 md:col-span-2">
               <Label htmlFor="ecological_score" className="flex items-center gap-1">
                 Score écologique (0-100)
                 {calculatingScore && <Loader2 className="h-3 w-3 animate-spin" />}
               </Label>
-              <Input
-                id="ecological_score"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.ecological_score || ""}
-                onChange={(e) =>
-                  handleChange("ecological_score", parseInt(e.target.value) || 0)
-                }
-                className={calculatingScore ? "bg-muted" : ""}
-                disabled={calculatingScore}
-              />
-              <p className="text-xs text-muted-foreground">
-                Le score écologique est calculé automatiquement en fonction du type, du carburant et de la capacité du véhicule
+              
+              <div className="flex items-center gap-2 mb-2">
+                <Gauge className="h-5 w-5 text-muted-foreground" />
+                <span className="font-medium text-lg">{formData.ecological_score}</span>
+              </div>
+              
+              <div className="relative w-full h-6 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className={`absolute left-0 top-0 h-full transition-all duration-500 ease-in-out ${getProgressColor(formData.ecological_score)}`}
+                  style={{ width: `${formData.ecological_score}%` }}
+                />
+              </div>
+              
+              <p className="text-xs text-muted-foreground mt-2">
+                Le score écologique est calculé automatiquement en fonction du type de véhicule, 
+                du carburant, de la capacité et de l'année du véhicule
               </p>
             </div>
 
