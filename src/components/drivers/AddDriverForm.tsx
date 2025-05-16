@@ -40,6 +40,8 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { supabase } from "@/integrations/supabase/client";
+import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
+import { Database } from "@/integrations/supabase/types";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -86,12 +88,16 @@ interface Company {
   name: string;
 }
 
+// Définir le type VehicleType basé sur l'enum de la base de données
+type VehicleType = Database["public"]["Enums"]["vehicle_type"];
+
 export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeur" }: AddDriverFormProps) {
   const [open, setOpen] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>([]);
   
   // Chargement des entreprises depuis Supabase
   useEffect(() => {
@@ -232,15 +238,37 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       console.log("Insertion du chauffeur:", driverData);
       
       // Insérer le chauffeur dans la base de données
-      const { error: insertError } = await supabase
+      const { data: insertedDriver, error: insertError } = await supabase
         .from('drivers')
-        .insert(driverData);
+        .insert(driverData)
+        .select('id')
+        .single();
       
       if (insertError) {
         console.error("Erreur lors de l'insertion du chauffeur:", insertError);
         toast.error("Impossible d'ajouter le chauffeur à la base de données");
         setIsSubmitting(false);
         return;
+      }
+      
+      // Ajouter les types de véhicules associés au chauffeur
+      if (selectedVehicleTypes.length > 0 && insertedDriver) {
+        const driverId = insertedDriver.id;
+        
+        // Convertir les strings en valeurs de l'enum
+        const vehicleTypeAssociations = selectedVehicleTypes.map(type => ({
+          driver_id: driverId,
+          vehicle_type: type as VehicleType
+        }));
+        
+        const { error: vehicleTypesError } = await supabase
+          .from('driver_vehicle_types')
+          .insert(vehicleTypeAssociations);
+          
+        if (vehicleTypesError) {
+          console.error("Erreur lors de l'ajout des types de véhicules:", vehicleTypesError);
+          toast.error("Erreur lors de l'association des types de véhicules");
+        }
       }
       
       // Création du nouvel objet chauffeur pour l'interface
@@ -271,6 +299,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       });
       
       setPhotoPreview(null);
+      setSelectedVehicleTypes([]);
       form.reset();
       setOpen(false);
     } catch (error) {
@@ -433,6 +462,18 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <FormLabel>Types de véhicules (max 6)</FormLabel>
+                  <VehicleTypeSelector 
+                    selectedTypes={selectedVehicleTypes} 
+                    onChange={setSelectedVehicleTypes} 
+                    maxSelections={6} 
+                  />
+                  <FormDescription className="text-xs">
+                    Sélectionnez jusqu'à 6 types de véhicules que ce chauffeur peut conduire
+                  </FormDescription>
                 </div>
               </div>
               
