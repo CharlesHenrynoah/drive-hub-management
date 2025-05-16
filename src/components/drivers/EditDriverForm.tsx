@@ -24,12 +24,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, UploadCloud } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Driver } from "@/types/driver";
 import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
 import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const ACCEPTED_DOC_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"];
 
 // Schéma de validation pour le formulaire d'édition de chauffeur
 const driverFormSchema = z.object({
@@ -47,6 +51,8 @@ const driverFormSchema = z.object({
   justificatif_domicile: z.string().min(1, "Le justificatif de domicile est requis"),
   photo: z.string().optional(),
   note_chauffeur: z.number().min(0).max(100).default(0),
+  permis_conduire: z.any().optional(),
+  carte_vtc: z.any().optional(),
 });
 
 interface EditDriverFormProps {
@@ -60,6 +66,12 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { vehicleTypes, updateVehicleTypes } = useDriverVehicleTypes(driver.ID_Chauffeur);
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>(vehicleTypes || []);
+  
+  const [permisFile, setPermisFile] = useState<File | null>(null);
+  const [carteVTCFile, setCarteVTCFile] = useState<File | null>(null);
+  
+  const [permisPreview, setPermisPreview] = useState<string | null>(driver.Permis_Conduire || null);
+  const [carteVTCPreview, setCarteVTCPreview] = useState<string | null>(driver.Carte_VTC || null);
 
   const form = useForm<z.infer<typeof driverFormSchema>>({
     resolver: zodResolver(driverFormSchema),
@@ -78,8 +90,42 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
       justificatif_domicile: driver.Justificatif_Domicile,
       photo: driver.Photo,
       note_chauffeur: driver.Note_Chauffeur,
+      permis_conduire: driver.Permis_Conduire || "",
+      carte_vtc: driver.Carte_VTC || "",
     },
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldType: 'permis' | 'vtc') => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      if (fieldType === 'permis') {
+        setPermisFile(file);
+        
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPermisPreview(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+          setPermisPreview('/placeholder.svg'); // Utiliser une icône PDF
+        }
+      } else {
+        setCarteVTCFile(file);
+        
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setCarteVTCPreview(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+          setCarteVTCPreview('/placeholder.svg'); // Utiliser une icône PDF
+        }
+      }
+    }
+  };
 
   const onSubmit = async (data: z.infer<typeof driverFormSchema>) => {
     setIsSubmitting(true);
@@ -96,6 +142,74 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
       }
       
       const driverId = driverData.id;
+      let permisUrl = data.permis_conduire;
+      let carteVTCUrl = data.carte_vtc;
+      
+      // Traiter le téléchargement des fichiers si nécessaire
+      if (permisFile || carteVTCFile) {
+        // Création du bucket s'il n'existe pas déjà
+        const { error: bucketError } = await supabase.storage.createBucket('drivers_documents', {
+          public: true
+        });
+        
+        if (bucketError && bucketError.message !== "Bucket already exists") {
+          console.error("Erreur lors de la création du bucket:", bucketError);
+        }
+        
+        // Télécharger le permis de conduire
+        if (permisFile) {
+          const fileExt = permisFile.name.split('.').pop();
+          const fileName = `${driver.ID_Chauffeur}-permis-${Date.now()}.${fileExt}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('drivers_documents')
+            .upload(fileName, permisFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+            
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement du permis:", uploadError);
+            toast.error("Impossible de télécharger le permis de conduire");
+          } else if (uploadData) {
+            // Récupérer l'URL publique du fichier
+            const { data: urlData } = supabase.storage
+              .from('drivers_documents')
+              .getPublicUrl(fileName);
+              
+            if (urlData) {
+              permisUrl = urlData.publicUrl;
+            }
+          }
+        }
+        
+        // Télécharger la carte VTC
+        if (carteVTCFile) {
+          const fileExt = carteVTCFile.name.split('.').pop();
+          const fileName = `${driver.ID_Chauffeur}-vtc-${Date.now()}.${fileExt}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('drivers_documents')
+            .upload(fileName, carteVTCFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+            
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement de la carte VTC:", uploadError);
+            toast.error("Impossible de télécharger la carte VTC");
+          } else if (uploadData) {
+            // Récupérer l'URL publique du fichier
+            const { data: urlData } = supabase.storage
+              .from('drivers_documents')
+              .getPublicUrl(fileName);
+              
+            if (urlData) {
+              carteVTCUrl = urlData.publicUrl;
+            }
+          }
+        }
+      }
       
       // Mise à jour du chauffeur dans la base de données
       const { error: updateError } = await supabase
@@ -112,6 +226,8 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
           certificat_medical: data.certificat_medical,
           justificatif_domicile: data.justificatif_domicile,
           photo: data.photo,
+          permis_conduire: permisUrl,
+          carte_vtc: carteVTCUrl,
           note_chauffeur: data.note_chauffeur,
         })
         .eq('id', driverId);
@@ -132,6 +248,51 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
       setIsSubmitting(false);
     }
   };
+
+  const FileUploadField = ({ name, label, accept, preview, onChange }: { name: string, label: string, accept: string, preview: string | null, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+    <div className="space-y-2">
+      <FormLabel>{label}</FormLabel>
+      <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+        <Input
+          id={name}
+          type="file"
+          accept={accept}
+          className="hidden"
+          onChange={onChange}
+        />
+        <label htmlFor={name} className="cursor-pointer h-full">
+          {preview ? (
+            <div className="flex justify-center">
+              {preview.endsWith('.svg') || preview.includes('/placeholder.svg') ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-sm">Document téléchargé</span>
+                </div>
+              ) : (
+                <img 
+                  src={preview} 
+                  alt={`Aperçu ${name}`} 
+                  className="object-cover h-24 rounded-md" 
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center space-y-2">
+              <UploadCloud className="h-8 w-8 text-gray-400" />
+              <span className="text-xs text-gray-500">
+                Glissez et déposez ou cliquez pour sélectionner
+              </span>
+              <span className="text-xs text-gray-400">
+                PNG, JPG, WEBP, PDF (max 5MB)
+              </span>
+            </div>
+          )}
+        </label>
+      </div>
+    </div>
+  );
 
   return (
     <Form {...form}>
@@ -294,6 +455,24 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
             </FormItem>
           )}
         />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FileUploadField 
+            name="permis_conduire" 
+            label="Permis de conduire" 
+            accept="image/*,application/pdf" 
+            preview={permisPreview} 
+            onChange={(e) => handleFileChange(e, 'permis')} 
+          />
+
+          <FileUploadField 
+            name="carte_vtc" 
+            label="Carte VTC" 
+            accept="image/*,application/pdf" 
+            preview={carteVTCPreview}
+            onChange={(e) => handleFileChange(e, 'vtc')} 
+          />
+        </div>
 
         <div className="space-y-2">
           <FormLabel>Types de véhicules (max 6)</FormLabel>

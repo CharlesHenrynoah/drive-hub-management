@@ -12,6 +12,8 @@ export interface Driver {
   Note_Chauffeur: number;
   Missions_Futures: string[];
   Photo: string;
+  Permis_Conduire?: string;
+  Carte_VTC?: string;
   ID_Entreprise: string;
   Disponible: boolean;
 }

@@ -45,6 +45,7 @@ import { Database } from "@/integrations/supabase/types";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const ACCEPTED_DOC_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"];
 
 const formSchema = z.object({
   nom: z.string().min(2, {
@@ -75,6 +76,24 @@ const formSchema = z.object({
     )
     .nullable()
     .optional(),
+  permisConduire: z
+    .instanceof(File)
+    .refine((file) => file.size <= MAX_FILE_SIZE, "La taille maximale est de 5MB.")
+    .refine(
+      (file) => ACCEPTED_DOC_TYPES.includes(file.type),
+      "Seuls les formats .jpg, .jpeg, .png, .webp et .pdf sont acceptés."
+    )
+    .nullable()
+    .optional(),
+  carteVTC: z
+    .instanceof(File)
+    .refine((file) => file.size <= MAX_FILE_SIZE, "La taille maximale est de 5MB.")
+    .refine(
+      (file) => ACCEPTED_DOC_TYPES.includes(file.type),
+      "Seuls les formats .jpg, .jpeg, .png, .webp et .pdf sont acceptés."
+    )
+    .nullable()
+    .optional(),
 });
 
 interface AddDriverFormProps {
@@ -94,6 +113,8 @@ type VehicleType = Database["public"]["Enums"]["vehicle_type"];
 export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeur" }: AddDriverFormProps) {
   const [open, setOpen] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [permisPreview, setPermisPreview] = useState<string | null>(null);
+  const [carteVTCPreview, setCarteVTCPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
@@ -138,31 +159,37 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       entrepriseId: "",
       disponible: true,
       photo: undefined,
+      permisConduire: undefined,
+      carteVTC: undefined,
     },
   });
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      form.setValue("photo", file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  }, [form, setPhotoPreview]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      form.setValue("photo", file);
+      form.setValue(field as any, file);
       
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Ne pas créer de prévisualisation pour les PDF
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (field === 'photo') {
+            setPhotoPreview(reader.result as string);
+          } else if (field === 'permisConduire') {
+            setPermisPreview(reader.result as string);
+          } else if (field === 'carteVTC') {
+            setCarteVTCPreview(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === 'application/pdf') {
+        // Pour les PDF, on utilise juste une icône
+        if (field === 'permisConduire') {
+          setPermisPreview('/placeholder.svg'); // Utiliser une icône PDF
+        } else if (field === 'carteVTC') {
+          setCarteVTCPreview('/placeholder.svg'); // Utiliser une icône PDF
+        }
+      }
     }
   };
 
@@ -174,26 +201,31 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       const newDriverId = `C-${Math.floor(1000 + Math.random() * 9000)}`;
       
       let photoUrl = "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop"; // Photo par défaut
+      let permisUrl = "";
+      let carteVTCUrl = "";
+      
+      // Télécharger les fichiers si disponibles
+      if (values.photo || values.permisConduire || values.carteVTC) {
+        // Création du bucket s'il n'existe pas déjà
+        const { error: bucketError } = await supabase.storage.createBucket('drivers_documents', {
+          public: true
+        });
+        
+        if (bucketError && bucketError.message !== "Bucket already exists") {
+          console.error("Erreur lors de la création du bucket:", bucketError);
+        }
+      }
       
       // Télécharger la photo si disponible
       if (values.photo) {
         const file = values.photo;
         const fileExt = file.name.split('.').pop();
-        const fileName = `${newDriverId}-${Date.now()}.${fileExt}`;
+        const fileName = `${newDriverId}-photo-${Date.now()}.${fileExt}`;
         
         try {
-          // Création du bucket s'il n'existe pas déjà
-          const { error: bucketError } = await supabase.storage.createBucket('drivers_photos', {
-            public: true
-          });
-          
-          if (bucketError && bucketError.message !== "Bucket already exists") {
-            console.error("Erreur lors de la création du bucket:", bucketError);
-          }
-          
           // Téléchargement de la photo sur Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('drivers_photos')
+            .from('drivers_documents')
             .upload(fileName, file, {
               cacheControl: '3600',
               upsert: false
@@ -205,7 +237,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
           } else if (uploadData) {
             // Récupérer l'URL publique de la photo
             const { data: urlData } = supabase.storage
-              .from('drivers_photos')
+              .from('drivers_documents')
               .getPublicUrl(fileName);
             
             if (urlData) {
@@ -215,6 +247,74 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         } catch (error) {
           console.error("Exception lors du téléchargement de la photo:", error);
           toast.error("Erreur lors du téléchargement de la photo");
+        }
+      }
+
+      // Télécharger le permis de conduire si disponible
+      if (values.permisConduire) {
+        const file = values.permisConduire;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${newDriverId}-permis-${Date.now()}.${fileExt}`;
+        
+        try {
+          // Téléchargement du permis sur Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('drivers_documents')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement du permis:", uploadError);
+            toast.error("Impossible de télécharger le permis de conduire");
+          } else if (uploadData) {
+            // Récupérer l'URL publique du permis
+            const { data: urlData } = supabase.storage
+              .from('drivers_documents')
+              .getPublicUrl(fileName);
+            
+            if (urlData) {
+              permisUrl = urlData.publicUrl;
+            }
+          }
+        } catch (error) {
+          console.error("Exception lors du téléchargement du permis:", error);
+          toast.error("Erreur lors du téléchargement du permis de conduire");
+        }
+      }
+
+      // Télécharger la carte VTC si disponible
+      if (values.carteVTC) {
+        const file = values.carteVTC;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${newDriverId}-vtc-${Date.now()}.${fileExt}`;
+        
+        try {
+          // Téléchargement de la carte VTC sur Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('drivers_documents')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error("Erreur lors du téléchargement de la carte VTC:", uploadError);
+            toast.error("Impossible de télécharger la carte VTC");
+          } else if (uploadData) {
+            // Récupérer l'URL publique de la carte VTC
+            const { data: urlData } = supabase.storage
+              .from('drivers_documents')
+              .getPublicUrl(fileName);
+            
+            if (urlData) {
+              carteVTCUrl = urlData.publicUrl;
+            }
+          }
+        } catch (error) {
+          console.error("Exception lors du téléchargement de la carte VTC:", error);
+          toast.error("Erreur lors du téléchargement de la carte VTC");
         }
       }
       
@@ -231,6 +331,8 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0],
         note_chauffeur: 0,
         photo: photoUrl,
+        permis_conduire: permisUrl,
+        carte_vtc: carteVTCUrl,
         id_entreprise: values.entrepriseId,
         disponible: values.disponible,
       };
@@ -285,6 +387,8 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         Note_Chauffeur: 0, // Pas encore noté
         Missions_Futures: [],
         Photo: photoUrl,
+        Permis_Conduire: permisUrl,
+        Carte_VTC: carteVTCUrl,
         ID_Entreprise: values.entrepriseId,
         Disponible: values.disponible,
       };
@@ -299,6 +403,8 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       });
       
       setPhotoPreview(null);
+      setPermisPreview(null);
+      setCarteVTCPreview(null);
       setSelectedVehicleTypes([]);
       form.reset();
       setOpen(false);
@@ -309,6 +415,61 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
     
     setIsSubmitting(false);
   }
+
+  const FileUploadField = ({ name, label, accept, preview, iconClass }: { name: string, label: string, accept: string, preview: string | null, iconClass?: string }) => (
+    <FormField
+      control={form.control}
+      name={name as any}
+      render={({ field: { value, onChange, ...fieldProps } }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <FormControl>
+            <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+              <Input
+                id={name}
+                type="file"
+                accept={accept}
+                className="hidden"
+                onChange={(e) => handleFileChange(e, name)}
+                {...fieldProps}
+              />
+              <label htmlFor={name} className="cursor-pointer h-full">
+                {preview ? (
+                  <div className="flex justify-center">
+                    {preview.startsWith('data:image/') ? (
+                      <img 
+                        src={preview} 
+                        alt={`Aperçu ${name}`} 
+                        className="object-cover h-24 rounded-md" 
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center space-y-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-sm">Document téléchargé</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center space-y-2">
+                    <UploadCloud className={`h-8 w-8 text-gray-400 ${iconClass || ''}`} />
+                    <span className="text-xs text-gray-500">
+                      Glissez et déposez ou cliquez pour sélectionner
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      PNG, JPG, WEBP, PDF (max 5MB)
+                    </span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -477,8 +638,8 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                 </div>
               </div>
               
-              {/* Colonne de droite - Photo */}
-              <div>
+              {/* Colonne de droite - Documents */}
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="photo"
@@ -486,13 +647,13 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                     <FormItem>
                       <FormLabel>Photo du chauffeur (format paysage)</FormLabel>
                       <FormControl>
-                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors h-full flex flex-col justify-center">
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
                           <Input
                             id="photo"
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={handleFileChange}
+                            onChange={(e) => handleFileChange(e, 'photo')}
                             {...fieldProps}
                           />
                           <label htmlFor="photo" className="cursor-pointer h-full">
@@ -527,6 +688,22 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FileUploadField 
+                    name="permisConduire" 
+                    label="Permis de conduire" 
+                    accept="image/*,application/pdf" 
+                    preview={permisPreview} 
+                  />
+
+                  <FileUploadField 
+                    name="carteVTC" 
+                    label="Carte VTC" 
+                    accept="image/*,application/pdf" 
+                    preview={carteVTCPreview}
+                  />
+                </div>
               </div>
             </div>
             

@@ -3,15 +3,15 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, Shield, User } from "lucide-react";
+import { Users, UserPlus, Shield, User, FileText, CreditCard } from "lucide-react";
 
 export default function AdminUsersPage() {
   // Exemple de données utilisateurs
   const users = [
-    { id: 1, name: "Jean Dupont", email: "jean@exemple.fr", role: "admin", status: "Actif" },
-    { id: 2, name: "Marie Laurent", email: "marie@exemple.fr", role: "manager", status: "Actif" },
-    { id: 3, name: "Pierre Martin", email: "pierre@exemple.fr", role: "manager", status: "Inactif" },
-    { id: 4, name: "Sophie Dubois", email: "sophie@exemple.fr", role: "manager", status: "Actif" },
+    { id: 1, name: "Jean Dupont", email: "jean@exemple.fr", role: "admin", status: "Actif", hasLicense: true, hasVTC: true },
+    { id: 2, name: "Marie Laurent", email: "marie@exemple.fr", role: "manager", status: "Actif", hasLicense: true, hasVTC: false },
+    { id: 3, name: "Pierre Martin", email: "pierre@exemple.fr", role: "manager", status: "Inactif", hasLicense: false, hasVTC: false },
+    { id: 4, name: "Sophie Dubois", email: "sophie@exemple.fr", role: "manager", status: "Actif", hasLicense: true, hasVTC: true },
   ];
 
   return (
@@ -48,6 +48,7 @@ export default function AdminUsersPage() {
                   <TableHead className="text-zinc-400">Email</TableHead>
                   <TableHead className="text-zinc-400">Rôle</TableHead>
                   <TableHead className="text-zinc-400">Statut</TableHead>
+                  <TableHead className="text-zinc-400">Documents</TableHead>
                   <TableHead className="text-zinc-400">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -70,6 +71,18 @@ export default function AdminUsersPage() {
                       <span className={`px-2 py-1 rounded text-xs ${user.status === 'Actif' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
                         {user.status}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <span className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${user.hasLicense ? 'bg-blue-500/20 text-blue-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                          <FileText className="h-3 w-3" />
+                          Permis
+                        </span>
+                        <span className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${user.hasVTC ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                          <CreditCard className="h-3 w-3" />
+                          VTC
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
