@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Edit } from "lucide-react";
+import { Edit, MapPin } from "lucide-react";
 import { Vehicle } from "./VehiclesManagement";
 
 interface VehicleDetailModalProps {
@@ -94,6 +94,17 @@ export function VehicleDetailModal({ vehicle, companyName = "N/A", onEdit }: Veh
               <div className="flex justify-between">
                 <dt className="font-medium">Capacité</dt>
                 <dd>{vehicle.capacity} passagers</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="font-medium">Localisation</dt>
+                <dd className="flex items-center">
+                  {vehicle.location ? (
+                    <>
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {vehicle.location}
+                    </>
+                  ) : "Non définie"}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="font-medium">Entreprise</dt>

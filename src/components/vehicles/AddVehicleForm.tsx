@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
+
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,15 +9,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,745 +19,460 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
-import { Progress } from "@/components/ui/progress";
-import { supabase } from "@/integrations/supabase/client";
+import { VehicleTypeSelector } from "./VehicleTypeSelector";
 import { Vehicle } from "./VehiclesManagement";
-import { Image, Upload } from "lucide-react";
-import { DatePicker } from "../ui/date-picker";
-import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
-import { VehicleTypeField } from "./VehicleTypeField";
+import { toast } from "sonner";
+import { Loader2, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const formSchema = z.object({
-  marque: z.string().min(2, {
-    message: "La marque doit contenir au moins 2 caractères",
-  }),
-  modele: z.string().min(2, {
-    message: "Le modèle doit contenir au moins 2 caractères",
-  }),
-  immatriculation: z.string().min(5, {
-    message: "L'immatriculation doit être valide",
-  }),
-  typeVehicule: z.string({
-    required_error: "Veuillez sélectionner un type de véhicule",
-  }),
-  typeCarburant: z.string({
-    required_error: "Veuillez sélectionner un type de carburant",
-  }),
-  entrepriseId: z.string({
-    required_error: "Veuillez sélectionner une entreprise",
-  }),
-  capacite: z.coerce.number().min(1, {
-    message: "La capacité doit être d'au moins 1 passager",
-  }),
-  placesAssises: z.coerce.number().min(0, {
-    message: "Le nombre de places assises doit être positif",
-  }),
-  placesDebout: z.coerce.number().min(0, {
-    message: "Le nombre de places debout doit être positif",
-  }),
-  accessibilitePMR: z.boolean().default(false),
-  annee: z.coerce.number().optional(),
-  kilometrage: z.coerce.number().optional(),
-  photoUrl: z.string({
-    required_error: "Une photo du véhicule est obligatoire",
-  }),
-  dernierEntretien: z.date().optional(),
-  prochainEntretien: z.date().optional(),
-});
+// Liste des types de carburants
+const fuelTypes = [
+  "Diesel",
+  "Essence",
+  "Électrique",
+  "Hybride",
+  "GNV",
+  "Biodiesel",
+  "Hydrogène",
+];
+
+// Liste des statuts de véhicule
+const vehicleStatuses = ["Disponible", "En maintenance", "Hors service", "En mission"];
+
+// Liste des villes pour la localisation
+const cities = [
+  "Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Strasbourg",
+  "Montpellier", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre",
+  "Saint-Étienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nîmes", "Clermont-Ferrand"
+];
 
 interface AddVehicleFormProps {
+  onSuccess?: () => void;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  vehicleToEdit?: Vehicle | null;
-  onSuccess?: () => void;
+  vehicleToEdit?: Vehicle;
 }
 
-export function AddVehicleForm({ isOpen, onOpenChange, vehicleToEdit, onSuccess }: AddVehicleFormProps) {
-  const [open, setOpen] = useState(isOpen || false);
-  const [ecologicalScore, setEcologicalScore] = useState<number | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [companies, setCompanies] = useState<{id: string, name: string}[]>([]);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const isEditing = !!vehicleToEdit;
+export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit }: AddVehicleFormProps) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    brand: "",
+    model: "",
+    type: "",
+    vehicle_type: "",
+    registration: "",
+    capacity: 0,
+    fuel_type: "Diesel",
+    year: new Date().getFullYear(),
+    mileage: 0,
+    last_maintenance: new Date().toISOString().split("T")[0],
+    status: "Disponible",
+    ecological_score: 50,
+    company_id: null,
+    photo_url: null,
+    location: ""
+  });
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const { data: vehicleTypes } = useVehicleTypes();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      marque: vehicleToEdit?.brand || "",
-      modele: vehicleToEdit?.model || "",
-      immatriculation: vehicleToEdit?.registration || "",
-      typeVehicule: vehicleToEdit?.type || "",
-      typeCarburant: vehicleToEdit?.fuel_type || "",
-      entrepriseId: vehicleToEdit?.company_id || "",
-      capacite: vehicleToEdit?.capacity || 15,
-      placesAssises: Math.floor((vehicleToEdit?.capacity || 15) * 0.9) || 13,
-      placesDebout: Math.floor((vehicleToEdit?.capacity || 15) * 0.1) || 1,
-      accessibilitePMR: vehicleToEdit?.type === "Bus" || false,
-      kilometrage: vehicleToEdit?.mileage || 0,
-      annee: vehicleToEdit?.year || undefined,
-      photoUrl: vehicleToEdit?.photo_url || "",
-      dernierEntretien: vehicleToEdit?.last_maintenance ? new Date(vehicleToEdit.last_maintenance) : new Date(),
-      prochainEntretien: vehicleToEdit?.last_maintenance ? 
-        new Date(new Date(vehicleToEdit.last_maintenance).setMonth(new Date(vehicleToEdit.last_maintenance).getMonth() + 6)) : 
-        new Date(new Date().setMonth(new Date().getMonth() + 6)),
-    },
-  });
-
-  // Function to update total capacity based on seated and standing
-  const updateCapacity = () => {
-    const values = form.getValues();
-    const totalCapacity = (values.placesAssises || 0) + (values.placesDebout || 0);
-    if (totalCapacity > 0) {
-      form.setValue("capacite", totalCapacity);
-    }
-  };
-
-  // Update capacity when vehicle type changes
-  const handleVehicleTypeChange = (type: string) => {
-    form.setValue("typeVehicule", type);
-    
-    // Find the vehicle type to set default capacity
-    const vehicleType = vehicleTypes?.find(vt => vt.type === type);
-    if (vehicleType) {
-      const avgCapacity = Math.floor((vehicleType.capacity_min + vehicleType.capacity_max) / 2);
-      form.setValue("capacite", avgCapacity);
-      form.setValue("placesAssises", Math.floor(avgCapacity * 0.9));
-      form.setValue("placesDebout", Math.ceil(avgCapacity * 0.1));
-    }
-  };
-
+  // Configurer le dialogue en fonction des props
   useEffect(() => {
     if (isOpen !== undefined) {
       setOpen(isOpen);
     }
   }, [isOpen]);
 
+  // Charger les données du véhicule à éditer
   useEffect(() => {
     if (vehicleToEdit) {
-      const lastMaintenance = vehicleToEdit.last_maintenance ? new Date(vehicleToEdit.last_maintenance) : new Date();
-      const nextMaintenance = new Date(lastMaintenance);
-      nextMaintenance.setMonth(nextMaintenance.getMonth() + 6);
-
-      form.reset({
-        marque: vehicleToEdit.brand,
-        modele: vehicleToEdit.model,
-        immatriculation: vehicleToEdit.registration,
-        typeVehicule: vehicleToEdit.type,
-        typeCarburant: vehicleToEdit.fuel_type,
-        entrepriseId: vehicleToEdit.company_id || "",
-        capacite: vehicleToEdit.capacity,
-        placesAssises: Math.floor(vehicleToEdit.capacity * 0.9),
-        placesDebout: Math.floor(vehicleToEdit.capacity * 0.1),
-        accessibilitePMR: vehicleToEdit.type === "Autocar Standard" || vehicleToEdit.type === "Autocar Grand Tourisme",
-        kilometrage: vehicleToEdit.mileage || 0,
-        annee: vehicleToEdit.year || undefined,
-        photoUrl: vehicleToEdit.photo_url || "",
-        dernierEntretien: lastMaintenance,
-        prochainEntretien: nextMaintenance,
+      setFormData({
+        brand: vehicleToEdit.brand || "",
+        model: vehicleToEdit.model || "",
+        type: vehicleToEdit.type || "",
+        vehicle_type: vehicleToEdit.vehicle_type || "",
+        registration: vehicleToEdit.registration || "",
+        capacity: vehicleToEdit.capacity || 0,
+        fuel_type: vehicleToEdit.fuel_type || "Diesel",
+        year: vehicleToEdit.year || new Date().getFullYear(),
+        mileage: vehicleToEdit.mileage || 0,
+        last_maintenance: vehicleToEdit.last_maintenance
+          ? new Date(vehicleToEdit.last_maintenance).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0],
+        status: vehicleToEdit.status || "Disponible",
+        ecological_score: vehicleToEdit.ecological_score || 50,
+        company_id: vehicleToEdit.company_id || null,
+        photo_url: vehicleToEdit.photo_url || null,
+        location: vehicleToEdit.location || ""
       });
-      setPreviewImage(vehicleToEdit.photo_url || null);
-      setEcologicalScore(vehicleToEdit.ecological_score || null);
     }
-  }, [vehicleToEdit, form]);
+  }, [vehicleToEdit]);
 
+  // Charger les entreprises
   useEffect(() => {
-    // Fetch companies from Supabase
-    const fetchCompanies = async () => {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, name');
-      
-      if (error) {
-        console.error('Error fetching companies:', error);
-        return;
+    async function fetchCompanies() {
+      try {
+        const { data, error } = await supabase.from("companies").select("*");
+        if (error) throw error;
+        setCompanies(data || []);
+      } catch (error) {
+        console.error("Error fetching companies:", error);
       }
-      
-      if (data) {
-        setCompanies(data);
-      }
-    };
-    
+    }
+
     fetchCompanies();
   }, []);
 
-  // Calculate ecological score when relevant form values change
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      // Only recalculate when these specific fields change
-      if (["typeVehicule", "typeCarburant", "capacite", "annee"].includes(name || "")) {
-        calculateScore();
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [form.watch]);
+  const handleChange = (field: string, value: string | number | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
-  const calculateScore = async () => {
-    const values = form.getValues();
-    
-    // Only calculate if we have the minimum required data
-    if (values.typeVehicule && values.typeCarburant && values.capacite) {
-      setIsCalculating(true);
-      
-      try {
-        const score = await calculateEcologicalScore({
-          type: values.typeVehicule,
-          fuel: values.typeCarburant,
-          capacity: values.capacite,
-          year: values.annee
-        });
-        
-        setEcologicalScore(score);
-      } catch (error) {
-        console.error("Error calculating ecological score:", error);
-      } finally {
-        setIsCalculating(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validation de base
+      if (!formData.brand || !formData.model || !formData.registration) {
+        toast.error("Veuillez remplir tous les champs requis");
+        return;
       }
+
+      // Si nous éditons un véhicule existant
+      if (vehicleToEdit) {
+        const { error } = await supabase
+          .from("vehicles")
+          .update({
+            brand: formData.brand,
+            model: formData.model,
+            type: formData.type,
+            vehicle_type: formData.vehicle_type || null,
+            registration: formData.registration,
+            capacity: formData.capacity,
+            fuel_type: formData.fuel_type,
+            year: formData.year,
+            mileage: formData.mileage,
+            last_maintenance: formData.last_maintenance,
+            status: formData.status,
+            ecological_score: formData.ecological_score,
+            company_id: formData.company_id,
+            photo_url: formData.photo_url,
+            location: formData.location || null
+          })
+          .eq("id", vehicleToEdit.id);
+
+        if (error) throw error;
+        toast.success("Véhicule modifié avec succès");
+      } else {
+        // Sinon, nous créons un nouveau véhicule
+        const { error } = await supabase.from("vehicles").insert([
+          {
+            brand: formData.brand,
+            model: formData.model,
+            type: formData.type,
+            vehicle_type: formData.vehicle_type || null,
+            registration: formData.registration,
+            capacity: formData.capacity,
+            fuel_type: formData.fuel_type,
+            year: formData.year,
+            mileage: formData.mileage,
+            last_maintenance: formData.last_maintenance,
+            status: formData.status,
+            ecological_score: formData.ecological_score,
+            company_id: formData.company_id,
+            photo_url: formData.photo_url,
+            location: formData.location || null
+          },
+        ]);
+
+        if (error) throw error;
+        toast.success("Véhicule ajouté avec succès");
+      }
+
+      // Réinitialiser le formulaire et fermer le dialogue
+      if (!vehicleToEdit) {
+        setFormData({
+          brand: "",
+          model: "",
+          type: "",
+          vehicle_type: "",
+          registration: "",
+          capacity: 0,
+          fuel_type: "Diesel",
+          year: new Date().getFullYear(),
+          mileage: 0,
+          last_maintenance: new Date().toISOString().split("T")[0],
+          status: "Disponible",
+          ecological_score: 50,
+          company_id: null,
+          photo_url: null,
+          location: ""
+        });
+      }
+
+      setOpen(false);
+      if (onOpenChange) onOpenChange(false);
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      console.error("Error saving vehicle:", error);
+      toast.error(`Erreur: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
-    if (onOpenChange) {
-      onOpenChange(newOpen);
-    }
-    if (!newOpen && !isEditing) {
-      // Reset form when dialog is closed, but only if we're not editing
-      form.reset();
-      setEcologicalScore(null);
-      setPreviewImage(null);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileChange(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileChange(e.target.files[0]);
-    }
-  };
-
-  const handleFileChange = (file: File) => {
-    // Check if file is an image
-    if (!file.type.match('image.*')) {
-      toast.error("Veuillez sélectionner une image");
-      return;
-    }
-    
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("L'image ne doit pas dépasser 5MB");
-      return;
-    }
-
-    // Create object URL for preview
-    const url = URL.createObjectURL(file);
-    setPreviewImage(url);
-    
-    // For demo purposes, we're just using the URL
-    // In a real app, you would upload the file to storage
-    form.setValue("photoUrl", url);
-  };
-
-  const handleBrowseClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSaving(true);
-    
-    try {
-      // In a real application, you would upload the image to storage here
-      // and then save the URL to the database
-      
-      if (isEditing && vehicleToEdit) {
-        // Update existing vehicle
-        const { error } = await supabase
-          .from('vehicles')
-          .update({
-            brand: values.marque,
-            model: values.modele,
-            registration: values.immatriculation,
-            type: values.typeVehicule,
-            fuel_type: values.typeCarburant,
-            company_id: values.entrepriseId,
-            capacity: values.capacite,
-            year: values.annee || null,
-            mileage: values.kilometrage || 0,
-            ecological_score: ecologicalScore || vehicleToEdit.ecological_score || 50,
-            photo_url: values.photoUrl,
-            last_maintenance: values.dernierEntretien?.toISOString().split('T')[0] || null,
-            updated_at: new Date().toISOString(),
-            // Add custom properties for specific vehicle types as a JSON field in the database
-            // or use a normalized data model with separate tables in a real app
-          })
-          .eq('id', vehicleToEdit.id);
-
-        if (error) throw error;
-        
-        toast.success("Véhicule mis à jour avec succès", {
-          description: `${values.marque} ${values.modele} a été mis à jour.`,
-        });
-      } else {
-        // Add new vehicle
-        const { data, error } = await supabase
-          .from('vehicles')
-          .insert({
-            brand: values.marque,
-            model: values.modele,
-            registration: values.immatriculation,
-            type: values.typeVehicule,
-            fuel_type: values.typeCarburant,
-            company_id: values.entrepriseId,
-            capacity: values.capacite,
-            year: values.annee || null,
-            mileage: values.kilometrage || 0,
-            ecological_score: ecologicalScore || 50,
-            photo_url: values.photoUrl,
-            last_maintenance: values.dernierEntretien?.toISOString().split('T')[0] || null,
-          })
-          .select();
-
-        if (error) throw error;
-        
-        toast.success("Véhicule ajouté avec succès", {
-          description: `${values.marque} ${values.modele} a été ajouté à la flotte.`,
-        });
-      }
-      
-      if (onSuccess) {
-        onSuccess();
-      }
-      
-      handleOpenChange(false);
-    } catch (error) {
-      console.error('Error saving vehicle:', error);
-      toast.error(isEditing ? "Erreur lors de la mise à jour du véhicule" : "Erreur lors de l'ajout du véhicule", {
-        description: "Veuillez réessayer ou contacter l'assistance.",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  const getScoreColorClass = (score: number | null) => {
-    if (score === null) return "bg-gray-300";
-    if (score >= 80) return "bg-success";
-    if (score >= 60) return "bg-info";
-    return "bg-warning";
+    if (onOpenChange) onOpenChange(newOpen);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {!isEditing && (
+      {!vehicleToEdit && (
         <DialogTrigger asChild>
-          <Button>Ajouter un véhicule</Button>
+          <Button className="flex items-center gap-1">
+            <Plus className="h-4 w-4" />
+            Ajouter un véhicule
+          </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Modifier le véhicule" : "Ajouter un nouveau véhicule"}</DialogTitle>
+          <DialogTitle>{vehicleToEdit ? "Modifier le véhicule" : "Ajouter un nouveau véhicule"}</DialogTitle>
           <DialogDescription>
-            {isEditing 
-              ? "Modifiez les informations du véhicule."
-              : "Entrez les informations du nouveau véhicule à ajouter à votre flotte."}
+            {vehicleToEdit
+              ? "Modifiez les informations du véhicule ci-dessous."
+              : "Entrez les informations du nouveau véhicule."}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-6">
-              {/* Colonne de gauche */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="marque"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Marque</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Renault, Mercedes..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="modele"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Modèle</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Travego, Urbanway..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="immatriculation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Immatriculation</FormLabel>
-                      <FormControl>
-                        <Input placeholder="AB-123-CD" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="typeVehicule"
-                    render={({ field }) => (
-                      <VehicleTypeField 
-                        value={field.value} 
-                        onChange={handleVehicleTypeChange}
-                      />
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="capacite"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Capacité totale (passagers)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} min={1} readOnly />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="photoUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Photo du véhicule</FormLabel>
-                      <FormControl>
-                        <div 
-                          className={`border-2 border-dashed rounded-md p-6 h-48 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                            isDragging ? "border-primary bg-primary/10" : "border-gray-300 hover:border-primary"
-                          }`}
-                          onDragEnter={handleDragEnter}
-                          onDragLeave={handleDragLeave}
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop}
-                          onClick={handleBrowseClick}
-                        >
-                          {previewImage ? (
-                            <div className="relative w-full h-full">
-                              <img 
-                                src={previewImage} 
-                                alt="Aperçu du véhicule" 
-                                className="h-full w-full object-contain rounded-md"
-                                onError={() => {
-                                  setPreviewImage("https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=300&h=200&fit=crop");
-                                }} 
-                              />
-                            </div>
-                          ) : (
-                            <>
-                              <Upload className="h-10 w-10 text-gray-400 mb-2" />
-                              <p className="text-sm text-gray-600">
-                                Glissez et déposez une image ici, ou cliquez pour parcourir
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                PNG, JPG, GIF jusqu'à 5MB
-                              </p>
-                            </>
-                          )}
-                          <input 
-                            type="file" 
-                            ref={fileInputRef}
-                            className="hidden" 
-                            accept="image/*" 
-                            onChange={handleFileInputChange}
-                            aria-label="Sélectionner une image"
-                          />
-                          <input 
-                            type="hidden" 
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                <div className="pt-3 border-t">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Spécifications du véhicule</h4>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="placesAssises"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Places assises</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field} 
-                              min={0}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setTimeout(updateCapacity, 0);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="placesDebout"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Places debout</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              {...field} 
-                              min={0}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                setTimeout(updateCapacity, 0);
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="accessibilitePMR"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 mt-4 shadow-sm">
-                        <div className="space-y-0.5">
-                          <FormLabel>Accessibilité PMR</FormLabel>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-              
-              {/* Colonne de droite */}
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="typeCarburant"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type de carburant</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionnez un type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Diesel">Diesel</SelectItem>
-                          <SelectItem value="Essence">Essence</SelectItem>
-                          <SelectItem value="Electrique">Électrique</SelectItem>
-                          <SelectItem value="Hybride">Hybride</SelectItem>
-                          <SelectItem value="GNV">GNV (Gaz Naturel)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="annee"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Année de fabrication</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Ex: 2022" 
-                            min={1990} 
-                            max={new Date().getFullYear()}
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="kilometrage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Kilométrage parcouru</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="Ex: 50000" 
-                            min={0}
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Informations de base */}
+            <div className="space-y-2">
+              <Label htmlFor="brand">Marque *</Label>
+              <Input
+                id="brand"
+                value={formData.brand}
+                onChange={(e) => handleChange("brand", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="model">Modèle *</Label>
+              <Input
+                id="model"
+                value={formData.model}
+                onChange={(e) => handleChange("model", e.target.value)}
+                required
+              />
+            </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="dernierEntretien"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dernier entretien</FormLabel>
-                        <DatePicker
-                          date={field.value}
-                          setDate={(date) => field.onChange(date)}
-                          placeholder="Sélectionnez une date"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="prochainEntretien"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Prochain entretien</FormLabel>
-                        <DatePicker
-                          date={field.value}
-                          setDate={(date) => field.onChange(date)}
-                          placeholder="Sélectionnez une date"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <FormField
-                  control={form.control}
-                  name="entrepriseId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Entreprise</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionnez une entreprise" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {companies.map((company) => (
-                            <SelectItem key={company.id} value={company.id}>
-                              {company.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="space-y-2">
-                  <FormLabel>Score écologique</FormLabel>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-1">
-                      <Progress 
-                        value={ecologicalScore ?? 0} 
-                        max={100}
-                        className={`h-2 ${getScoreColorClass(ecologicalScore)}`} 
-                      />
-                    </div>
-                    <div className="w-10 text-center font-medium">
-                      {isCalculating ? "..." : ecologicalScore ?? "-"}
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="registration">Immatriculation *</Label>
+              <Input
+                id="registration"
+                value={formData.registration}
+                onChange={(e) => handleChange("registration", e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="year">Année</Label>
+              <Input
+                id="year"
+                type="number"
+                min="1900"
+                max={new Date().getFullYear() + 1}
+                value={formData.year}
+                onChange={(e) => handleChange("year", parseInt(e.target.value))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="type">Type de véhicule *</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => handleChange("type", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Berline">Berline</SelectItem>
+                  <SelectItem value="SUV">SUV</SelectItem>
+                  <SelectItem value="Mini Bus">Mini Bus</SelectItem>
+                  <SelectItem value="Bus">Bus</SelectItem>
+                  <SelectItem value="Van">Van</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Type de véhicule standardisé */}
+            <VehicleTypeSelector
+              value={formData.vehicle_type}
+              onChange={(value) => handleChange("vehicle_type", value)}
+              vehicleTypes={vehicleTypes || []}
+            />
+
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacité (passagers)</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min="1"
+                value={formData.capacity}
+                onChange={(e) => handleChange("capacity", parseInt(e.target.value))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fuel_type">Type de carburant</Label>
+              <Select
+                value={formData.fuel_type}
+                onValueChange={(value) => handleChange("fuel_type", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un carburant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fuelTypes.map((fuel) => (
+                    <SelectItem key={fuel} value={fuel}>
+                      {fuel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="mileage">Kilométrage</Label>
+              <Input
+                id="mileage"
+                type="number"
+                min="0"
+                value={formData.mileage}
+                onChange={(e) => handleChange("mileage", parseInt(e.target.value))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="last_maintenance">Dernière maintenance</Label>
+              <Input
+                id="last_maintenance"
+                type="date"
+                value={formData.last_maintenance}
+                onChange={(e) => handleChange("last_maintenance", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Statut</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleChange("status", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ecological_score">Score écologique (0-100)</Label>
+              <Input
+                id="ecological_score"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.ecological_score}
+                onChange={(e) =>
+                  handleChange("ecological_score", parseInt(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company_id">Entreprise</Label>
+              <Select
+                value={formData.company_id || ""}
+                onValueChange={(value) =>
+                  handleChange("company_id", value === "" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une entreprise" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucune entreprise</SelectItem>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="photo_url">URL de photo</Label>
+              <Input
+                id="photo_url"
+                value={formData.photo_url || ""}
+                onChange={(e) =>
+                  handleChange("photo_url", e.target.value || null)
+                }
+                placeholder="https://example.com/image.jpg"
+              />
             </div>
             
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => handleOpenChange(false)}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? (isEditing ? "Mise à jour..." : "Enregistrement...") : (isEditing ? "Mettre à jour" : "Ajouter")}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            <div className="space-y-2">
+              <Label htmlFor="location">Localisation</Label>
+              <Select
+                value={formData.location || ""}
+                onValueChange={(value) =>
+                  handleChange("location", value === "" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une localisation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Non définie</SelectItem>
+                  {cities.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="submit"
+              className={cn(loading ? "opacity-70 pointer-events-none" : "")}
+              disabled={loading}
+            >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {vehicleToEdit ? "Mettre à jour" : "Ajouter le véhicule"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

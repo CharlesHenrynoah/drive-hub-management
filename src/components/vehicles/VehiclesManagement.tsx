@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -35,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Download, Edit, Trash2 } from "lucide-react";
+import { Download, Edit, MapPin, Trash2 } from "lucide-react";
 import { AddVehicleForm } from "./AddVehicleForm";
 import { VehicleDetailModal } from "./VehicleDetailModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +58,8 @@ export type Vehicle = {
   photo_url: string | null;
   company_id: string | null;
   year?: number;
-  Note_Moyenne_Client?: number; // Keeping for compatibility
+  Note_Moyenne_Client?: number; 
+  location?: string;
 };
 
 export type Company = {
@@ -69,6 +71,7 @@ export function VehiclesManagement() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("Tous");
   const [statusFilter, setStatusFilter] = useState<string>("Tous");
+  const [locationFilter, setLocationFilter] = useState<string>("Toutes");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [companies, setCompanies] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -202,15 +205,19 @@ export function VehiclesManagement() {
       v.id?.includes(searchTerm) ||
       v.registration?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.brand?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.model?.toLowerCase().includes(searchTerm.toLowerCase());
+      v.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (v.location && v.location.toLowerCase().includes(searchTerm.toLowerCase()));
 
     // 2. Filtre par type
     const matchesType = typeFilter === "Tous" || v.type === typeFilter;
 
     // 3. Filtre par statut
     const matchesStatus = statusFilter === "Tous" || v.status === statusFilter;
+    
+    // 4. Filtre par localisation
+    const matchesLocation = locationFilter === "Toutes" || v.location === locationFilter;
 
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesType && matchesStatus && matchesLocation;
   });
 
   // Types de véhicules uniques pour le filtre
@@ -218,6 +225,9 @@ export function VehiclesManagement() {
   
   // Statuts de véhicules uniques pour le filtre
   const vehicleStatuses = ["Tous", ...Array.from(new Set(vehicles.map((v) => v.status)))];
+  
+  // Localisations uniques pour le filtre
+  const vehicleLocations = ["Toutes", ...Array.from(new Set(vehicles.filter(v => v.location).map((v) => v.location as string)))];
 
   return (
     <div className="space-y-4">
@@ -255,6 +265,19 @@ export function VehiclesManagement() {
               ))}
             </SelectContent>
           </Select>
+          
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Filtrer par localisation" />
+            </SelectTrigger>
+            <SelectContent>
+              {vehicleLocations.map((location) => (
+                <SelectItem key={location} value={location}>
+                  {location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -281,6 +304,7 @@ export function VehiclesManagement() {
                     <TableHead className="w-32">Type</TableHead>
                     <TableHead className="w-32">Capacité</TableHead>
                     <TableHead className="w-32">Carburant</TableHead>
+                    <TableHead className="w-36">Localisation</TableHead>
                     <TableHead className="w-36">Score Écologique</TableHead>
                     <TableHead className="w-36">Note Moy. Client</TableHead>
                     <TableHead className="w-36">Entretien</TableHead>
@@ -293,11 +317,11 @@ export function VehiclesManagement() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={14} className="text-center py-6">Chargement des données...</TableCell>
+                      <TableCell colSpan={15} className="text-center py-6">Chargement des données...</TableCell>
                     </TableRow>
                   ) : filteredVehicles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={14} className="text-center py-6">Aucun véhicule trouvé</TableCell>
+                      <TableCell colSpan={15} className="text-center py-6">Aucun véhicule trouvé</TableCell>
                     </TableRow>
                   ) : (
                     filteredVehicles.map((v) => (
@@ -314,6 +338,14 @@ export function VehiclesManagement() {
                         <TableCell>{v.type}</TableCell>
                         <TableCell>{v.capacity} places</TableCell>
                         <TableCell>{v.fuel_type}</TableCell>
+                        <TableCell>
+                          {v.location ? (
+                            <span className="flex items-center">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {v.location}
+                            </span>
+                          ) : "N/A"}
+                        </TableCell>
                         <TableCell>{v.ecological_score}</TableCell>
                         <TableCell>{((v.Note_Moyenne_Client || 85) / 20).toFixed(1)}/5</TableCell>
                         <TableCell>{new Date(v.last_maintenance || Date.now()).toLocaleDateString()}</TableCell>

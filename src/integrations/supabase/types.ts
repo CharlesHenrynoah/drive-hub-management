@@ -406,6 +406,7 @@ export type Database = {
           fuel_type: string
           id: string
           last_maintenance: string | null
+          location: string | null
           mileage: number | null
           model: string
           photo_url: string | null
@@ -426,6 +427,7 @@ export type Database = {
           fuel_type: string
           id?: string
           last_maintenance?: string | null
+          location?: string | null
           mileage?: number | null
           model: string
           photo_url?: string | null
@@ -446,6 +448,7 @@ export type Database = {
           fuel_type?: string
           id?: string
           last_maintenance?: string | null
+          location?: string | null
           mileage?: number | null
           model?: string
           photo_url?: string | null
