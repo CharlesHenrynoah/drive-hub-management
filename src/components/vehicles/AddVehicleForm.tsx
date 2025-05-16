@@ -131,13 +131,14 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Empêche le rechargement de la page
     setLoading(true);
 
     try {
       // Validation de base
       if (!formData.brand || !formData.model || !formData.registration) {
         toast.error("Veuillez remplir tous les champs requis");
+        setLoading(false);
         return;
       }
 
@@ -228,7 +229,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!vehicleToEdit && (
         <DialogTrigger asChild>
-          <Button className="flex items-center gap-1">
+          <Button type="button" className="flex items-center gap-1">
             <Plus className="h-4 w-4" />
             Ajouter un véhicule
           </Button>
