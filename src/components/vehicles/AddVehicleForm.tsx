@@ -131,7 +131,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Empêche le rechargement de la page
+    e.preventDefault(); // Prevent form submission
     setLoading(true);
 
     try {
@@ -225,11 +225,19 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     if (onOpenChange) onOpenChange(newOpen);
   };
 
+  // The critical fix: Use a regular button as the trigger to prevent form submission
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!vehicleToEdit && (
         <DialogTrigger asChild>
-          <Button type="button" className="flex items-center gap-1">
+          <Button 
+            type="button" 
+            className="flex items-center gap-1"
+            onClick={(e) => {
+              e.preventDefault(); // Prevent any default behavior
+              setOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4" />
             Ajouter un véhicule
           </Button>
