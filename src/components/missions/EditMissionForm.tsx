@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -127,30 +128,6 @@ const europeanCities = [
 // Combinaison de toutes les villes pour la recherche
 const allCities = [...frenchCities, ...europeanCities];
 
-// Fetch companies for given city from Edge Function
-const fetchCompaniesWithResources = async (departureCity: string) => {
-  setLoadingCompanies(true);
-  try {
-    const { data, error } = await supabase.functions.invoke("companies-with-resources", {
-      body: { city: departureCity }
-    });
-    
-    if (error) {
-      console.error("Error fetching companies with resources:", error);
-      toast.error("Erreur lors de la récupération des entreprises");
-      return [];
-    }
-    
-    return data || [];
-  } catch (e) {
-    console.error("Error in fetchCompaniesWithResources:", e);
-    toast.error("Erreur lors de la récupération des entreprises");
-    return [];
-  } finally {
-    setLoadingCompanies(false);
-  }
-};
-
 // Fetch all companies (for initial load when editing)
 const fetchAllCompanies = async () => {
   const { data, error } = await supabase
@@ -227,6 +204,30 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       status: mission.status,
     },
   });
+
+  // Fetch companies for given city from Edge Function
+  const fetchCompaniesWithResources = async (departureCity: string) => {
+    setLoadingCompanies(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("companies-with-resources", {
+        body: { city: departureCity }
+      });
+      
+      if (error) {
+        console.error("Error fetching companies with resources:", error);
+        toast.error("Erreur lors de la récupération des entreprises");
+        return [];
+      }
+      
+      return data || [];
+    } catch (e) {
+      console.error("Error in fetchCompaniesWithResources:", e);
+      toast.error("Erreur lors de la récupération des entreprises");
+      return [];
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
 
   // Charger toutes les entreprises pour l'initialisation 
   useEffect(() => {
