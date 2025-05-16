@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -129,8 +128,25 @@ const europeanCities = [
 // Combinaison de toutes les villes pour la recherche
 const allCities = [...frenchCities, ...europeanCities];
 
-// Fetch companies from Supabase
-const fetchCompanies = async () => {
+// Fetch companies for given city from Edge Function
+const fetchCompaniesByCity = async (city: string) => {
+  if (!city) return [];
+  
+  try {
+    const response = await supabase.functions.invoke("companies-with-resources", {
+      query: { city }
+    });
+    
+    if (response.error) throw new Error(response.error.message);
+    return response.data || [];
+  } catch (error) {
+    console.error("Erreur lors du chargement des entreprises par ville:", error);
+    return [];
+  }
+};
+
+// Fetch all companies (for initial load when editing)
+const fetchAllCompanies = async () => {
   const { data, error } = await supabase
     .from('companies')
     .select('*');
@@ -140,26 +156,38 @@ const fetchCompanies = async () => {
 };
 
 // Fetch drivers based on company
-const fetchDriversByCompany = async (companyId: string) => {
+const fetchDriversByCompany = async (companyId: string, city: string) => {
   if (!companyId) return [];
-  
-  const { data, error } = await supabase
+
+  let query = supabase
     .from('drivers')
     .select('*')
     .eq('id_entreprise', companyId);
+    
+  if (city) {
+    query = query.eq('ville', city);
+  }
+  
+  const { data, error } = await query;
   
   if (error) throw error;
   return data || [];
 };
 
 // Fetch vehicles based on company
-const fetchVehiclesByCompany = async (companyId: string) => {
+const fetchVehiclesByCompany = async (companyId: string, city: string) => {
   if (!companyId) return [];
-  
-  const { data, error } = await supabase
+
+  let query = supabase
     .from('vehicles')
     .select('*')
     .eq('company_id', companyId);
+    
+  if (city) {
+    query = query.eq('location', city);
+  }
+  
+  const { data, error } = await query;
   
   if (error) throw error;
   return data || [];
@@ -168,7 +196,11 @@ const fetchVehiclesByCompany = async (companyId: string) => {
 export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>(mission.company_id || "");
+  const [selectedLocation, setSelectedLocation] = useState<string>(mission.start_location || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
+  const [initialLoaded, setInitialLoaded] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -190,25 +222,89 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     },
   });
 
-  // Query for companies
-  const { data: companies = [] } = useQuery({
-    queryKey: ['companies'],
-    queryFn: fetchCompanies,
-  });
+  // Charger toutes les entreprises pour l'initialisation 
+  useEffect(() => {
+    const loadInitialCompanies = async () => {
+      if (initialLoaded) return;
+      
+      try {
+        const companies = await fetchAllCompanies();
+        setAvailableCompanies(companies);
+        setInitialLoaded(true);
+      } catch (error) {
+        console.error("Erreur lors du chargement initial des entreprises:", error);
+      }
+    };
+    
+    loadInitialCompanies();
+  }, [initialLoaded]);
 
-  // Query for drivers based on selected company
+  // Query for drivers based on selected company and potentially location
   const { data: drivers = [] } = useQuery({
-    queryKey: ['drivers', selectedCompany],
-    queryFn: () => fetchDriversByCompany(selectedCompany),
+    queryKey: ['drivers', selectedCompany, selectedLocation],
+    queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation),
     enabled: !!selectedCompany,
   });
 
-  // Query for vehicles based on selected company
+  // Query for vehicles based on selected company and potentially location
   const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', selectedCompany],
-    queryFn: () => fetchVehiclesByCompany(selectedCompany),
+    queryKey: ['vehicles', selectedCompany, selectedLocation],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation),
     enabled: !!selectedCompany,
   });
+
+  // Fetch companies when location changes (only in edit mode if location changes)
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      if (!selectedLocation) {
+        if (!mission.start_location) {
+          setAvailableCompanies([]);
+        }
+        return;
+      }
+      
+      // Si on est en mode édition et que la localisation n'a pas changé par rapport à l'originale,
+      // on garde les entreprises déjà chargées
+      if (mission.start_location === selectedLocation && initialLoaded) {
+        return;
+      }
+      
+      setLoadingCompanies(true);
+      try {
+        const companies = await fetchCompaniesByCity(selectedLocation);
+        setAvailableCompanies(companies);
+      } catch (error) {
+        console.error("Erreur lors du chargement des entreprises:", error);
+        toast.error("Erreur lors du chargement des entreprises");
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+    
+    fetchCompanies();
+  }, [selectedLocation, mission.start_location, initialLoaded]);
+
+  // Update selected location when startLocation changes
+  const handleLocationChange = (location: string) => {
+    // Si la localisation change par rapport à celle d'origine
+    if (location !== mission.start_location) {
+      setSelectedLocation(location);
+      form.setValue("startLocation", location);
+      // Reset company, driver and vehicle when location changes
+      form.setValue("company", "");
+      form.setValue("driver", "");
+      form.setValue("vehicle", "");
+      setSelectedCompany("");
+    } else {
+      // Si on revient à la localisation d'origine, restaurer les valeurs d'origine
+      setSelectedLocation(location);
+      form.setValue("startLocation", location);
+      form.setValue("company", mission.company_id || "");
+      form.setValue("driver", mission.driver_id || "");
+      form.setValue("vehicle", mission.vehicle_id || "");
+      setSelectedCompany(mission.company_id || "");
+    }
+  };
 
   // Handle company selection
   const handleCompanyChange = (value: string) => {
@@ -295,43 +391,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             </FormItem>
           )}
         />
-
-        {/* Company - Now as the first selection field */}
-        <FormField
-          control={form.control}
-          name="company"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <span className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Entreprise
-                </span>
-              </FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  handleCompanyChange(value);
-                }}
-                value={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une entreprise" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="max-h-[200px] overflow-y-auto">
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
         {/* Locations - Now before date/time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -351,7 +410,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                   <Combobox
                     items={frenchCities}
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={handleLocationChange}
                     placeholder="Point de départ"
                     emptyMessage="Aucune ville trouvée"
                   />
@@ -469,9 +528,52 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
         </div>
+
+        {/* Company - Now after date/time */}
+        <FormField
+          control={form.control}
+          name="company"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Entreprise
+                </span>
+              </FormLabel>
+              <Select
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  handleCompanyChange(value);
+                }}
+                value={field.value}
+                disabled={!initialLoaded || (selectedLocation !== mission.start_location && (!selectedLocation || loadingCompanies || availableCompanies.length === 0))}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingCompanies 
+                      ? "Chargement..." 
+                      : (!selectedLocation || selectedLocation !== mission.start_location && availableCompanies.length === 0) 
+                        ? "Aucune entreprise disponible dans cette ville" 
+                        : "Sélectionner une entreprise"
+                    } />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-[200px] overflow-y-auto">
+                  {availableCompanies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Driver - Now dependent on company */}
+          {/* Driver - Filtered by company and location in case of change */}
           <FormField
             control={form.control}
             name="driver"
@@ -490,7 +592,10 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un chauffeur" />
+                      <SelectValue placeholder={!selectedCompany 
+                        ? "Sélectionnez d'abord une entreprise"
+                        : "Sélectionner un chauffeur"
+                      } />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="max-h-[200px] overflow-y-auto">
@@ -506,7 +611,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
 
-          {/* Vehicle - Now dependent on company */}
+          {/* Vehicle - Filtered by company and location in case of change */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -525,7 +630,10 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un véhicule" />
+                      <SelectValue placeholder={!selectedCompany
+                        ? "Sélectionnez d'abord une entreprise"
+                        : "Sélectionner un véhicule"
+                      } />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="max-h-[200px] overflow-y-auto">

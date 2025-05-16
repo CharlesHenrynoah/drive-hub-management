@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -126,37 +125,48 @@ const europeanCities = [
 // Combinaison de toutes les villes pour la recherche
 const allCities = [...frenchCities, ...europeanCities];
 
-// Fetch companies from Supabase
-const fetchCompanies = async () => {
-  const { data, error } = await supabase
-    .from('companies')
-    .select('*');
+// Fetch companies for given city from Edge Function
+const fetchCompaniesByCity = async (city: string) => {
+  if (!city) return [];
   
-  if (error) throw error;
-  return data || [];
+  try {
+    const response = await supabase.functions.invoke("companies-with-resources", {
+      query: { city }
+    });
+    
+    if (response.error) throw new Error(response.error.message);
+    return response.data || [];
+  } catch (error) {
+    console.error("Erreur lors du chargement des entreprises par ville:", error);
+    return [];
+  }
 };
 
 // Fetch drivers based on company
-const fetchDriversByCompany = async (companyId: string) => {
-  if (!companyId) return [];
+const fetchDriversByCompany = async (companyId: string, city: string) => {
+  if (!companyId || !city) return [];
   
   const { data, error } = await supabase
     .from('drivers')
     .select('*')
-    .eq('id_entreprise', companyId);
+    .eq('id_entreprise', companyId)
+    .eq('ville', city)
+    .eq('disponible', true);
   
   if (error) throw error;
   return data || [];
 };
 
 // Fetch vehicles based on company
-const fetchVehiclesByCompany = async (companyId: string) => {
-  if (!companyId) return [];
+const fetchVehiclesByCompany = async (companyId: string, city: string) => {
+  if (!companyId || !city) return [];
   
   const { data, error } = await supabase
     .from('vehicles')
     .select('*')
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .eq('location', city)
+    .eq('status', 'Disponible');
   
   if (error) throw error;
   return data || [];
@@ -165,7 +175,10 @@ const fetchVehiclesByCompany = async (companyId: string) => {
 export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -180,25 +193,53 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     },
   });
 
-  // Query for companies
-  const { data: companies = [] } = useQuery({
-    queryKey: ['companies'],
-    queryFn: fetchCompanies,
-  });
-
-  // Query for drivers based on selected company
+  // Query for drivers based on selected company and location
   const { data: drivers = [] } = useQuery({
-    queryKey: ['drivers', selectedCompany],
-    queryFn: () => fetchDriversByCompany(selectedCompany),
-    enabled: !!selectedCompany,
+    queryKey: ['drivers', selectedCompany, selectedLocation],
+    queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation),
+    enabled: !!selectedCompany && !!selectedLocation,
   });
 
-  // Query for vehicles based on selected company
+  // Query for vehicles based on selected company and location
   const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', selectedCompany],
-    queryFn: () => fetchVehiclesByCompany(selectedCompany),
-    enabled: !!selectedCompany,
+    queryKey: ['vehicles', selectedCompany, selectedLocation],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation),
+    enabled: !!selectedCompany && !!selectedLocation,
   });
+
+  // Fetch companies when location changes
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      if (!selectedLocation) {
+        setAvailableCompanies([]);
+        return;
+      }
+      
+      setLoadingCompanies(true);
+      try {
+        const companies = await fetchCompaniesByCity(selectedLocation);
+        setAvailableCompanies(companies);
+      } catch (error) {
+        console.error("Erreur lors du chargement des entreprises:", error);
+        toast.error("Erreur lors du chargement des entreprises");
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+    
+    fetchCompanies();
+  }, [selectedLocation]);
+
+  // Update selected location when startLocation changes
+  const handleLocationChange = (location: string) => {
+    setSelectedLocation(location);
+    form.setValue("startLocation", location);
+    // Reset company, driver and vehicle when location changes
+    form.setValue("company", "");
+    form.setValue("driver", "");
+    form.setValue("vehicle", "");
+    setSelectedCompany("");
+  };
 
   // Handle company selection
   const handleCompanyChange = (value: string) => {
@@ -282,43 +323,6 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             </FormItem>
           )}
         />
-
-        {/* Company - Now as the first selection field */}
-        <FormField
-          control={form.control}
-          name="company"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <span className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Entreprise
-                </span>
-              </FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  field.onChange(value);
-                  handleCompanyChange(value);
-                }}
-                value={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une entreprise" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="max-h-[200px] overflow-y-auto">
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
         {/* Locations - Now before date/time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -338,7 +342,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                   <Combobox
                     items={frenchCities}
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={handleLocationChange}
                     placeholder="Point de départ"
                     emptyMessage="Aucune ville trouvée"
                   />
@@ -427,9 +431,52 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Company - Now after date/time */}
+        <FormField
+          control={form.control}
+          name="company"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  Entreprise
+                </span>
+              </FormLabel>
+              <Select
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  handleCompanyChange(value);
+                }}
+                value={field.value}
+                disabled={!selectedLocation || loadingCompanies || availableCompanies.length === 0}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingCompanies 
+                      ? "Chargement..." 
+                      : availableCompanies.length === 0 
+                        ? "Aucune entreprise disponible dans cette ville" 
+                        : "Sélectionner une entreprise"
+                    } />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-[200px] overflow-y-auto">
+                  {availableCompanies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {`${company.name} (${company.drivers_count} chauffeur(s), ${company.vehicles_count} véhicule(s))`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Driver - Now dependent on company */}
+          {/* Driver - Filtered by company and location */}
           <FormField
             control={form.control}
             name="driver"
@@ -444,11 +491,14 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany}
+                  disabled={!selectedCompany || !selectedLocation}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un chauffeur" />
+                      <SelectValue placeholder={!selectedCompany || !selectedLocation
+                        ? "Sélectionnez d'abord une entreprise et un lieu de départ" 
+                        : "Sélectionner un chauffeur"
+                      } />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="max-h-[200px] overflow-y-auto">
@@ -464,7 +514,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Vehicle - Now dependent on company */}
+          {/* Vehicle - Filtered by company and location */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -479,11 +529,14 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany}
+                  disabled={!selectedCompany || !selectedLocation}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un véhicule" />
+                      <SelectValue placeholder={!selectedCompany || !selectedLocation
+                        ? "Sélectionnez d'abord une entreprise et un lieu de départ" 
+                        : "Sélectionner un véhicule"
+                      } />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="max-h-[200px] overflow-y-auto">

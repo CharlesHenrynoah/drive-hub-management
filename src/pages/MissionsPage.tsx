@@ -46,6 +46,19 @@ export default function MissionsPage() {
     // Configuration de l'intervalle de mise à jour (toutes les 5 minutes)
     const interval = setInterval(updateMissionsStatus, 5 * 60 * 1000);
     
+    // Appel initial à companies-with-resources pour préchauffer la fonction
+    const warmupFunction = async () => {
+      try {
+        console.log("Préchauffage de la fonction companies-with-resources...");
+        await supabase.functions.invoke("companies-with-resources", {
+          query: { city: "Paris" }
+        });
+      } catch (e) {
+        console.log("Fonction préchauffée ou erreur:", e);
+      }
+    };
+    warmupFunction();
+    
     return () => clearInterval(interval);
   }, []);
 

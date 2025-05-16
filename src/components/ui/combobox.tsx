@@ -11,6 +11,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandLoading
 } from "@/components/ui/command"
 import {
   Popover,
@@ -31,6 +32,7 @@ interface ComboboxProps {
   emptyMessage?: string
   className?: string
   disabled?: boolean
+  loading?: boolean
 }
 
 export function Combobox({
@@ -41,6 +43,7 @@ export function Combobox({
   emptyMessage = "Aucune option trouvée",
   className,
   disabled = false,
+  loading = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   
@@ -65,6 +68,7 @@ export function Combobox({
         <Command>
           <CommandInput placeholder={`Rechercher...`} />
           <CommandList>
+            {loading && <CommandLoading>Chargement...</CommandLoading>}
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {items.map((item) => (
