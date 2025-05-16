@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -224,7 +225,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     if (onOpenChange) onOpenChange(newOpen);
   };
 
-  // Changement critique : correction du déclencheur du modal
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!vehicleToEdit && (
@@ -232,6 +232,10 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
           <Button 
             type="button"
             className="flex items-center gap-1"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           >
             <Plus className="h-4 w-4" />
             Ajouter un véhicule
@@ -407,7 +411,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                   <SelectValue placeholder="Sélectionner une entreprise" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune entreprise</SelectItem>
+                  <SelectItem value="none">Aucune entreprise</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}
@@ -441,7 +445,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                   <SelectValue placeholder="Sélectionner une localisation" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Non définie</SelectItem>
+                  <SelectItem value="aucune">Non définie</SelectItem>
                   {cities.map((city) => (
                     <SelectItem key={city} value={city}>
                       {city}
