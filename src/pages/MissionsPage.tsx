@@ -51,7 +51,7 @@ export default function MissionsPage() {
       try {
         console.log("Préchauffage de la fonction companies-with-resources...");
         await supabase.functions.invoke("companies-with-resources", {
-          query: { city: "Paris" }
+          body: { city: "Paris" }
         });
       } catch (e) {
         console.log("Fonction préchauffée ou erreur:", e);

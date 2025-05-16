@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -129,19 +128,26 @@ const europeanCities = [
 const allCities = [...frenchCities, ...europeanCities];
 
 // Fetch companies for given city from Edge Function
-const fetchCompaniesByCity = async (city: string) => {
-  if (!city) return [];
-  
+const fetchCompaniesWithResources = async (departureCity: string) => {
+  setLoadingCompanies(true);
   try {
-    const response = await supabase.functions.invoke("companies-with-resources", {
-      query: { city }
+    const { data, error } = await supabase.functions.invoke("companies-with-resources", {
+      body: { city: departureCity }
     });
     
-    if (response.error) throw new Error(response.error.message);
-    return response.data || [];
-  } catch (error) {
-    console.error("Erreur lors du chargement des entreprises par ville:", error);
+    if (error) {
+      console.error("Error fetching companies with resources:", error);
+      toast.error("Erreur lors de la récupération des entreprises");
+      return [];
+    }
+    
+    return data || [];
+  } catch (e) {
+    console.error("Error in fetchCompaniesWithResources:", e);
+    toast.error("Erreur lors de la récupération des entreprises");
     return [];
+  } finally {
+    setLoadingCompanies(false);
   }
 };
 
@@ -271,7 +277,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       
       setLoadingCompanies(true);
       try {
-        const companies = await fetchCompaniesByCity(selectedLocation);
+        const companies = await fetchCompaniesWithResources(selectedLocation);
         setAvailableCompanies(companies);
       } catch (error) {
         console.error("Erreur lors du chargement des entreprises:", error);

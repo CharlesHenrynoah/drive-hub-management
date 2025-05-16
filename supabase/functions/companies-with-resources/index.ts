@@ -20,9 +20,9 @@ Deno.serve(async (req) => {
   }
   
   try {
-    // Récupérer la ville depuis les paramètres de requête
-    const url = new URL(req.url);
-    const city = url.searchParams.get('city');
+    // Get city from request body
+    const body = await req.json();
+    const city = body.city;
     
     if (!city) {
       return new Response(
