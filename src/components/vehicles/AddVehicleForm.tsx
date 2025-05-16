@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -19,12 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { VehicleTypeSelector } from "./VehicleTypeSelector";
+import { VehicleTypeField } from "./VehicleTypeField";
 import { Vehicle } from "./VehiclesManagement";
 import { supabase } from "@/integrations/supabase/client";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Bus, Car, Image, Loader2, MapPin, Plus, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
 
 // Liste des types de carburants
 const fuelTypes = [
@@ -57,6 +60,9 @@ interface AddVehicleFormProps {
 export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit }: AddVehicleFormProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [calculatingScore, setCalculatingScore] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     brand: "",
     model: "",
@@ -104,6 +110,10 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         photo_url: vehicleToEdit.photo_url || null,
         location: vehicleToEdit.location || ""
       });
+      
+      if (vehicleToEdit.photo_url) {
+        setPhotoPreview(vehicleToEdit.photo_url);
+      }
     }
   }, [vehicleToEdit]);
 
@@ -122,11 +132,111 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     fetchCompanies();
   }, []);
 
+  // Recalculer le score écologique quand les informations pertinentes changent
+  useEffect(() => {
+    // Ne pas calculer si certaines valeurs essentielles sont manquantes
+    if (!formData.type || !formData.fuel_type || formData.capacity <= 0) {
+      return;
+    }
+    
+    const calculateScore = async () => {
+      setCalculatingScore(true);
+      try {
+        const score = await calculateEcologicalScore({
+          type: formData.type,
+          fuel: formData.fuel_type,
+          capacity: formData.capacity,
+          year: formData.year
+        });
+        
+        setFormData(prev => ({
+          ...prev,
+          ecological_score: score
+        }));
+      } catch (error) {
+        console.error("Error calculating ecological score:", error);
+      } finally {
+        setCalculatingScore(false);
+      }
+    };
+    
+    // Utiliser un délai pour ne pas surcharger l'API
+    const timer = setTimeout(() => {
+      calculateScore();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [formData.type, formData.fuel_type, formData.capacity, formData.year]);
+
   const handleChange = (field: string, value: string | number | null) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+  };
+  
+  // Gérer le changement de type de véhicule et mettre à jour automatiquement la capacité
+  const handleVehicleTypeChange = (value: string) => {
+    const selectedType = vehicleTypes?.find(vt => vt.type === value);
+    
+    setFormData(prev => ({
+      ...prev,
+      type: value,
+      capacity: selectedType ? Math.floor((selectedType.capacity_min + selectedType.capacity_max) / 2) : prev.capacity
+    }));
+  };
+
+  // Gérer le téléchargement de photo
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      toast.error("Veuillez sélectionner une image");
+      return;
+    }
+    
+    // Vérifier la taille du fichier (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("L'image doit être inférieure à 5MB");
+      return;
+    }
+    
+    setUploadingPhoto(true);
+    
+    try {
+      // Créer une prévisualisation
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPhotoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      // Générer un nom de fichier unique
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `vehicle_photos/${fileName}`;
+      
+      // Télécharger vers une URL (simulé pour l'instant)
+      // Dans une implémentation réelle, vous utiliseriez Supabase Storage ou un autre service de stockage
+      // const { data, error } = await supabase.storage.from('vehicles').upload(filePath, file);
+      
+      // Pour l'instant, on simule un succès avec l'URL du fichier (en production, ce serait l'URL de Supabase Storage)
+      const photo_url = photoPreview;
+      
+      setFormData(prev => ({
+        ...prev,
+        photo_url
+      }));
+      
+      toast.success("Photo téléchargée avec succès");
+    } catch (error) {
+      console.error("Error uploading photo:", error);
+      toast.error("Erreur lors du téléchargement de la photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,6 +316,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
           photo_url: null,
           location: ""
         });
+        setPhotoPreview(null);
       }
 
       setOpen(false);
@@ -253,7 +364,86 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Section photo du véhicule */}
+          <div className="flex flex-col items-center space-y-4 mb-4">
+            <div className="w-40 h-40 rounded-md border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center relative">
+              {photoPreview ? (
+                <>
+                  <img 
+                    src={photoPreview} 
+                    alt="Aperçu du véhicule" 
+                    className="object-cover w-full h-full rounded-md"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="absolute bottom-2 right-2 opacity-70 hover:opacity-100 bg-white"
+                    onClick={() => {
+                      setPhotoPreview(null);
+                      setFormData(prev => ({ ...prev, photo_url: null }));
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Image className="w-10 h-10 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground mt-2">Photo du véhicule</p>
+                </>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="photo-upload" className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Téléchargement...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {photoPreview ? "Changer la photo" : "Télécharger une photo"}
+                  </>
+                )}
+              </Label>
+              <Input 
+                id="photo-upload" 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handlePhotoUpload}
+                disabled={uploadingPhoto}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: JPG, PNG, GIF (max 5MB)
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Type de véhicule */}
+            <div className="space-y-2">
+              <Label htmlFor="type">Type de véhicule *</Label>
+              <VehicleTypeField 
+                value={formData.type}
+                onChange={handleVehicleTypeChange}
+              />
+            </div>
+            
+            {/* Capacité */}
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacité (passagers)</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min="1"
+                value={formData.capacity}
+                onChange={(e) => handleChange("capacity", parseInt(e.target.value))}
+              />
+            </div>
+
             {/* Informations de base */}
             <div className="space-y-2">
               <Label htmlFor="brand">Marque *</Label>
@@ -293,36 +483,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 max={new Date().getFullYear() + 1}
                 value={formData.year}
                 onChange={(e) => handleChange("year", parseInt(e.target.value))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="type">Type de véhicule *</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) => handleChange("type", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Berline">Berline</SelectItem>
-                  <SelectItem value="SUV">SUV</SelectItem>
-                  <SelectItem value="Mini Bus">Mini Bus</SelectItem>
-                  <SelectItem value="Bus">Bus</SelectItem>
-                  <SelectItem value="Van">Van</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="capacity">Capacité (passagers)</Label>
-              <Input
-                id="capacity"
-                type="number"
-                min="1"
-                value={formData.capacity}
-                onChange={(e) => handleChange("capacity", parseInt(e.target.value))}
               />
             </div>
 
@@ -386,7 +546,10 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ecological_score">Score écologique (0-100)</Label>
+              <Label htmlFor="ecological_score" className="flex items-center gap-1">
+                Score écologique (0-100)
+                {calculatingScore && <Loader2 className="h-3 w-3 animate-spin" />}
+              </Label>
               <Input
                 id="ecological_score"
                 type="number"
@@ -396,7 +559,12 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 onChange={(e) =>
                   handleChange("ecological_score", parseInt(e.target.value))
                 }
+                className={calculatingScore ? "bg-muted" : ""}
+                disabled={calculatingScore}
               />
+              <p className="text-xs text-muted-foreground">
+                Le score écologique est calculé automatiquement en fonction du type, du carburant et de la capacité du véhicule
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -420,18 +588,6 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="photo_url">URL de photo</Label>
-              <Input
-                id="photo_url"
-                value={formData.photo_url || ""}
-                onChange={(e) =>
-                  handleChange("photo_url", e.target.value || null)
-                }
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="location">Localisation</Label>
@@ -448,7 +604,10 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
                   <SelectItem value="aucune">Non définie</SelectItem>
                   {cities.map((city) => (
                     <SelectItem key={city} value={city}>
-                      {city}
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {city}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>

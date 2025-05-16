@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Bus, Car, Loader2 } from "lucide-react";
 
 interface VehicleTypeFieldProps {
   value: string;
@@ -18,12 +18,30 @@ interface VehicleTypeFieldProps {
   disabled?: boolean;
 }
 
+// Fonction pour obtenir l'emoji correspondant au type de véhicule
+function getVehicleEmoji(type: string): React.ReactNode {
+  switch (type) {
+    case "Minibus":
+      return "🚐";
+    case "Minicar":
+    case "Autocar Standard":
+    case "Autocar Grand Tourisme":
+      return "🚌";
+    case "Berline":
+    case "VTC":
+      return "🚗";
+    case "Van":
+      return "🚐";
+    default:
+      return null;
+  }
+}
+
 export function VehicleTypeField({ value, onChange, disabled = false }: VehicleTypeFieldProps) {
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
 
   return (
     <FormItem>
-      <FormLabel>Type de véhicule</FormLabel>
       <Select
         value={value}
         onValueChange={onChange}
@@ -42,17 +60,14 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
           ) : (
             vehicleTypes.map((vehicleType) => (
               <SelectItem key={vehicleType.id} value={vehicleType.type}>
-                <div className="flex flex-col">
-                  <span>
-                    {vehicleType.type === "Minibus" && "🚐 "}
-                    {vehicleType.type === "Minicar" && "🚌 "}
-                    {vehicleType.type === "Autocar Standard" && "🚌 "}
-                    {vehicleType.type === "Autocar Grand Tourisme" && "🚌 "}
-                    {vehicleType.type === "Berline" && "🚗 "}
-                    {vehicleType.type === "Van" && "🚐 "}
-                    {vehicleType.type}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{vehicleType.description}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
+                  <div className="flex flex-col">
+                    <span>{vehicleType.type}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {vehicleType.capacity_min} - {vehicleType.capacity_max} places
+                    </span>
+                  </div>
                 </div>
               </SelectItem>
             ))
@@ -63,7 +78,8 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
       {value && !isLoading && (
         <div className="mt-2">
           {vehicleTypes.find(vt => vt.type === value) && (
-            <Badge variant="outline" className="bg-secondary">
+            <Badge variant="outline" className="bg-secondary flex items-center gap-1">
+              {getVehicleEmoji(value)}
               {vehicleTypes.find(vt => vt.type === value)?.capacity_min} - 
               {vehicleTypes.find(vt => vt.type === value)?.capacity_max} passagers
             </Badge>
