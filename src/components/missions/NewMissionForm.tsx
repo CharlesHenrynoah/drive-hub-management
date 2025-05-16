@@ -44,6 +44,7 @@ interface NewMissionFormProps {
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
+  arrival_date: z.date().optional(),
   driver: z.string().min(1, "Le chauffeur est requis"),
   vehicle: z.string().min(1, "Le véhicule est requis"),
   company: z.string().min(1, "L'entreprise est requise"),
@@ -126,8 +127,23 @@ const europeanCities = [
 const allCities = [...frenchCities, ...europeanCities];
 
 // Fetch drivers based on company
-const fetchDriversByCompany = async (companyId: string, city: string) => {
+const fetchDriversByCompany = async (companyId: string, city: string, date?: Date, arrival_date?: Date) => {
   if (!companyId || !city) return [];
+  
+  const params: Record<string, any> = {
+    id_entreprise: companyId,
+    ville: city,
+    disponible: true
+  };
+  
+  // Add date params if provided
+  if (date) {
+    params.date = date.toISOString();
+  }
+  
+  if (arrival_date) {
+    params.arrival_date = arrival_date.toISOString();
+  }
   
   const { data, error } = await supabase
     .from('drivers')
@@ -137,42 +153,95 @@ const fetchDriversByCompany = async (companyId: string, city: string) => {
     .eq('disponible', true);
   
   if (error) throw error;
+  
+  // If we have dates, filter out drivers who already have missions at that time
+  if (date) {
+    const departureDate = date.toISOString().split('T')[0];
+    const arrivalDate = arrival_date ? arrival_date.toISOString().split('T')[0] : departureDate;
+    
+    // Fetch missions during this timeframe
+    const { data: busyDrivers, error: missionsError } = await supabase
+      .from('missions')
+      .select('driver_id')
+      .gte('date', `${departureDate}T00:00:00`)
+      .lte('date', `${arrivalDate}T23:59:59`)
+      .neq('status', 'annulee');
+      
+    if (missionsError) throw missionsError;
+    
+    // Filter out busy drivers
+    const busyDriverIds = busyDrivers.map(mission => mission.driver_id);
+    return data.filter(driver => !busyDriverIds.includes(driver.id));
+  }
+  
   return data || [];
 };
 
-// Fetch vehicles based on company
-const fetchVehiclesByCompany = async (companyId: string, city: string) => {
+// Fetch vehicles based on company, location, and passenger count
+const fetchVehiclesByCompany = async (companyId: string, city: string, passengers?: number, date?: Date, arrival_date?: Date) => {
   if (!companyId || !city) return [];
   
-  const { data, error } = await supabase
+  let query = supabase
     .from('vehicles')
     .select('*')
     .eq('company_id', companyId)
     .eq('location', city)
     .eq('status', 'Disponible');
   
+  // Filter by passenger capacity if provided
+  if (passengers && passengers > 0) {
+    query = query.gte('capacity', passengers);
+  }
+  
+  const { data, error } = await query;
+  
   if (error) throw error;
+  
+  // If we have dates, filter out vehicles that already have missions at that time
+  if (date) {
+    const departureDate = date.toISOString().split('T')[0];
+    const arrivalDate = arrival_date ? arrival_date.toISOString().split('T')[0] : departureDate;
+    
+    // Fetch missions during this timeframe
+    const { data: busyVehicles, error: missionsError } = await supabase
+      .from('missions')
+      .select('vehicle_id')
+      .gte('date', `${departureDate}T00:00:00`)
+      .lte('date', `${arrivalDate}T23:59:59`)
+      .neq('status', 'annulee');
+      
+    if (missionsError) throw missionsError;
+    
+    // Filter out busy vehicles
+    const busyVehicleIds = busyVehicles.map(mission => mission.vehicle_id);
+    return data.filter(vehicle => !busyVehicleIds.includes(vehicle.id));
+  }
+  
   return data || [];
 };
 
 export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [timePopoverOpen, setTimePopoverOpen] = useState(false);
+  const [arrivalTimePopoverOpen, setArrivalTimePopoverOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
+  const [passengerCount, setPassengerCount] = useState<number | undefined>(undefined);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       date: new Date(),
+      arrival_date: undefined,
       company: "",
       driver: "",
       vehicle: "",
       startLocation: "",
       endLocation: "",
+      passengers: undefined,
     },
   });
 
@@ -200,19 +269,42 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     }
   };
 
-  // Query for drivers based on selected company and location
-  const { data: drivers = [] } = useQuery({
-    queryKey: ['drivers', selectedCompany, selectedLocation],
-    queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation),
-    enabled: !!selectedCompany && !!selectedLocation,
+  // Get form values
+  const departureDate = form.watch('date');
+  const arrivalDate = form.watch('arrival_date');
+  const passengers = form.watch('passengers');
+
+  // Query for drivers based on selected company, location and dates
+  const { data: drivers = [], refetch: refetchDrivers } = useQuery({
+    queryKey: ['drivers', selectedCompany, selectedLocation, departureDate?.toString(), arrivalDate?.toString()],
+    queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation, departureDate, arrivalDate),
+    enabled: !!selectedCompany && !!selectedLocation && !!departureDate,
   });
 
-  // Query for vehicles based on selected company and location
-  const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', selectedCompany, selectedLocation],
-    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation),
-    enabled: !!selectedCompany && !!selectedLocation,
+  // Query for vehicles based on selected company, location, passenger count and dates
+  const { data: vehicles = [], refetch: refetchVehicles } = useQuery({
+    queryKey: ['vehicles', selectedCompany, selectedLocation, passengers, departureDate?.toString(), arrivalDate?.toString()],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation, passengers, departureDate, arrivalDate),
+    enabled: !!selectedCompany && !!selectedLocation && !!departureDate,
   });
+
+  // Update vehicles and drivers when passenger count changes
+  useEffect(() => {
+    if (passengers !== passengerCount) {
+      setPassengerCount(passengers);
+      if (selectedCompany && selectedLocation) {
+        refetchVehicles();
+      }
+    }
+  }, [passengers, passengerCount, selectedCompany, selectedLocation, refetchVehicles]);
+
+  // Update vehicles and drivers when dates change
+  useEffect(() => {
+    if (selectedCompany && selectedLocation) {
+      refetchDrivers();
+      refetchVehicles();
+    }
+  }, [departureDate, arrivalDate, selectedCompany, selectedLocation, refetchDrivers, refetchVehicles]);
 
   // Fetch companies when location changes
   useEffect(() => {
@@ -266,6 +358,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
         .insert({
           title: data.title,
           date: data.date.toISOString(),
+          arrival_date: data.arrival_date ? data.arrival_date.toISOString() : null,
           driver_id: data.driver,
           vehicle_id: data.vehicle,
           company_id: data.company,
@@ -386,60 +479,153 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
         
-        {/* Departure Date and Time only */}
+        {/* Departure Date and Time */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Departure Date and Time */}
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Date et heure de départ</FormLabel>
+                <div className="flex gap-2">
+                  <DatePicker 
+                    date={field.value} 
+                    setDate={(date) => {
+                      if (date) field.onChange(date);
+                    }}
+                    placeholder="Date de départ"
+                  />
+                  <Popover open={timePopoverOpen} onOpenChange={setTimePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[120px] pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? format(field.value, "HH:mm") : "Heure"}
+                        <Clock className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="h-[200px] overflow-y-auto p-2">
+                        {timeOptions.map((option) => (
+                          <Button
+                            key={option.value}
+                            variant="ghost"
+                            className="w-full justify-start font-normal"
+                            onClick={() => {
+                              const newDate = updateTimeInDate(field.value, option.value);
+                              if (newDate) field.onChange(newDate);
+                              setTimePopoverOpen(false);
+                            }}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Arrival Date and Time */}
+          <FormField
+            control={form.control}
+            name="arrival_date"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Date et heure d'arrivée (optionnel)</FormLabel>
+                <div className="flex gap-2">
+                  <DatePicker 
+                    date={field.value} 
+                    setDate={(date) => {
+                      field.onChange(date);
+                    }}
+                    placeholder="Date d'arrivée"
+                  />
+                  <Popover open={arrivalTimePopoverOpen} onOpenChange={setArrivalTimePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[120px] pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? format(field.value, "HH:mm") : "Heure"}
+                        <Clock className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="h-[200px] overflow-y-auto p-2">
+                        {timeOptions.map((option) => (
+                          <Button
+                            key={option.value}
+                            variant="ghost"
+                            className="w-full justify-start font-normal"
+                            onClick={() => {
+                              if (!field.value) {
+                                // If no arrival date is set, use departure date
+                                const departureDate = form.getValues('date');
+                                const newDate = updateTimeInDate(departureDate, option.value);
+                                if (newDate) field.onChange(newDate);
+                              } else {
+                                const newDate = updateTimeInDate(field.value, option.value);
+                                if (newDate) field.onChange(newDate);
+                              }
+                              setArrivalTimePopoverOpen(false);
+                            }}
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Passengers - Now after dates and before company */}
         <FormField
           control={form.control}
-          name="date"
+          name="passengers"
           render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Date et heure de départ</FormLabel>
-              <div className="flex gap-2">
-                <DatePicker 
-                  date={field.value} 
-                  setDate={(date) => {
-                    if (date) field.onChange(date);
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Nombre de passagers
+                </span>
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  placeholder="Nombre de passagers" 
+                  {...field} 
+                  value={field.value === undefined ? "" : field.value} 
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
+                    field.onChange(value);
                   }}
-                  placeholder="Date de départ"
                 />
-                <Popover open={timePopoverOpen} onOpenChange={setTimePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[120px] pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? format(field.value, "HH:mm") : "Heure"}
-                      <Clock className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <div className="h-[200px] overflow-y-auto p-2">
-                      {timeOptions.map((option) => (
-                        <Button
-                          key={option.value}
-                          variant="ghost"
-                          className="w-full justify-start font-normal"
-                          onClick={() => {
-                            const newDate = updateTimeInDate(field.value, option.value);
-                            if (newDate) field.onChange(newDate);
-                            setTimePopoverOpen(false);
-                          }}
-                        >
-                          {option.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Company - Now after date/time */}
+        {/* Company */}
         <FormField
           control={form.control}
           name="company"
@@ -498,12 +684,14 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany || !selectedLocation}
+                  disabled={!selectedCompany || !selectedLocation || drivers.length === 0}
                 >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder={!selectedCompany || !selectedLocation
                         ? "Sélectionnez d'abord une entreprise et un lieu de départ" 
+                        : drivers.length === 0
+                        ? "Aucun chauffeur disponible pour ces dates"
                         : "Sélectionner un chauffeur"
                       } />
                     </SelectTrigger>
@@ -521,7 +709,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
 
-          {/* Vehicle - Filtered by company and location */}
+          {/* Vehicle - Filtered by company, location, and passenger count */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -536,12 +724,14 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany || !selectedLocation}
+                  disabled={!selectedCompany || !selectedLocation || vehicles.length === 0}
                 >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder={!selectedCompany || !selectedLocation
                         ? "Sélectionnez d'abord une entreprise et un lieu de départ" 
+                        : vehicles.length === 0
+                        ? `Aucun véhicule disponible${passengers ? " pour " + passengers + " passager(s)" : ""}`
                         : "Sélectionner un véhicule"
                       } />
                     </SelectTrigger>
@@ -549,7 +739,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                   <SelectContent className="max-h-[200px] overflow-y-auto">
                     {vehicles.map((vehicle) => (
                       <SelectItem key={vehicle.id} value={vehicle.id}>
-                        {`${vehicle.brand} ${vehicle.model} (${vehicle.registration})`}
+                        {`${vehicle.brand} ${vehicle.model} (${vehicle.registration})${vehicle.capacity ? " - " + vehicle.capacity + " places" : ""}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -631,36 +821,6 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
             )}
           />
         </div>
-
-        {/* Passengers */}
-        <FormField
-          control={form.control}
-          name="passengers"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Nombre de passagers
-                </span>
-              </FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  placeholder="Nombre de passagers" 
-                  {...field} 
-                  value={field.value === undefined ? "" : field.value} 
-                  onChange={(e) => {
-                    const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
-                    field.onChange(value);
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         {/* Description */}
         <FormField
