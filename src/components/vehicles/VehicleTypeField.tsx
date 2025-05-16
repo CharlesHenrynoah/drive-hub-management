@@ -68,13 +68,13 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
             </div>
           ) : (
             vehicleTypes.map((vehicleType) => {
-              // Ensure we always have a non-empty value
+              // Create a guaranteed non-empty value
               const itemValue = vehicleType.type || `type_${vehicleType.id}`;
               
               // Double check to make sure value is never empty
               if (!itemValue || itemValue.trim() === '') {
-                console.warn(`Empty vehicle type detected for id ${vehicleType.id}`);
-                return null; // Skip this item
+                console.warn(`Empty vehicle type detected for id ${vehicleType.id}, skipping item`);
+                return null; // Skip this item entirely rather than risking an empty value
               }
               
               return (
@@ -84,7 +84,7 @@ export function VehicleTypeField({ value, onChange, disabled = false }: VehicleT
                   className="py-2"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{getVehicleEmoji(vehicleType.type || '')}</span>
+                    <span className="text-lg">{getVehicleEmoji(vehicleType.type)}</span>
                     <div className="flex flex-col">
                       <span>{vehicleType.type || `Type #${vehicleType.id}`}</span>
                       <span className="text-xs text-muted-foreground">

@@ -1,12 +1,11 @@
 
 import { useState, useEffect } from "react";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
-import { CheckIcon, LucideIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 
 interface VehicleTypeSelectorProps {
   selectedTypes: string[];
@@ -22,15 +21,18 @@ export function VehicleTypeSelector({
   const { data: vehicleTypes, isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
 
-  // Ensure all selectedTypes are valid and not empty
+  // Validate selected types whenever vehicle types data changes
   useEffect(() => {
     if (vehicleTypes && selectedTypes.length > 0) {
+      // Filter out any invalid or empty types
       const validTypes = selectedTypes.filter(type => {
-        return type && type.trim() !== '' && 
-          vehicleTypes.some(vt => (vt.type || `type_${vt.id}`) === type);
+        return type && 
+               type.trim() !== '' && 
+               vehicleTypes.some(vt => (vt.type || `type_${vt.id}`) === type);
       });
       
       if (validTypes.length !== selectedTypes.length) {
+        // Update with only valid types if any were filtered out
         onChange(validTypes);
       }
     }
@@ -38,17 +40,17 @@ export function VehicleTypeSelector({
 
   const handleTypeClick = (type: string) => {
     if (!type || type.trim() === '') {
-      return;
+      return; // Don't process empty types
     }
     
     const isSelected = selectedTypes.includes(type);
     
     if (isSelected) {
-      // Retirer le type
+      // Remove the type
       onChange(selectedTypes.filter(t => t !== type));
       setError(null);
     } else {
-      // Ajouter le type s'il n'y a pas trop de sélections
+      // Add the type if we haven't reached the max
       if (selectedTypes.length >= maxSelections) {
         setError(`Vous pouvez sélectionner maximum ${maxSelections} types de véhicules`);
         return;
@@ -84,10 +86,10 @@ export function VehicleTypeSelector({
       <ScrollArea className="h-[220px] pr-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {vehicleTypes.map((vehicleType) => {
-            // Ensure we always have a non-empty value
+            // Create a guaranteed non-empty value
             const itemValue = vehicleType.type || `type_${vehicleType.id}`;
             
-            // Skip if value would be empty
+            // Skip rendering if value would be empty (safety check)
             if (!itemValue || itemValue.trim() === '') {
               return null;
             }
@@ -117,7 +119,7 @@ export function VehicleTypeSelector({
                 )}
               </Button>
             );
-          }).filter(Boolean)} {/* Remove any null elements (skipped items) */}
+          }).filter(Boolean)} {/* Remove any null elements */}
         </div>
       </ScrollArea>
       

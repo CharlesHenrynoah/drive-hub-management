@@ -96,12 +96,14 @@ export function useVehicleTypes() {
       }
       
       // Ensure all vehicle types have valid non-empty string values
-      // Convert any null or empty types to a default value
-      return data.map(vt => ({
-        ...vt,
-        // If type is null, undefined or empty string, use a fallback
-        type: vt.type ? vt.type.trim() || `Type #${vt.id}` : `Type #${vt.id}`
-      }));
+      return data.map(vt => {
+        // Create a safe copy with guaranteed non-empty type value
+        return {
+          ...vt,
+          // Ensure type is never empty or undefined
+          type: vt.type ? vt.type.trim() || `Type #${vt.id}` : `Type #${vt.id}`
+        };
+      });
     },
   });
 }
