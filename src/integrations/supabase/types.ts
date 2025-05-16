@@ -144,6 +144,7 @@ export type Database = {
           piece_identite: string
           prenom: string
           telephone: string
+          ville: string | null
         }
         Insert: {
           certificat_medical: string
@@ -161,6 +162,7 @@ export type Database = {
           piece_identite: string
           prenom: string
           telephone: string
+          ville?: string | null
         }
         Update: {
           certificat_medical?: string
@@ -178,6 +180,7 @@ export type Database = {
           piece_identite?: string
           prenom?: string
           telephone?: string
+          ville?: string | null
         }
         Relationships: []
       }

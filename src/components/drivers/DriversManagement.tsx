@@ -109,24 +109,27 @@ export function DriversManagement() {
         ];
         
         // Transformer les données pour correspondre à notre structure Driver
-        const transformedDrivers: Driver[] = data.map(driver => ({
-          ID_Chauffeur: driver.id_chauffeur,
-          Nom: driver.nom,
-          Prénom: driver.prenom,
-          Email: driver.email,
-          Téléphone: driver.telephone,
-          Pièce_Identité: driver.piece_identite,
-          Certificat_Médical: driver.certificat_medical,
-          Justificatif_Domicile: driver.justificatif_domicile,
-          Date_Debut_Activité: new Date(driver.date_debut_activite),
-          Note_Chauffeur: driver.note_chauffeur,
-          Missions_Futures: [], // Nous n'avons pas ce champ dans la base de données pour l'instant
-          Photo: driver.photo || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop",
-          ID_Entreprise: driver.id_entreprise,
-          Disponible: driver.disponible,
-          // Utiliser la ville de la base de données si disponible, sinon attribuer une ville aléatoire
-          Ville: driver.ville || frenchCities[Math.floor(Math.random() * frenchCities.length)]
-        }));
+        const transformedDrivers: Driver[] = data.map(driver => {
+          console.log("Raw driver data:", driver); // Log to see exactly what's coming from the DB
+          return {
+            ID_Chauffeur: driver.id_chauffeur,
+            Nom: driver.nom,
+            Prénom: driver.prenom,
+            Email: driver.email,
+            Téléphone: driver.telephone,
+            Pièce_Identité: driver.piece_identite,
+            Certificat_Médical: driver.certificat_medical,
+            Justificatif_Domicile: driver.justificatif_domicile,
+            Date_Debut_Activité: new Date(driver.date_debut_activite),
+            Note_Chauffeur: driver.note_chauffeur,
+            Missions_Futures: [], // Nous n'avons pas ce champ dans la base de données pour l'instant
+            Photo: driver.photo || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=300&h=300&fit=crop",
+            ID_Entreprise: driver.id_entreprise,
+            Disponible: driver.disponible,
+            // Utiliser la ville de la base de données si disponible, sinon attribuer une ville aléatoire
+            Ville: driver.ville || frenchCities[Math.floor(Math.random() * frenchCities.length)]
+          };
+        });
         
         setDrivers(transformedDrivers);
       }
