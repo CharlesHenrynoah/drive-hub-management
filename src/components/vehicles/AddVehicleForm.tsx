@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -180,9 +179,9 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             last_maintenance: formData.last_maintenance,
             status: formData.status,
             ecological_score: formData.ecological_score,
-            company_id: formData.company_id,
+            company_id: formData.company_id === "none" ? null : formData.company_id,
             photo_url: formData.photo_url,
-            location: formData.location || null
+            location: formData.location === "aucune" ? null : formData.location
         });
 
         if (error) throw error;
@@ -225,17 +224,18 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
     if (onOpenChange) onOpenChange(newOpen);
   };
 
+  // Correction de l'ouverture du modal en utilisant une approche simplifiée
+  const openModal = () => {
+    setOpen(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       {!vehicleToEdit && (
         <DialogTrigger asChild>
           <Button 
-            type="button"
             className="flex items-center gap-1"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
+            onClick={openModal}
           >
             <Plus className="h-4 w-4" />
             Ajouter un véhicule
@@ -402,9 +402,9 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             <div className="space-y-2">
               <Label htmlFor="company_id">Entreprise</Label>
               <Select
-                value={formData.company_id || ""}
+                value={formData.company_id || "none"}
                 onValueChange={(value) =>
-                  handleChange("company_id", value === "" ? null : value)
+                  handleChange("company_id", value === "none" ? null : value)
                 }
               >
                 <SelectTrigger>
@@ -436,9 +436,9 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
             <div className="space-y-2">
               <Label htmlFor="location">Localisation</Label>
               <Select
-                value={formData.location || ""}
+                value={formData.location || "aucune"}
                 onValueChange={(value) =>
-                  handleChange("location", value === "" ? null : value)
+                  handleChange("location", value === "aucune" ? null : value)
                 }
               >
                 <SelectTrigger>
