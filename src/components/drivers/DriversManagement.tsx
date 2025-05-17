@@ -9,8 +9,8 @@ import {
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
+  TableCaption,
   TableHead,
   TableHeader,
   TableRow,
@@ -133,21 +133,21 @@ export function DriversManagement() {
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => {
-                  navigator.clipboard.writeText(driver.id)
-                  toast("Driver ID copied to clipboard")
+                  navigator.clipboard.writeText(driver.id);
+                  toast("ID du chauffeur copié dans le presse-papier");
                 }}
               >
-                Copy Driver ID
+                Copier l'ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => {
                 setSelectedDriver(driver);
                 setIsDetailModalOpen(true);
-              }}>View</DropdownMenuItem>
+              }}>Voir</DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 setSelectedDriver(driver);
                 setIsEditModalOpen(true);
-              }}>Edit</DropdownMenuItem>
+              }}>Modifier</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )

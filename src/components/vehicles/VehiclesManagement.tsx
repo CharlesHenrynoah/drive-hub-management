@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   ColumnDef,
@@ -40,66 +41,6 @@ import {
 } from "@/components/ui/select"
 import { Vehicle } from "@/types/vehicle";
 
-interface VehicleDetailModalProps {
-  vehicle: Vehicle;
-  companyName?: string;
-  onEdit: () => void;
-  onClose: () => void;
-}
-
-const columns: ColumnDef<Vehicle>[] = [
-  {
-    accessorKey: "brand",
-    header: "Marque",
-  },
-  {
-    accessorKey: "model",
-    header: "Modèle",
-  },
-  {
-    accessorKey: "type",
-    header: "Type",
-  },
-  {
-    accessorKey: "capacity",
-    header: "Capacité",
-  },
-  {
-    accessorKey: "registration",
-    header: "Immatriculation",
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const vehicle = row.original
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(vehicle.id)}
-            >
-              Copier l'identifiant
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              Voir les détails
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
-  },
-]
-
-// Add the onClose prop to the interface for VehicleDetailModalProps
 export function VehiclesManagement() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -157,19 +98,13 @@ export function VehiclesManagement() {
 
       if (error) {
         console.error("Erreur lors de la récupération des entreprises:", error);
-        toast({
-          title: "Erreur!",
-          description: "Erreur lors de la récupération des entreprises",
-        })
+        toast.error("Erreur lors de la récupération des entreprises");
       } else {
         setCompanies(data || []);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des entreprises:", error);
-      toast({
-        title: "Erreur!",
-        description: "Erreur lors de la récupération des entreprises",
-      })
+      toast.error("Erreur lors de la récupération des entreprises");
     }
   };
 
@@ -193,6 +128,58 @@ export function VehiclesManagement() {
     setIsDetailModalOpen(true);
   };
 
+  const columns: ColumnDef<Vehicle>[] = [
+    {
+      accessorKey: "brand",
+      header: "Marque",
+    },
+    {
+      accessorKey: "model",
+      header: "Modèle",
+    },
+    {
+      accessorKey: "type",
+      header: "Type",
+    },
+    {
+      accessorKey: "capacity",
+      header: "Capacité",
+    },
+    {
+      accessorKey: "registration",
+      header: "Immatriculation",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const vehicle = row.original
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(vehicle.id)}
+              >
+                Copier l'identifiant
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                Voir les détails
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
+
   const table = useReactTable({
     data: filteredVehicles,
     columns,
@@ -201,7 +188,6 @@ export function VehiclesManagement() {
 
   return (
     <div className="w-full">
-      <TableCaption>Gestion des véhicules</TableCaption>
       <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
         <div className="flex flex-col md:flex-row items-center gap-2">
           <Input
