@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -386,21 +385,21 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
       
       // Création du nouvel objet chauffeur pour l'interface
       const newDriver: Driver = {
-        ID_Chauffeur: newDriverId,
-        Nom: values.nom,
-        Prénom: values.prenom,
-        Email: values.email,
-        Téléphone: values.telephone,
-        Ville: values.ville,
-        Pièce_Identité: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
-        Certificat_Médical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
-        Justificatif_Domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
-        Date_Debut_Activité: values.dateDebutActivite,
-        Note_Chauffeur: 0, // Pas encore noté
-        Missions_Futures: [],
-        Photo: photoUrl,
-        ID_Entreprise: values.entrepriseId,
-        Disponible: values.disponible,
+        id: insertedDriver.id,
+        id_chauffeur: newDriverId,
+        nom: values.nom,
+        prenom: values.prenom,
+        email: values.email,
+        telephone: values.telephone,
+        ville: values.ville,
+        piece_identite: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
+        certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
+        justificatif_domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
+        date_debut_activite: values.dateDebutActivite,
+        note_chauffeur: 0, // Pas encore noté
+        photo: photoUrl,
+        id_entreprise: values.entrepriseId,
+        disponible: values.disponible,
       };
       
       // Appel de la callback pour ajouter le chauffeur

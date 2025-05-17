@@ -19,4 +19,5 @@ export interface Vehicle {
   created_at: string;
   photo_url?: string;
   year?: number;
+  Note_Moyenne_Client?: number;
 }

@@ -33,26 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DotsHorizontalIcon } from "@radix-ui/react-icons"
 import { Checkbox } from "@/components/ui/checkbox"
-
-export type Driver = {
-  id: string;
-  created_at: string;
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  adresse: string; // Required by the Driver type
-  ville: string;
-  pays: string;   // Required by the Driver type
-  id_chauffeur: string;
-  date_debut_activite: string;
-  note_chauffeur: number;
-  disponible: boolean;
-  piece_identite: boolean;
-  certificat_medical: boolean;
-  justificatif_domicile: boolean;
-  photo: string | null;
-}
+import { Driver } from "@/types/driver";
 
 export function DriversManagement() {
   const [data, setData] = useState<Driver[]>([]);
@@ -94,17 +75,16 @@ export function DriversManagement() {
         prenom: driver.prenom,
         email: driver.email || '',
         telephone: driver.telephone || '',
-        adresse: driver.adresse || '',
         ville: driver.ville || '',
-        pays: driver.pays || '',
         id_chauffeur: driver.id_chauffeur,
         date_debut_activite: driver.date_debut_activite,
         note_chauffeur: driver.note_chauffeur,
         disponible: driver.disponible,
-        piece_identite: !!driver.piece_identite,
-        certificat_medical: !!driver.certificat_medical,
-        justificatif_domicile: !!driver.justificatif_domicile,
-        photo: driver.photo
+        piece_identite: driver.piece_identite,
+        certificat_medical: driver.certificat_medical,
+        justificatif_domicile: driver.justificatif_domicile,
+        photo: driver.photo,
+        id_entreprise: driver.id_entreprise
       }));
 
       setData(formattedDrivers);
@@ -154,9 +134,7 @@ export function DriversManagement() {
               <DropdownMenuItem
                 onClick={() => {
                   navigator.clipboard.writeText(driver.id)
-                  toast({
-                    description: "Driver ID copied to clipboard",
-                  })
+                  toast("Driver ID copied to clipboard")
                 }}
               >
                 Copy Driver ID
@@ -182,7 +160,7 @@ export function DriversManagement() {
         item.nom.toLowerCase().includes(search.toLowerCase()) ||
         item.prenom.toLowerCase().includes(search.toLowerCase()) ||
         item.id_chauffeur.toLowerCase().includes(search.toLowerCase()) ||
-        item.ville.toLowerCase().includes(search.toLowerCase())
+        (item.ville && item.ville.toLowerCase().includes(search.toLowerCase()))
       )
     : data;
 

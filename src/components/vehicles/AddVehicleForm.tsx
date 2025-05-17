@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -21,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { VehicleTypeSelector } from "./VehicleTypeSelector";
 import { VehicleTypeField } from "./VehicleTypeField";
-import { Vehicle } from "./VehiclesManagement";
+import { Vehicle } from "@/types/vehicle";
 import { supabase } from "@/integrations/supabase/client";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 import { toast } from "sonner";

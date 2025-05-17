@@ -38,26 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
-export type Vehicle = {
-  id: string;
-  created_at: string;
-  brand: string;
-  model: string;
-  type: string;
-  capacity: number;
-  registration: string;
-  fuel_type: string;
-  mileage: number;
-  last_maintenance: string;
-  location: string;
-  status: string;
-  ecological_score: number;
-  Note_Moyenne_Client: number;
-  company_id: string;
-  photo_url: string;
-  vehicle_type: string;
-};
+import { Vehicle } from "@/types/vehicle";
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle;
@@ -151,19 +132,18 @@ export function VehiclesManagement() {
 
       if (error) {
         console.error("Erreur lors de la récupération des véhicules:", error);
-        toast({
-          title: "Erreur!",
-          description: "Erreur lors de la récupération des véhicules",
-        })
+        toast.error("Erreur lors de la récupération des véhicules");
       } else {
-        setVehicles(data || []);
+        // Ensure the data matches the Vehicle type by adding missing properties
+        const formattedVehicles: Vehicle[] = (data || []).map(vehicle => ({
+          ...vehicle,
+          Note_Moyenne_Client: vehicle.Note_Moyenne_Client || 0
+        }));
+        setVehicles(formattedVehicles);
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des véhicules:", error);
-      toast({
-        title: "Erreur!",
-        description: "Erreur lors de la récupération des véhicules",
-      })
+      toast.error("Erreur lors de la récupération des véhicules");
     } finally {
       setIsLoading(false);
     }
