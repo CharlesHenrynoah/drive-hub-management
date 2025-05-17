@@ -294,7 +294,6 @@ export function VehiclesManagement() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
-          setIsAddModalOpen(false);
           fetchVehicles();
         }}
       />

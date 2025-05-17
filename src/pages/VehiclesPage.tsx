@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function VehiclesPage() {
-  const [bucketExists, setBucketExists] = useState(false);
+  const [bucketExists, setBucketExists] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Vérifie si le bucket de stockage pour les images de véhicules existe
@@ -16,7 +16,7 @@ export default function VehiclesPage() {
     const checkStorageBucket = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase.storage.listBuckets();
+        const { data: buckets, error } = await supabase.storage.listBuckets();
         
         if (error) {
           console.error('Erreur lors de la vérification des buckets:', error);
@@ -25,17 +25,16 @@ export default function VehiclesPage() {
         }
         
         // Vérifier si le bucket "vehicles" existe dans la liste des buckets
-        const vehiclesBucket = data.find(bucket => bucket.name === 'vehicles');
+        const vehiclesBucket = buckets.find(bucket => bucket.name === 'vehicles');
         if (vehiclesBucket) {
           console.log('Bucket de stockage "vehicles" existe');
           setBucketExists(true);
         } else {
           console.log('Le bucket "vehicles" n\'existe pas');
-          // Nous savons maintenant que le bucket existe déjà dans Supabase
+          setBucketExists(false);
         }
       } catch (err) {
         console.error('Erreur lors de la vérification du stockage:', err);
-        toast.error("Une erreur s'est produite lors de la vérification du stockage");
       } finally {
         setLoading(false);
       }
@@ -67,7 +66,7 @@ export default function VehiclesPage() {
             
             <TabsContent value="vehicles" className="w-full">
               <div className="border rounded-lg p-4 md:p-6 bg-card">
-                {!loading && !bucketExists && (
+                {!loading && bucketExists === false && (
                   <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-md">
                     Avertissement: Le bucket de stockage pour les images de véhicules n'est pas correctement configuré.
                   </div>
