@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -120,6 +121,13 @@ const fetchVehiclesByCompany = async (
   }
 };
 
+interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 const formSchema = z.object({
   title: z.string().min(2, {
     message: "Le titre doit contenir au moins 2 caractères.",
@@ -128,28 +136,30 @@ const formSchema = z.object({
   company_id: z.string({
     required_error: "Veuillez sélectionner une entreprise.",
   }),
-  client_id: z.string().optional(),
+  client: z.string().optional(),
+  client_email: z.string().email().optional(),
+  client_phone: z.string().optional(),
   driver_id: z.string().optional(),
   vehicle_id: z.string().optional(),
-  departure_location: z.string({
+  start_location: z.string({
     required_error: "Veuillez indiquer le lieu de départ.",
   }),
-  arrival_location: z.string({
+  end_location: z.string({
     required_error: "Veuillez indiquer le lieu d'arrivée.",
   }),
-  departure_date: z.date({
+  date: z.date({
     required_error: "Veuillez sélectionner une date de départ.",
   }),
   arrival_date: z.date({
     required_error: "Veuillez sélectionner une date d'arrivée.",
   }),
   passengers: z.coerce.number().int().positive().optional(),
-  status: z.string().default("pending"),
+  status: z.string().default("en_cours"),
 });
 
 export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [drivers, setDrivers] = useState<{ id: string; name: string }[]>([]);
   const [vehicles, setVehicles] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -163,14 +173,14 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
     defaultValues: {
       title: "",
       description: "",
-      status: "pending",
+      status: "en_cours",
     },
   });
 
   const watchCompanyId = form.watch("company_id");
-  const watchDepartureLocation = form.watch("departure_location");
+  const watchStartLocation = form.watch("start_location");
   const watchPassengers = form.watch("passengers");
-  const watchDepartureDate = form.watch("departure_date");
+  const watchDate = form.watch("date");
   const watchArrivalDate = form.watch("arrival_date");
 
   useEffect(() => {
@@ -179,14 +189,19 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
 
   useEffect(() => {
     if (watchCompanyId) {
-      fetchClients(watchCompanyId);
+      // We don't fetch clients since the table doesn't exist
+      // Just create some dummy clients for the company if needed
+      setClients([
+        { id: '1', name: 'Client 1', email: 'client1@example.com', phone: '0601020304' },
+        { id: '2', name: 'Client 2', email: 'client2@example.com', phone: '0605060708' },
+      ]);
       
-      if (watchDepartureLocation) {
-        fetchDriversForForm(watchCompanyId, watchDepartureLocation, watchDepartureDate, watchArrivalDate);
-        fetchVehiclesForForm(watchCompanyId, watchDepartureLocation, watchPassengers, watchDepartureDate, watchArrivalDate);
+      if (watchStartLocation) {
+        fetchDriversForForm(watchCompanyId, watchStartLocation, watchDate, watchArrivalDate);
+        fetchVehiclesForForm(watchCompanyId, watchStartLocation, watchPassengers, watchDate, watchArrivalDate);
       }
     }
-  }, [watchCompanyId, watchDepartureLocation, watchPassengers, watchDepartureDate, watchArrivalDate]);
+  }, [watchCompanyId, watchStartLocation, watchPassengers, watchDate, watchArrivalDate]);
 
   const fetchCompanies = async () => {
     try {
@@ -199,21 +214,6 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
     } catch (error) {
       console.error("Erreur lors de la récupération des entreprises:", error);
       toast.error("Erreur lors de la récupération des entreprises");
-    }
-  };
-
-  const fetchClients = async (companyId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name')
-        .eq('company_id', companyId);
-
-      if (error) throw error;
-      setClients(data || []);
-    } catch (error) {
-      console.error("Erreur lors de la récupération des clients:", error);
-      toast.error("Erreur lors de la récupération des clients");
     }
   };
 
@@ -259,24 +259,27 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      // Convert form values to match missions table structure
+      const missionData = {
+        title: values.title,
+        description: values.description,
+        company_id: values.company_id,
+        client: values.client,
+        client_email: values.client_email,
+        client_phone: values.client_phone,
+        driver_id: values.driver_id,
+        vehicle_id: values.vehicle_id,
+        start_location: values.start_location,
+        end_location: values.end_location,
+        date: values.date.toISOString(),
+        arrival_date: values.arrival_date.toISOString(),
+        passengers: values.passengers,
+        status: values.status,
+      };
+
       const { error } = await supabase
         .from('missions')
-        .insert([
-          {
-            title: values.title,
-            description: values.description,
-            company_id: values.company_id,
-            client_id: values.client_id,
-            driver_id: values.driver_id,
-            vehicle_id: values.vehicle_id,
-            departure_location: values.departure_location,
-            arrival_location: values.arrival_location,
-            departure_date: values.departure_date.toISOString(),
-            arrival_date: values.arrival_date.toISOString(),
-            passengers: values.passengers,
-            status: values.status,
-          }
-        ]);
+        .insert(missionData);
 
       if (error) throw error;
       
@@ -372,7 +375,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="departure_location"
+            name="start_location"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Lieu de départ</FormLabel>
@@ -386,7 +389,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
 
           <FormField
             control={form.control}
-            name="arrival_location"
+            name="end_location"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Lieu d'arrivée</FormLabel>
@@ -402,7 +405,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="departure_date"
+            name="date"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Date de départ</FormLabel>
@@ -473,7 +476,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) => {
-                        const departureDate = form.getValues("departure_date");
+                        const departureDate = form.getValues("date");
                         return (
                           date < new Date(new Date().setHours(0, 0, 0, 0)) ||
                           (departureDate && date < departureDate)
@@ -510,62 +513,43 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
 
           <FormField
             control={form.control}
-            name="client_id"
+            name="client"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Client</FormLabel>
-                <Popover open={openClient} onOpenChange={setOpenClient}>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openClient}
-                        className={cn(
-                          "w-full justify-between",
-                          !field.value && "text-muted-foreground"
-                        )}
-                        disabled={!watchCompanyId}
-                      >
-                        {field.value
-                          ? clients.find((client) => client.id === field.value)?.name
-                          : "Sélectionner un client"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                      <CommandInput placeholder="Rechercher un client..." />
-                      <CommandEmpty>Aucun client trouvé.</CommandEmpty>
-                      <CommandGroup>
-                        {clients.map((client) => (
-                          <CommandItem
-                            key={client.id}
-                            value={client.name}
-                            onSelect={() => {
-                              form.setValue("client_id", client.id);
-                              setOpenClient(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                client.id === field.value
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                            {client.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <FormDescription>
-                  Sélectionnez d'abord une entreprise pour voir les clients disponibles.
-                </FormDescription>
+                <FormControl>
+                  <Input placeholder="Nom du client" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="client_email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email du client</FormLabel>
+                <FormControl>
+                  <Input placeholder="Email du client" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={form.control}
+            name="client_phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Téléphone du client</FormLabel>
+                <FormControl>
+                  <Input placeholder="Téléphone du client" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -590,7 +574,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
                           "w-full justify-between",
                           !field.value && "text-muted-foreground"
                         )}
-                        disabled={!watchCompanyId || !watchDepartureLocation}
+                        disabled={!watchCompanyId || !watchStartLocation}
                       >
                         {field.value
                           ? drivers.find((driver) => driver.id === field.value)?.name
@@ -653,7 +637,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
                           "w-full justify-between",
                           !field.value && "text-muted-foreground"
                         )}
-                        disabled={!watchCompanyId || !watchDepartureLocation}
+                        disabled={!watchCompanyId || !watchStartLocation}
                       >
                         {field.value
                           ? vehicles.find((vehicle) => vehicle.id === field.value)?.name
@@ -731,11 +715,10 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="confirmed">Confirmée</SelectItem>
-                  <SelectItem value="in_progress">En cours</SelectItem>
-                  <SelectItem value="completed">Terminée</SelectItem>
-                  <SelectItem value="cancelled">Annulée</SelectItem>
+                  <SelectItem value="en_cours">En cours</SelectItem>
+                  <SelectItem value="confirmee">Confirmée</SelectItem>
+                  <SelectItem value="terminee">Terminée</SelectItem>
+                  <SelectItem value="annulee">Annulée</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

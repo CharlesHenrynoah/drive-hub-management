@@ -29,10 +29,7 @@ export function NewMissionModal({
         <DialogHeader>
           <DialogTitle>Nouvelle mission</DialogTitle>
         </DialogHeader>
-        <NewMissionForm
-          onCancel={onClose}
-          onSuccess={handleSuccess}
-        />
+        <NewMissionForm onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );

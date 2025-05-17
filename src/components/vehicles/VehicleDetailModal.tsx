@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Vehicle } from "@/types/vehicle";
 
-interface VehicleDetailModalProps {
+export interface VehicleDetailModalProps {
   vehicle: Vehicle;
   companyName?: string;
   onEdit: () => void;
