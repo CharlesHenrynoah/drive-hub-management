@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -235,6 +236,12 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   const [estimatedDuration, setEstimatedDuration] = useState<string | null>(null);
   const [selectedVehicleType, setSelectedVehicleType] = useState<string | undefined>(undefined);
   const [calculatingDistance, setCalculatingDistance] = useState(false);
+  
+  // Add state for drivers and vehicles
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -388,6 +395,65 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     
     fetchCompanies();
   }, [selectedLocation, passengers]);
+
+  // Fetch drivers when company, location, or dates change
+  useEffect(() => {
+    const loadDrivers = async () => {
+      if (!selectedCompany || !selectedLocation) {
+        setDrivers([]);
+        return;
+      }
+      
+      setLoadingDrivers(true);
+      try {
+        const driversData = await fetchDriversByCompany(
+          selectedCompany, 
+          selectedLocation,
+          departureDate,
+          arrivalDate
+        );
+        setDrivers(driversData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des chauffeurs:", error);
+        toast.error("Erreur lors du chargement des chauffeurs");
+        setDrivers([]);
+      } finally {
+        setLoadingDrivers(false);
+      }
+    };
+    
+    loadDrivers();
+  }, [selectedCompany, selectedLocation, departureDate, arrivalDate]);
+
+  // Fetch vehicles when company, location, passenger count, or dates change
+  useEffect(() => {
+    const loadVehicles = async () => {
+      if (!selectedCompany || !selectedLocation) {
+        setVehicles([]);
+        return;
+      }
+      
+      setLoadingVehicles(true);
+      try {
+        const vehiclesData = await fetchVehiclesByCompany(
+          selectedCompany, 
+          selectedLocation,
+          passengers,
+          departureDate,
+          arrivalDate
+        );
+        setVehicles(vehiclesData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des véhicules:", error);
+        toast.error("Erreur lors du chargement des véhicules");
+        setVehicles([]);
+      } finally {
+        setLoadingVehicles(false);
+      }
+    };
+    
+    loadVehicles();
+  }, [selectedCompany, selectedLocation, passengers, departureDate, arrivalDate]);
 
   // Update selected location when startLocation changes
   const handleLocationChange = (location: string) => {
@@ -743,11 +809,13 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany || !selectedLocation || drivers.length === 0}
+                  disabled={!selectedCompany || !selectedLocation || drivers.length === 0 || loadingDrivers}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={!selectedCompany || !selectedLocation
+                      <SelectValue placeholder={loadingDrivers
+                        ? "Chargement des chauffeurs..."
+                        : !selectedCompany || !selectedLocation
                         ? "Sélectionnez d'abord une entreprise et un lieu de départ" 
                         : drivers.length === 0
                         ? "Aucun chauffeur disponible pour ces dates"
@@ -783,11 +851,13 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <Select
                   onValueChange={field.onChange}
                   value={field.value}
-                  disabled={!selectedCompany || !selectedLocation || vehicles.length === 0}
+                  disabled={!selectedCompany || !selectedLocation || vehicles.length === 0 || loadingVehicles}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={!selectedCompany || !selectedLocation
+                      <SelectValue placeholder={loadingVehicles
+                        ? "Chargement des véhicules..."
+                        : !selectedCompany || !selectedLocation
                         ? "Sélectionnez d'abord une entreprise et un lieu de départ" 
                         : vehicles.length === 0
                         ? `Aucun véhicule disponible${passengers ? " pour " + passengers + " passager(s)" : ""}`
