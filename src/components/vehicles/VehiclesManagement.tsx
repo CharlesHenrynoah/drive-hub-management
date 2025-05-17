@@ -75,10 +75,10 @@ export function VehiclesManagement() {
         console.error("Erreur lors de la récupération des véhicules:", error);
         toast.error("Erreur lors de la récupération des véhicules");
       } else {
-        // Ensure the data matches the Vehicle type by adding missing properties
+        // Format vehicles and ensure Note_Moyenne_Client is set even if null
         const formattedVehicles: Vehicle[] = (data || []).map(vehicle => ({
           ...vehicle,
-          Note_Moyenne_Client: vehicle.Note_Moyenne_Client || 0
+          Note_Moyenne_Client: vehicle.Note_Moyenne_Client || undefined
         }));
         setVehicles(formattedVehicles);
       }

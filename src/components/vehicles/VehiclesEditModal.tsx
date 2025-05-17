@@ -1,27 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-// Import any required vehicle components or types
-interface Vehicle {
-  id: string;
-  brand: string;
-  model: string;
-  type: string;
-  vehicle_type: string;
-  capacity: number;
-  registration: string;
-  fuel_type: string;
-  status: string;
-  photo_url?: string;
-  mileage?: number;
-  emissions?: number;
-  ecological_score?: number;
-  last_maintenance?: string;
-  location?: string;
-  company_id?: string;
-  year?: number;
-}
+import { Vehicle } from "@/types/vehicle";
 
 interface VehiclesEditModalProps {
   isOpen: boolean;
