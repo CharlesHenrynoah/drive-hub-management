@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   ColumnDef,
@@ -40,9 +41,9 @@ export type Driver = {
   prenom: string;
   email: string;
   telephone: string;
-  adresse: string;
+  adresse: string; // Required by the Driver type
   ville: string;
-  pays: string;
+  pays: string;   // Required by the Driver type
   id_chauffeur: string;
   date_debut_activite: string;
   note_chauffeur: number;
@@ -81,20 +82,35 @@ export function DriversManagement() {
 
       if (error) {
         console.error("Erreur lors de la récupération des chauffeurs:", error);
-        toast({
-          title: "Erreur!",
-          description: "Erreur lors de la récupération des chauffeurs",
-        })
+        toast.error("Erreur lors de la récupération des chauffeurs");
         return;
       }
 
-      setData(driversData || []);
+      // Map the database fields to our Driver type
+      const formattedDrivers: Driver[] = (driversData || []).map(driver => ({
+        id: driver.id,
+        created_at: driver.created_at,
+        nom: driver.nom,
+        prenom: driver.prenom,
+        email: driver.email || '',
+        telephone: driver.telephone || '',
+        adresse: driver.adresse || '',
+        ville: driver.ville || '',
+        pays: driver.pays || '',
+        id_chauffeur: driver.id_chauffeur,
+        date_debut_activite: driver.date_debut_activite,
+        note_chauffeur: driver.note_chauffeur,
+        disponible: driver.disponible,
+        piece_identite: !!driver.piece_identite,
+        certificat_medical: !!driver.certificat_medical,
+        justificatif_domicile: !!driver.justificatif_domicile,
+        photo: driver.photo
+      }));
+
+      setData(formattedDrivers);
     } catch (error) {
       console.error("Erreur lors de la récupération des chauffeurs:", error);
-      toast({
-        title: "Erreur!",
-        description: "Erreur lors de la récupération des chauffeurs",
-      })
+      toast.error("Erreur lors de la récupération des chauffeurs");
     }
   };
 

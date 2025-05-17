@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -189,7 +188,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: mission.title,
-      date: mission.date,
+      date: mission.date instanceof Date ? mission.date : new Date(mission.date),
       driver: mission.driver_id || "",
       vehicle: mission.vehicle_id || "",
       company: mission.company_id || "",
@@ -201,7 +200,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       passengers: mission.passengers,
       description: mission.description || "",
       additionalDetails: mission.additional_details || "",
-      status: mission.status,
+      status: mission.status as "en_cours" | "terminee" | "annulee",
     },
   });
 

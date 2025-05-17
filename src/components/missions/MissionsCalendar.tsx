@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addDays, parseISO, isSameDay, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,27 +14,26 @@ import { Button } from "@/components/ui/button";
 import { WeeklyMissionsView } from "./WeeklyMissionsView";
 
 // Mission type
-export interface Mission {
+export type Mission = {
   id: string;
   title: string;
-  date: string;
-  arrival_date?: string;
-  start_location?: string;
-  end_location?: string;
-  status: string;
+  date: Date; // Changed from string to Date
+  arrival_date?: Date; // Changed from string to Date (optional)
+  start_location: string;
+  end_location: string;
+  status: "en_cours" | "terminee" | "annulee";
   description?: string;
+  driver_id: string | null;
+  vehicle_id: string | null;
   driver?: string;
   vehicle?: string;
-  company?: string;
-  driver_id?: string;
-  vehicle_id?: string;
   company_id?: string;
   client?: string;
-  passengers?: number;
-  client_phone?: string;
   client_email?: string;
+  client_phone?: string;
+  passengers?: number;
   additional_details?: string;
-}
+};
 
 interface MissionsCalendarProps {
   displayMode?: "month" | "week";
