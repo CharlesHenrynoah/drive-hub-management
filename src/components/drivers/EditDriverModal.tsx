@@ -20,7 +20,7 @@ export function EditDriverModal({ isOpen, onClose, driver, onSuccess }: EditDriv
         
         <EditDriverForm 
           driver={driver}
-          onDriverUpdated={() => {
+          onSuccess={() => {
             onSuccess();
             onClose();
           }}

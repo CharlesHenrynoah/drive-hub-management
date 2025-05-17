@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useLocation } from "react-router-dom";
 import { MissionDetailModal } from "@/components/missions/MissionDetailModal";
 import { EditMissionModal } from "@/components/missions/EditMissionModal";
+import { QueryProvider } from "@/components/QueryProvider";
 
 export default function MissionsPage() {
   const [isNewMissionModalOpen, setIsNewMissionModalOpen] = useState(false);
@@ -159,70 +160,72 @@ export default function MissionsPage() {
 
   return (
     <AuthProvider>
-      <DashboardLayout>
-        <div className="w-full max-w-full overflow-hidden">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <h1 className="text-2xl font-bold truncate">Calendrier des missions</h1>
+      <QueryProvider>
+        <DashboardLayout>
+          <div className="w-full max-w-full overflow-hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h1 className="text-2xl font-bold truncate">Calendrier des missions</h1>
+              
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "month" | "week")} className="w-full sm:w-auto">
+                  <TabsList>
+                    <TabsTrigger value="month">Mois</TabsTrigger>
+                    <TabsTrigger value="week">Semaine</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
+                <Button onClick={() => setIsNewMissionModalOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Nouvelle mission
+                </Button>
+              </div>
+            </div>
             
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-              <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "month" | "week")} className="w-full sm:w-auto">
-                <TabsList>
-                  <TabsTrigger value="month">Mois</TabsTrigger>
-                  <TabsTrigger value="week">Semaine</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              
-              <Button onClick={() => setIsNewMissionModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" /> Nouvelle mission
-              </Button>
-            </div>
-          </div>
-          
-          <ScrollArea className="w-full">
-            <div className="missions-container w-full">
-              {activeView === "month" ? (
-                <MissionsCalendar 
-                  key={`missions-calendar-${refreshTrigger}`} 
-                  onMissionSelected={handleMissionSelected}
-                />
-              ) : (
-                <MissionsCalendar 
-                  key={`missions-weekly-${refreshTrigger}`} 
-                  displayMode="week"
-                  onMissionSelected={handleMissionSelected}
-                />
-              )}
-            </div>
-          </ScrollArea>
-          
-          <NewMissionModal
-            isOpen={isNewMissionModalOpen}
-            onClose={() => setIsNewMissionModalOpen(false)}
-            onSuccess={handleMissionCreated}
-          />
+            <ScrollArea className="w-full">
+              <div className="missions-container w-full">
+                {activeView === "month" ? (
+                  <MissionsCalendar 
+                    key={`missions-calendar-${refreshTrigger}`} 
+                    onMissionSelected={handleMissionSelected}
+                  />
+                ) : (
+                  <MissionsCalendar 
+                    key={`missions-weekly-${refreshTrigger}`} 
+                    displayMode="week"
+                    onMissionSelected={handleMissionSelected}
+                  />
+                )}
+              </div>
+            </ScrollArea>
+            
+            <NewMissionModal
+              isOpen={isNewMissionModalOpen}
+              onClose={() => setIsNewMissionModalOpen(false)}
+              onSuccess={handleMissionCreated}
+            />
 
-          {selectedMission && (
-            <>
-              <MissionDetailModal
-                mission={selectedMission}
-                isOpen={isMissionDetailModalOpen}
-                onClose={() => setIsMissionDetailModalOpen(false)}
-                onEdit={handleEditMission}
-                onDelete={handleDeleteMission}
-              />
-              
-              <EditMissionModal
-                mission={selectedMission}
-                isOpen={isEditMissionModalOpen}
-                onClose={() => setIsEditMissionModalOpen(false)}
-                onSuccess={() => {
-                  setRefreshTrigger(prev => prev + 1);
-                }}
-              />
-            </>
-          )}
-        </div>
-      </DashboardLayout>
+            {selectedMission && (
+              <>
+                <MissionDetailModal
+                  mission={selectedMission}
+                  isOpen={isMissionDetailModalOpen}
+                  onClose={() => setIsMissionDetailModalOpen(false)}
+                  onEdit={handleEditMission}
+                  onDelete={handleDeleteMission}
+                />
+                
+                <EditMissionModal
+                  mission={selectedMission}
+                  isOpen={isEditMissionModalOpen}
+                  onClose={() => setIsEditMissionModalOpen(false)}
+                  onSuccess={() => {
+                    setRefreshTrigger(prev => prev + 1);
+                  }}
+                />
+              </>
+            )}
+          </div>
+        </DashboardLayout>
+      </QueryProvider>
       <Toaster />
     </AuthProvider>
   );

@@ -1,12 +1,16 @@
 
+// Importez les modules et composants nécessaires
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
+import { z } from "zod";
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Driver } from "@/types/driver";
 
-import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -16,7 +20,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
@@ -24,328 +34,158 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UploadCloud } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Driver } from "@/types/driver";
-import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
-import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const ACCEPTED_DOC_TYPES = [...ACCEPTED_IMAGE_TYPES, "application/pdf"];
+// Définir les props pour le composant
+export interface EditDriverFormProps {
+  driver: Driver;
+  onSuccess?: () => void;
+  buttonText?: string;
+}
 
-// Liste des villes disponibles
-const CITIES = [
-  "Paris",
-  "Marseille",
-  "Lyon",
-  "Toulouse",
-  "Nice",
-  "Nantes",
-  "Strasbourg",
-  "Montpellier",
-  "Bordeaux",
-  "Lille",
-  "Rennes",
-  "Reims",
-  "Le Havre",
-  "Saint-Étienne",
-  "Toulon",
-  "Grenoble",
-  "Dijon",
-  "Angers",
-  "Nîmes",
-  "Clermont-Ferrand",
-];
-
-// Schéma de validation pour le formulaire d'édition de chauffeur
-const driverFormSchema = z.object({
+// Schéma de validation Zod pour le formulaire
+const formSchema = z.object({
+  id_chauffeur: z.string().min(1, "L'identifiant est requis"),
   nom: z.string().min(1, "Le nom est requis"),
   prenom: z.string().min(1, "Le prénom est requis"),
-  email: z.string().email("Email invalide"),
-  telephone: z.string().min(8, "Numéro de téléphone invalide"),
+  email: z.string().email("Format d'email invalide").min(1, "L'email est requis"),
+  telephone: z.string().min(1, "Le téléphone est requis"),
   date_debut_activite: z.date({
     required_error: "La date de début d'activité est requise",
   }),
   id_entreprise: z.string().min(1, "L'entreprise est requise"),
-  disponible: z.boolean().default(true),
-  ville: z.string().min(1, "La ville est requise"),
-  piece_identite: z.string().min(1, "Le numéro de pièce d'identité est requis"),
+  disponible: z.boolean(),
+  ville: z.string().optional(),
+  piece_identite: z.string().min(1, "La pièce d'identité est requise"),
   certificat_medical: z.string().min(1, "Le certificat médical est requis"),
   justificatif_domicile: z.string().min(1, "Le justificatif de domicile est requis"),
   photo: z.string().optional(),
-  note_chauffeur: z.number().min(0).max(100).default(0),
+  note_chauffeur: z.number(),
 });
 
-interface EditDriverFormProps {
-  driver: Driver;
-  companies: Record<string, string>;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
-
-export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditDriverFormProps) {
+export function EditDriverForm({ 
+  driver,
+  onSuccess,
+  buttonText = "Mettre à jour"
+}: EditDriverFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { vehicleTypes, updateVehicleTypes } = useDriverVehicleTypes(driver.ID_Chauffeur);
-  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>(vehicleTypes || []);
-  
-  const [permisFile, setPermisFile] = useState<File | null>(null);
-  const [carteVTCFile, setCarteVTCFile] = useState<File | null>(null);
-  
-  const [permisPreview, setPermisPreview] = useState<string | null>(null);
-  const [carteVTCPreview, setCarteVTCPreview] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<any[]>([]);
 
-  const form = useForm<z.infer<typeof driverFormSchema>>({
-    resolver: zodResolver(driverFormSchema),
+  // Initialiser le formulaire avec les valeurs du chauffeur
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      nom: driver.Nom,
-      prenom: driver.Prénom,
-      email: driver.Email,
-      telephone: driver.Téléphone,
-      date_debut_activite: typeof driver.Date_Debut_Activité === 'string' 
-        ? new Date(driver.Date_Debut_Activité) 
-        : driver.Date_Debut_Activité,
-      id_entreprise: driver.ID_Entreprise,
-      disponible: driver.Disponible,
-      ville: driver.Ville || "Paris", // Valeur par défaut si la ville n'est pas définie
-      piece_identite: driver.Pièce_Identité,
-      certificat_medical: driver.Certificat_Médical,
-      justificatif_domicile: driver.Justificatif_Domicile,
-      photo: driver.Photo,
-      note_chauffeur: driver.Note_Chauffeur,
+      id_chauffeur: driver.id_chauffeur,
+      nom: driver.nom,
+      prenom: driver.prenom,
+      email: driver.email,
+      telephone: driver.telephone,
+      date_debut_activite: new Date(driver.date_debut_activite),
+      id_entreprise: driver.id_entreprise,
+      disponible: driver.disponible,
+      ville: driver.ville,
+      piece_identite: driver.piece_identite,
+      certificat_medical: driver.certificat_medical,
+      justificatif_domicile: driver.justificatif_domicile,
+      photo: driver.photo,
+      note_chauffeur: driver.note_chauffeur,
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldType: 'permis' | 'vtc') => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      if (fieldType === 'permis') {
-        setPermisFile(file);
-        
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setPermisPreview(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-        } else if (file.type === 'application/pdf') {
-          setPermisPreview('/placeholder.svg'); // Utiliser une icône PDF
-        }
-      } else {
-        setCarteVTCFile(file);
-        
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            setCarteVTCPreview(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-        } else if (file.type === 'application/pdf') {
-          setCarteVTCPreview('/placeholder.svg'); // Utiliser une icône PDF
-        }
-      }
-    }
-  };
-
-  const onSubmit = async (data: z.infer<typeof driverFormSchema>) => {
-    setIsSubmitting(true);
+  // Soumettre le formulaire
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Chercher l'ID interne du chauffeur à partir de son ID_Chauffeur
-      const { data: driverData, error: fetchError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('id_chauffeur', driver.ID_Chauffeur)
-        .single();
+      setIsSubmitting(true);
       
-      if (fetchError) {
-        throw new Error("Impossible de trouver le chauffeur à mettre à jour");
-      }
-      
-      const driverId = driverData.id;
-      let photoUrl = data.photo;
-      
-      // Mise à jour du chauffeur dans la base de données
-      const { error: updateError } = await supabase
+      // Mise à jour du chauffeur dans Supabase
+      const { error } = await supabase
         .from('drivers')
         .update({
-          nom: data.nom,
-          prenom: data.prenom,
-          email: data.email,
-          telephone: data.telephone,
-          date_debut_activite: format(data.date_debut_activite, 'yyyy-MM-dd'),
-          id_entreprise: data.id_entreprise,
-          disponible: data.disponible,
-          ville: data.ville, // Mise à jour de la ville
-          piece_identite: data.piece_identite,
-          certificat_medical: data.certificat_medical,
-          justificatif_domicile: data.justificatif_domicile,
-          photo: photoUrl,
-          note_chauffeur: data.note_chauffeur,
+          id_chauffeur: values.id_chauffeur,
+          nom: values.nom,
+          prenom: values.prenom,
+          email: values.email,
+          telephone: values.telephone,
+          date_debut_activite: values.date_debut_activite.toISOString().split('T')[0],
+          id_entreprise: values.id_entreprise,
+          disponible: values.disponible,
+          ville: values.ville,
+          piece_identite: values.piece_identite,
+          certificat_medical: values.certificat_medical,
+          justificatif_domicile: values.justificatif_domicile,
+          photo: values.photo,
+          note_chauffeur: values.note_chauffeur,
         })
-        .eq('id', driverId);
-
-      if (updateError) {
-        throw new Error("Erreur lors de la mise à jour du chauffeur");
-      }
-
-      // Mise à jour des types de véhicules
-      updateVehicleTypes(selectedVehicleTypes);
-
-      toast.success("Chauffeur mis à jour avec succès");
-      onSuccess();
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast.error("Erreur lors de la mise à jour du chauffeur");
+        .eq('id', driver.id);
+      
+      if (error) throw error;
+      
+      toast.success("Chauffeur mis à jour avec succès !");
+      if (onSuccess) onSuccess();
+    } catch (error: any) {
+      console.error("Erreur lors de la mise à jour:", error);
+      toast.error(`Erreur: ${error.message || "Une erreur est survenue"}`);
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
 
-  const FileUploadField = ({ name, label, accept, preview, onChange }: { name: string, label: string, accept: string, preview: string | null, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-    <div className="space-y-2">
-      <FormLabel>{label}</FormLabel>
-      <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
-        <Input
-          id={name}
-          type="file"
-          accept={accept}
-          className="hidden"
-          onChange={onChange}
-        />
-        <label htmlFor={name} className="cursor-pointer h-full">
-          {preview ? (
-            <div className="flex justify-center">
-              {preview.endsWith('.svg') || preview.includes('/placeholder.svg') ? (
-                <div className="flex flex-col items-center space-y-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-sm">Document téléchargé</span>
-                </div>
-              ) : (
-                <img 
-                  src={preview} 
-                  alt={`Aperçu ${name}`} 
-                  className="object-cover h-24 rounded-md" 
-                />
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center space-y-2">
-              <UploadCloud className="h-8 w-8 text-gray-400" />
-              <span className="text-xs text-gray-500">
-                Glissez et déposez ou cliquez pour sélectionner
-              </span>
-              <span className="text-xs text-gray-400">
-                PNG, JPG, WEBP, PDF (max 5MB)
-              </span>
-            </div>
-          )}
-        </label>
-      </div>
-    </div>
-  );
+  // Effet pour charger la liste des entreprises
+  useState(() => {
+    async function fetchCompanies() {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name');
+        
+        if (error) throw error;
+        
+        setCompanies(data || []);
+      } catch (error) {
+        console.error("Erreur lors du chargement des entreprises:", error);
+      }
+    }
+    
+    fetchCompanies();
+  });
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* ID Chauffeur */}
           <FormField
             control={form.control}
-            name="prenom"
+            name="id_chauffeur"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Prénom</FormLabel>
+                <FormLabel>ID Chauffeur</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input placeholder="ID Chauffeur" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="nom"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Disponibilité */}
           <FormField
             control={form.control}
-            name="email"
+            name="disponible"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input {...field} type="email" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="telephone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Téléphone</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="date_debut_activite"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date de début d'activité</FormLabel>
-                <DatePicker
-                  date={field.value}
-                  setDate={field.onChange}
-                  placeholder="Sélectionner une date"
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="id_entreprise"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Entreprise</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
+                <FormLabel>Disponibilité</FormLabel>
+                <Select 
+                  onValueChange={(value) => field.onChange(value === "true")} 
+                  defaultValue={field.value ? "true" : "false"}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une entreprise" />
+                      <SelectValue placeholder="Sélectionner une disponibilité" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {Object.entries(companies).map(([id, name]) => (
-                      <SelectItem key={id} value={id}>
-                        {name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="true">Disponible</SelectItem>
+                    <SelectItem value="false">Indisponible</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -354,36 +194,180 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
           />
         </div>
 
-        {/* Ajout du champ ville */}
-        <FormField
-          control={form.control}
-          name="ville"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ville</FormLabel>
-              <Select
-                value={field.value}
-                onValueChange={field.onChange}
-              >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Nom */}
+          <FormField
+            control={form.control}
+            name="nom"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nom</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une ville" />
-                  </SelectTrigger>
+                  <Input placeholder="Nom" {...field} />
                 </FormControl>
-                <SelectContent>
-                  {CITIES.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Prénom */}
+          <FormField
+            control={form.control}
+            name="prenom"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Prénom</FormLabel>
+                <FormControl>
+                  <Input placeholder="Prénom" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Email */}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="Email" type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Téléphone */}
+          <FormField
+            control={form.control}
+            name="telephone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Téléphone</FormLabel>
+                <FormControl>
+                  <Input placeholder="Téléphone" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Date de début d'activité */}
+          <FormField
+            control={form.control}
+            name="date_debut_activite"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Date de début d'activité</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, "dd/MM/yyyy")
+                        ) : (
+                          <span>Sélectionner une date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Ville */}
+          <FormField
+            control={form.control}
+            name="ville"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ville</FormLabel>
+                <FormControl>
+                  <Input placeholder="Ville" {...field} value={field.value || ""} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Entreprise */}
+          <FormField
+            control={form.control}
+            name="id_entreprise"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Entreprise</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une entreprise" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Note */}
+          <FormField
+            control={form.control}
+            name="note_chauffeur"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Note</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    placeholder="Note" 
+                    min="0" 
+                    max="5" 
+                    step="0.5" 
+                    {...field} 
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Pièce d'identité et Certificat Médical sur la même ligne */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="piece_identite"
@@ -391,7 +375,7 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
               <FormItem>
                 <FormLabel>Pièce d'identité</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input placeholder="Référence pièce d'identité" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -404,12 +388,16 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
               <FormItem>
                 <FormLabel>Certificat médical</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input placeholder="Référence certificat médical" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Justificatif de domicile et Photo sur la même ligne */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="justificatif_domicile"
@@ -417,7 +405,20 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
               <FormItem>
                 <FormLabel>Justificatif de domicile</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input placeholder="Référence justificatif de domicile" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="photo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Photo (URL)</FormLabel>
+                <FormControl>
+                  <Input placeholder="URL de la photo" {...field} value={field.value || ""} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -425,62 +426,10 @@ export function EditDriverForm({ driver, companies, onSuccess, onCancel }: EditD
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="photo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>URL de la photo</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value || ''} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FileUploadField 
-            name="permis_conduire" 
-            label="Permis de conduire" 
-            accept="image/*,application/pdf" 
-            preview={permisPreview} 
-            onChange={(e) => handleFileChange(e, 'permis')} 
-          />
-
-          <FileUploadField 
-            name="carte_vtc" 
-            label="Carte VTC" 
-            accept="image/*,application/pdf" 
-            preview={carteVTCPreview}
-            onChange={(e) => handleFileChange(e, 'vtc')} 
-          />
-        </div>
-
-        <div className="space-y-2">
-          <FormLabel>Types de véhicules (max 6)</FormLabel>
-          <VehicleTypeSelector 
-            selectedTypes={selectedVehicleTypes} 
-            onChange={setSelectedVehicleTypes} 
-            maxSelections={6} 
-          />
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Mise à jour...
-              </>
-            ) : (
-              "Mettre à jour"
-            )}
-          </Button>
-        </div>
+        {/* Bouton de soumission */}
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? "Mise à jour en cours..." : buttonText}
+        </Button>
       </form>
     </Form>
   );
