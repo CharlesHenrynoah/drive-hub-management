@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -165,10 +164,12 @@ export function VehiclesEditModal({ isOpen, onClose, vehicle, onSuccess }: Vehic
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type standardisé</FormLabel>
-                    <VehicleTypeSelector
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
+                    <FormControl>
+                      <VehicleTypeSelector
+                        selectedType={field.value}
+                        onTypeChange={field.onChange}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

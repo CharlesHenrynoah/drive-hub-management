@@ -9,7 +9,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableCaption,
   TableHead,
   TableHeader,
   TableRow,
@@ -74,7 +73,7 @@ export function VehiclesManagement() {
         console.error("Erreur lors de la récupération des véhicules:", error);
         toast.error("Erreur lors de la récupération des véhicules");
       } else {
-        // Format vehicles and ensure Note_Moyenne_Client is handled properly
+        // Format vehicles and handle Note_Moyenne_Client properly
         const formattedVehicles: Vehicle[] = (data || []).map(vehicle => ({
           ...vehicle,
           Note_Moyenne_Client: vehicle.Note_Moyenne_Client || undefined
