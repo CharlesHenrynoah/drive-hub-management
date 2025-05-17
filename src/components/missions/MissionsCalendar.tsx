@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/fr';
@@ -22,8 +22,7 @@ export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: M
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const calendarRef = useRef(null);
-
+  
   useEffect(() => {
     fetchMissions();
   }, []);
@@ -67,6 +66,21 @@ export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: M
     }
   };
   
+  // Define a custom toolbar component that uses our CalendarNav
+  const CustomToolbar = (toolbarProps: any) => {
+    return (
+      <div className="flex justify-between items-center mb-4 p-4">
+        <span className="text-xl font-semibold">
+          {moment(toolbarProps.date).format('YYYY')}
+        </span>
+        <CalendarNav 
+          currentDate={toolbarProps.date} 
+          setCurrentDate={(date) => toolbarProps.onNavigate('DATE', date)}
+        />
+      </div>
+    );
+  };
+  
   return displayMode === 'month' ? (
     <div className="h-[700px]">
       <Calendar
@@ -83,9 +97,8 @@ export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: M
         onSelectEvent={(event) => onMissionSelected?.(event as unknown as Mission)}
         views={['month']}
         components={{
-          toolbar: (props) => <CalendarNav {...props} onDateChange={setCurrentDate} />
+          toolbar: CustomToolbar
         }}
-        ref={calendarRef}
         date={currentDate}
         onNavigate={setCurrentDate}
       />
