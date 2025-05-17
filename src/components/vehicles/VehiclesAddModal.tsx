@@ -12,12 +12,15 @@ interface VehiclesAddModalProps {
 
 export function VehiclesAddModal({ isOpen, onClose, onSuccess }: VehiclesAddModalProps) {
   const handleSuccess = () => {
+    toast.success("Véhicule ajouté avec succès");
     onSuccess();
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
       <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>Ajouter un véhicule</DialogTitle>
@@ -25,7 +28,7 @@ export function VehiclesAddModal({ isOpen, onClose, onSuccess }: VehiclesAddModa
             Remplissez le formulaire pour ajouter un nouveau véhicule à la flotte
           </DialogDescription>
         </DialogHeader>
-        <AddVehicleForm onSuccess={handleSuccess} isOpen={isOpen} onOpenChange={onClose} />
+        {isOpen && <AddVehicleForm onSuccess={handleSuccess} isOpen={isOpen} onOpenChange={onClose} />}
       </DialogContent>
     </Dialog>
   );
