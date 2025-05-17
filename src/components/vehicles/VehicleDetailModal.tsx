@@ -8,11 +8,12 @@ interface VehicleDetailModalProps {
   companyName?: string;
   onEdit: () => void;
   onClose: () => void;
+  isOpen: boolean;
 }
 
-export function VehicleDetailModal({ vehicle, companyName, onEdit, onClose }: VehicleDetailModalProps) {
+export function VehicleDetailModal({ vehicle, companyName, onEdit, onClose, isOpen }: VehicleDetailModalProps) {
   return (
-    <Dialog open={true} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Détails du véhicule</DialogTitle>
