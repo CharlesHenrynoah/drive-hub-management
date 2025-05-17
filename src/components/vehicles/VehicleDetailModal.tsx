@@ -98,6 +98,13 @@ export function VehicleDetailModal({ vehicle, companyName, onEdit, onClose }: Ve
             </div>
           )}
           
+          {vehicle.Note_Moyenne_Client !== undefined && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Note moyenne client</p>
+              <p className="font-medium">{vehicle.Note_Moyenne_Client}/5</p>
+            </div>
+          )}
+          
           <div className="col-span-2 flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={onClose}>
               Fermer
