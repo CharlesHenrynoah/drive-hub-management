@@ -4,11 +4,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, Phone } from "lucide-react";
+import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, Phone, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Mission } from "@/types/mission";
+import { calculateDistance, calculateEstimatedArrival } from "@/utils/distanceCalculator";
 
 import {
   Form,
@@ -35,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
+import { Badge } from "@/components/ui/badge";
 
 interface EditMissionFormProps {
   mission: Mission;
@@ -189,6 +191,11 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
   const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
   const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
   const [passengerCount, setPassengerCount] = useState<number | undefined>(mission.passengers);
+  const [distance, setDistance] = useState<number | null>(null);
+  const [estimatedDuration, setEstimatedDuration] = useState<string | null>(null);
+  const [selectedVehicleType, setSelectedVehicleType] = useState<string | undefined>(undefined);
+  const [calculatingDistance, setCalculatingDistance] = useState(false);
+  const [manualArrivalTime, setManualArrivalTime] = useState<boolean>(!!mission.arrival_date);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -210,78 +217,115 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     },
   });
 
-  // Watch passenger count changes
-  const passengers = form.watch("passengers");
+  // Watch form values
+  const departureDate = form.watch('date');
+  const startLocation = form.watch('startLocation');
+  const endLocation = form.watch('endLocation');
+  const selectedVehicleId = form.watch('vehicle');
+  const passengers = form.watch('passengers');
 
-  // Fetch companies for given city from Edge Function
-  const fetchCompaniesWithResources = async (departureCity: string, passengerCount?: number) => {
-    setLoadingCompanies(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("companies-with-resources", {
-        body: { 
-          city: departureCity,
-          passengers: passengerCount
-        }
-      });
-      
-      if (error) {
-        console.error("Error fetching companies with resources:", error);
-        toast.error("Erreur lors de la récupération des entreprises");
-        return [];
-      }
-      
-      return data || [];
-    } catch (e) {
-      console.error("Error in fetchCompaniesWithResources:", e);
-      toast.error("Erreur lors de la récupération des entreprises");
-      return [];
-    } finally {
-      setLoadingCompanies(false);
-    }
-  };
-
-  // Charger toutes les entreprises pour l'initialisation 
+  // Fonction pour récupérer les informations du véhicule sélectionné
   useEffect(() => {
-    const loadInitialCompanies = async () => {
-      if (initialLoaded) return;
-      
-      try {
-        const companies = await fetchAllCompanies();
-        setAvailableCompanies(companies);
-        setInitialLoaded(true);
-      } catch (error) {
-        console.error("Erreur lors du chargement initial des entreprises:", error);
+    const fetchVehicleDetails = async () => {
+      if (selectedVehicleId) {
+        try {
+          const { data, error } = await supabase
+            .from('vehicles')
+            .select('*')
+            .eq('id', selectedVehicleId)
+            .single();
+            
+          if (!error && data) {
+            setSelectedVehicleType(data.vehicle_type || undefined);
+            
+            // Recalculer l'heure d'arrivée avec le type de véhicule si pas en mode manuel
+            if (!manualArrivalTime && distance && departureDate) {
+              updateEstimatedArrival(departureDate, distance, data.vehicle_type);
+            }
+          }
+        } catch (error) {
+          console.error("Erreur lors de la récupération des détails du véhicule:", error);
+        }
       }
     };
     
-    loadInitialCompanies();
-  }, [initialLoaded]);
+    fetchVehicleDetails();
+  }, [selectedVehicleId, manualArrivalTime]);
 
-  // Update vehicles and companies when passenger count changes
+  // Calcul de la distance et de l'heure d'arrivée lorsque les localisations changent
+  useEffect(() => {
+    const calculateDistanceAndArrival = async () => {
+      if (startLocation && endLocation) {
+        setCalculatingDistance(true);
+        try {
+          const distanceKm = await calculateDistance(startLocation, endLocation);
+          setDistance(distanceKm);
+          
+          // Mettre à jour l'heure d'arrivée si on n'est pas en mode manuel
+          if (!manualArrivalTime && departureDate) {
+            updateEstimatedArrival(departureDate, distanceKm, selectedVehicleType);
+          }
+        } catch (error) {
+          console.error("Erreur lors du calcul de la distance:", error);
+          toast.error("Impossible de calculer la distance entre les deux villes");
+        } finally {
+          setCalculatingDistance(false);
+        }
+      }
+    };
+    
+    calculateDistanceAndArrival();
+  }, [startLocation, endLocation, selectedVehicleType, manualArrivalTime]);
+
+  // Mettre à jour l'heure d'arrivée lorsque l'heure de départ change
+  useEffect(() => {
+    if (!manualArrivalTime && distance && departureDate) {
+      updateEstimatedArrival(departureDate, distance, selectedVehicleType);
+    }
+  }, [departureDate, manualArrivalTime]);
+
+  // Fonction pour mettre à jour l'heure d'arrivée estimée
+  const updateEstimatedArrival = (departureTime: Date, distanceKm: number, vehicleType?: string) => {
+    try {
+      const estimatedArrival = calculateEstimatedArrival(departureTime, distanceKm, vehicleType);
+      
+      // Calculer la durée en heures et minutes
+      const durationMinutes = (estimatedArrival.getTime() - departureTime.getTime()) / 60000;
+      const hours = Math.floor(durationMinutes / 60);
+      const minutes = Math.round(durationMinutes % 60);
+      
+      setEstimatedDuration(`${hours}h${minutes.toString().padStart(2, '0')}`);
+      
+      // Mettre à jour le champ arrival_date du formulaire avec l'heure d'arrivée calculée
+      form.setValue('arrival_date', estimatedArrival, { shouldValidate: true });
+    } catch (error) {
+      console.error("Erreur lors du calcul de l'heure d'arrivée estimée:", error);
+    }
+  };
+
+  // Watch passenger count changes
   useEffect(() => {
     if (passengers !== passengerCount && selectedLocation) {
       setPassengerCount(passengers);
       
-      if (selectedLocation !== mission.start_location) {
-        // If location has changed, update available companies with the new passenger count
-        fetchCompaniesWithResources(selectedLocation, passengers)
-          .then(companies => {
-            setAvailableCompanies(companies);
-            
-            // If current selected company no longer has vehicles with enough capacity
-            if (selectedCompany) {
-              const currentCompanyStillValid = companies.some(c => c.id === selectedCompany);
-              if (!currentCompanyStillValid && companies.length > 0) {
-                // Reset company selection
-                setSelectedCompany("");
-                form.setValue("company", "");
-                form.setValue("driver", "");
-                form.setValue("vehicle", "");
-                toast.info("L'entreprise précédemment sélectionnée ne dispose pas de véhicules ayant la capacité requise");
-              }
+      // If location has changed, update available companies with the new passenger count
+      fetchCompaniesWithResources(selectedLocation, passengers)
+        .then(companies => {
+          setAvailableCompanies(companies);
+          
+          // If current selected company no longer has vehicles with enough capacity
+          if (selectedCompany) {
+            const currentCompanyStillValid = companies.some(c => c.id === selectedCompany);
+            if (!currentCompanyStillValid && companies.length > 0) {
+              // Reset company selection
+              setSelectedCompany("");
+              form.setValue("company", "");
+              form.setValue("driver", "");
+              form.setValue("vehicle", "");
+              toast.info("L'entreprise précédemment sélectionnée ne dispose pas de véhicules ayant la capacité requise");
             }
-          });
-      }
+          }
+        });
       
       // Refetch vehicles if company is selected to filter by passenger count
       if (selectedCompany) {
@@ -289,20 +333,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       }
     }
   }, [passengers, passengerCount, selectedLocation, selectedCompany, mission.start_location]);
-
-  // Query for drivers based on selected company and potentially location
-  const { data: drivers = [], refetch: refetchDrivers } = useQuery({
-    queryKey: ['drivers', selectedCompany, selectedLocation],
-    queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation),
-    enabled: !!selectedCompany,
-  });
-
-  // Query for vehicles based on selected company, location, and passenger count
-  const { data: vehicles = [], refetch: refetchVehicles } = useQuery({
-    queryKey: ['vehicles', selectedCompany, selectedLocation, passengers],
-    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation, passengers),
-    enabled: !!selectedCompany,
-  });
 
   // Fetch companies when location changes (only in edit mode if location changes)
   useEffect(() => {
@@ -378,6 +408,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
         .update({
           title: data.title,
           date: data.date.toISOString(),
+          arrival_date: data.arrival_date ? data.arrival_date.toISOString() : null,
           driver_id: data.driver,
           vehicle_id: data.vehicle,
           company_id: data.company,
@@ -426,7 +457,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     return newDate;
   };
 
-  
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
@@ -445,7 +475,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           )}
         />
         
-        {/* Locations - Now before date/time */}
+        {/* Locations with distance info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Start Location */}
           <FormField
@@ -499,6 +529,44 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
         </div>
+        
+        {/* Distance et durée estimée */}
+        {(startLocation && endLocation) && (
+          <div className="flex flex-wrap items-center gap-3 text-sm bg-muted/50 p-3 rounded-lg">
+            {calculatingDistance ? (
+              <span className="text-muted-foreground">Calcul de la distance...</span>
+            ) : distance ? (
+              <>
+                <Badge variant="outline" className="px-2 py-1">
+                  <MapPin className="h-3.5 w-3.5 mr-1" />
+                  Distance: {distance} km
+                </Badge>
+                {estimatedDuration && (
+                  <Badge variant="outline" className="px-2 py-1">
+                    <Timer className="h-3.5 w-3.5 mr-1" />
+                    Durée estimée: {estimatedDuration}
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {!manualArrivalTime ? 
+                    "*L'heure d'arrivée est calculée automatiquement" : 
+                    "*Mode manuel activé"}
+                </span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setManualArrivalTime(!manualArrivalTime)}
+                  className="ml-auto"
+                >
+                  {manualArrivalTime ? "Activer calcul auto" : "Mode manuel"}
+                </Button>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Impossible de calculer la distance</span>
+            )}
+          </div>
+        )}
         
         {/* Departure Date and Time only */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -554,35 +622,119 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
 
-          {/* Status */}
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Statut</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un statut" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="en_cours">En cours</SelectItem>
-                    <SelectItem value="terminee">Terminée</SelectItem>
-                    <SelectItem value="annulee">Annulée</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Arrival Date and Time */}
+          {manualArrivalTime ? (
+            <FormField
+              control={form.control}
+              name="arrival_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date et heure d'arrivée (manuel)</FormLabel>
+                  <div className="flex gap-2">
+                    <DatePicker 
+                      date={field.value} 
+                      setDate={(date) => {
+                        if (date) field.onChange(date);
+                      }}
+                      placeholder="Date d'arrivée"
+                    />
+                    <Popover open={timePopoverOpen} onOpenChange={setTimePopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[120px] pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? format(field.value, "HH:mm") : "Heure"}
+                          <Clock className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <div className="h-[200px] overflow-y-auto p-2">
+                          {timeOptions.map((option) => (
+                            <Button
+                              key={option.value}
+                              variant="ghost"
+                              className="w-full justify-start font-normal"
+                              onClick={() => {
+                                if (!field.value) {
+                                  // Si aucune date d'arrivée n'est définie, utiliser la date de départ
+                                  const departureDate = form.getValues('date');
+                                  const newDate = updateTimeInDate(departureDate, option.value);
+                                  if (newDate) field.onChange(newDate);
+                                } else {
+                                  const newDate = updateTimeInDate(field.value, option.value);
+                                  if (newDate) field.onChange(newDate);
+                                }
+                                setTimePopoverOpen(false);
+                              }}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <FormField
+              control={form.control}
+              name="arrival_date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date et heure d'arrivée (calculée)</FormLabel>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      disabled={true}
+                    >
+                      {field.value 
+                        ? `${format(field.value, "dd/MM/yyyy")} à ${format(field.value, "HH:mm")}`
+                        : "Calculé automatiquement"}
+                      <Clock className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
-        {/* Passengers - Moved up before company selection */}
+        {/* Rest of the form remained unchanged */}
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Statut</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un statut" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="en_cours">En cours</SelectItem>
+                  <SelectItem value="terminee">Terminée</SelectItem>
+                  <SelectItem value="annulee">Annulée</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="passengers"
@@ -612,7 +764,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           )}
         />
 
-        {/* Company - Now after passenger count */}
         <FormField
           control={form.control}
           name="company"

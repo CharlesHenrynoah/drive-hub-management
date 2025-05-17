@@ -26,6 +26,7 @@ export interface Mission {
   vehicles?: {
     brand: string;
     model: string;
+    vehicle_type?: string;
   };
   companies?: {
     name: string;
