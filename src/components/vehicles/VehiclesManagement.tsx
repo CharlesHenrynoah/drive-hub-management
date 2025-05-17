@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   ColumnDef,
@@ -276,6 +277,7 @@ export function VehiclesManagement() {
               setIsEditModalOpen(true);
             }}
             onClose={() => setIsDetailModalOpen(false)}
+            isOpen={isDetailModalOpen}
           />
           
           <VehiclesEditModal

@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -336,11 +337,11 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         prenom: values.prenom,
         email: values.email,
         telephone: values.telephone,
-        ville: values.ville,  // S'assurer que la ville est bien incluse
+        ville: values.ville,
         piece_identite: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
         justificatif_domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
-        date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0], // Convert Date to string format YYYY-MM-DD
+        date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0], // Converti en string format YYYY-MM-DD
         note_chauffeur: 0,
         photo: photoUrl,
         id_entreprise: values.entrepriseId,
@@ -395,7 +396,7 @@ export function AddDriverForm({ onDriverAdded, buttonText = "Ajouter un chauffeu
         piece_identite: permisUrl || `ID${Math.floor(10000000 + Math.random() * 90000000)}`,
         certificat_medical: `CM${Math.floor(10000000 + Math.random() * 90000000)}`,
         justificatif_domicile: carteVTCUrl || `JD${Math.floor(10000000 + Math.random() * 90000000)}`,
-        date_debut_activite: values.dateDebutActivite, // Keep as Date for the UI component
+        date_debut_activite: values.dateDebutActivite.toISOString().split('T')[0], // Converti en string
         note_chauffeur: 0, // Pas encore noté
         photo: photoUrl,
         id_entreprise: values.entrepriseId,

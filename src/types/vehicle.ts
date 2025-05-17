@@ -8,16 +8,16 @@ export interface Vehicle {
   capacity: number;
   registration: string;
   fuel_type: string;
+  year: number;
+  emissions: number;
   mileage: number;
+  ecological_score: number;
   last_maintenance: string;
+  status?: string;
   location?: string;
-  status: string;
-  ecological_score?: number;
-  company_id: string;
-  emissions?: number;
-  updated_at: string;
-  created_at: string;
   photo_url?: string;
-  year?: number;
+  company_id?: string;
+  created_at: string;
+  updated_at: string;
   Note_Moyenne_Client?: number;
 }
