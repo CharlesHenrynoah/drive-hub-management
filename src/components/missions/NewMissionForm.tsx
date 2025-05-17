@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -126,7 +125,7 @@ const europeanCities = [
 // Combinaison de toutes les villes pour la recherche
 const allCities = [...frenchCities, ...europeanCities];
 
-// Fetch drivers based on company
+// Fetch drivers based on company, location and passenger count
 const fetchDriversByCompany = async (companyId: string, city: string, date?: Date, arrival_date?: Date) => {
   if (!companyId || !city) return [];
   
@@ -245,12 +244,16 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     },
   });
 
-  // Fetch companies for given city from Edge Function
-  const fetchCompaniesWithResources = async (departureCity: string) => {
+  // Fetch companies for given city and passenger count from Edge Function
+  const fetchCompaniesWithResources = async (departureCity: string, passengers?: number) => {
     setLoadingCompanies(true);
     try {
+      // Pass passenger count as an additional parameter
       const { data, error } = await supabase.functions.invoke("companies-with-resources", {
-        body: { city: departureCity }
+        body: { 
+          city: departureCity,
+          passengers: passengers
+        }
       });
       
       if (error) {
@@ -292,11 +295,34 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
   useEffect(() => {
     if (passengers !== passengerCount) {
       setPassengerCount(passengers);
+      
+      // Also update available companies based on passenger count
+      if (selectedLocation) {
+        fetchCompaniesWithResources(selectedLocation, passengers)
+          .then(companies => {
+            setAvailableCompanies(companies);
+            
+            // If current selected company no longer has vehicles with enough capacity
+            if (selectedCompany && companies.length > 0) {
+              const currentCompanyStillValid = companies.some(c => c.id === selectedCompany);
+              if (!currentCompanyStillValid) {
+                // Reset company selection
+                setSelectedCompany("");
+                form.setValue("company", "");
+                form.setValue("driver", "");
+                form.setValue("vehicle", "");
+                toast.info("L'entreprise précédemment sélectionnée ne dispose pas de véhicules ayant la capacité requise");
+              }
+            }
+          });
+      }
+      
       if (selectedCompany && selectedLocation) {
         refetchVehicles();
+        refetchDrivers();
       }
     }
-  }, [passengers, passengerCount, selectedCompany, selectedLocation, refetchVehicles]);
+  }, [passengers, passengerCount, selectedCompany, selectedLocation, refetchVehicles, refetchDrivers, form]);
 
   // Update vehicles and drivers when dates change
   useEffect(() => {
@@ -306,7 +332,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     }
   }, [departureDate, arrivalDate, selectedCompany, selectedLocation, refetchDrivers, refetchVehicles]);
 
-  // Fetch companies when location changes
+  // Fetch companies when location changes or passenger count changes
   useEffect(() => {
     const fetchCompanies = async () => {
       if (!selectedLocation) {
@@ -316,7 +342,8 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
       
       setLoadingCompanies(true);
       try {
-        const companies = await fetchCompaniesWithResources(selectedLocation);
+        // Pass current passenger count to filter companies with appropriate vehicles
+        const companies = await fetchCompaniesWithResources(selectedLocation, passengers);
         setAvailableCompanies(companies);
       } catch (error) {
         console.error("Erreur lors du chargement des entreprises:", error);
@@ -327,7 +354,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
     };
     
     fetchCompanies();
-  }, [selectedLocation]);
+  }, [selectedLocation, passengers]);
 
   // Update selected location when startLocation changes
   const handleLocationChange = (location: string) => {
@@ -424,7 +451,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           )}
         />
         
-        {/* Locations - Now before date/time */}
+        {/* Locations */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Start Location */}
           <FormField
@@ -595,7 +622,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
           />
         </div>
 
-        {/* Passengers - Now after dates and before company */}
+        {/* Passengers - Now placed before company to influence company selection */}
         <FormField
           control={form.control}
           name="passengers"
@@ -650,7 +677,7 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                     <SelectValue placeholder={loadingCompanies 
                       ? "Chargement..." 
                       : availableCompanies.length === 0 
-                        ? "Aucune entreprise disponible dans cette ville" 
+                        ? passengers ? `Aucune entreprise avec véhicules pour ${passengers} passager(s)` : "Aucune entreprise disponible dans cette ville"
                         : "Sélectionner une entreprise"
                     } />
                   </SelectTrigger>
@@ -658,7 +685,9 @@ export function NewMissionForm({ onSuccess, onCancel }: NewMissionFormProps) {
                 <SelectContent className="max-h-[200px] overflow-y-auto">
                   {availableCompanies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
-                      {`${company.name} (${company.drivers_count} chauffeur(s), ${company.vehicles_count} véhicule(s))`}
+                      {`${company.name} (${company.drivers_count} chauffeur(s), ${company.vehicles_count} véhicule(s)${
+                        passengers ? `, ${company.suitable_vehicles_count || 0} véhicule(s) adapté(s)` : ''
+                      })`}
                     </SelectItem>
                   ))}
                 </SelectContent>

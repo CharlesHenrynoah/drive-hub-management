@@ -1,18 +1,19 @@
 
 export interface Driver {
-  ID_Chauffeur: string;
-  Nom: string;
-  Prénom: string;
-  Email: string;
-  Téléphone: string;
-  Pièce_Identité: string;
-  Certificat_Médical: string;
-  Justificatif_Domicile: string;
-  Date_Debut_Activité: Date | string;
-  Note_Chauffeur: number;
-  Missions_Futures: string[];
-  Photo: string;
-  ID_Entreprise: string;
-  Disponible: boolean;
-  Ville: string;
+  id: string;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  piece_identite: string;
+  certificat_medical: string;
+  justificatif_domicile: string;
+  photo?: string;
+  id_entreprise: string;
+  id_chauffeur: string;
+  date_debut_activite: string;
+  note_chauffeur: number;
+  disponible: boolean;
+  created_at: string;
+  ville?: string;
 }

@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddVehicleForm } from "./AddVehicleForm";
 import { toast } from "sonner";
@@ -23,7 +22,7 @@ export function VehiclesAddModal({ isOpen, onClose, onSuccess }: VehiclesAddModa
         <DialogHeader>
           <DialogTitle>Ajouter un véhicule</DialogTitle>
         </DialogHeader>
-        <AddVehicleForm onSuccess={handleSuccess} onCancel={onClose} />
+        <AddVehicleForm onSuccess={handleSuccess} />
       </DialogContent>
     </Dialog>
   );

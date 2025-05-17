@@ -1,7 +1,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EditDriverForm } from "./EditDriverForm";
-import { Driver } from "./DriversManagement";
+import { Driver } from "@/types/driver";
 
 interface EditDriverModalProps {
   isOpen: boolean;
@@ -20,11 +20,11 @@ export function EditDriverModal({ isOpen, onClose, driver, onSuccess }: EditDriv
         
         <EditDriverForm 
           driver={driver}
-          onSuccess={() => {
+          onDriverUpdated={() => {
             onSuccess();
             onClose();
-          }} 
-          onCancel={onClose}
+          }}
+          buttonText="Mettre à jour"
         />
       </DialogContent>
     </Dialog>

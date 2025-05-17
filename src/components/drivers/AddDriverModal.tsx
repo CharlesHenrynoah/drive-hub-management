@@ -24,7 +24,6 @@ export function AddDriverModal({ isOpen, onClose, onSuccess }: AddDriverModalPro
         </DialogHeader>
         
         <AddDriverForm 
-          // Since the AddDriverForm expects an onDriverAdded prop and not onSuccess
           onDriverAdded={() => {
             onSuccess();
             onClose();

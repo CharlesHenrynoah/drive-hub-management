@@ -8,7 +8,7 @@ import { CalendarIcon, Clock, MapPin, UserRound, Truck, Building2, Users, Mail, 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Mission } from "./MissionsCalendar";
+import { Mission } from "@/types/mission";
 
 import {
   Form,
@@ -156,8 +156,8 @@ const fetchDriversByCompany = async (companyId: string, city: string) => {
   return data || [];
 };
 
-// Fetch vehicles based on company
-const fetchVehiclesByCompany = async (companyId: string, city: string) => {
+// Fetch vehicles based on company and passenger count
+const fetchVehiclesByCompany = async (companyId: string, city: string, passengers?: number) => {
   if (!companyId) return [];
 
   let query = supabase
@@ -167,6 +167,11 @@ const fetchVehiclesByCompany = async (companyId: string, city: string) => {
     
   if (city) {
     query = query.eq('location', city);
+  }
+  
+  // Filter by passenger count if provided
+  if (passengers && passengers > 0) {
+    query = query.gte('capacity', passengers);
   }
   
   const { data, error } = await query;
@@ -180,9 +185,10 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
   const [selectedCompany, setSelectedCompany] = useState<string>(mission.company_id || "");
   const [selectedLocation, setSelectedLocation] = useState<string>(mission.start_location || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [loadingCompanies, setLoadingCompanies] = useState<boolean>(false);
   const [availableCompanies, setAvailableCompanies] = useState<any[]>([]);
-  const [initialLoaded, setInitialLoaded] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState<boolean>(false);
+  const [passengerCount, setPassengerCount] = useState<number | undefined>(mission.passengers);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -204,12 +210,18 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     },
   });
 
+  // Watch passenger count changes
+  const passengers = form.watch("passengers");
+
   // Fetch companies for given city from Edge Function
-  const fetchCompaniesWithResources = async (departureCity: string) => {
+  const fetchCompaniesWithResources = async (departureCity: string, passengerCount?: number) => {
     setLoadingCompanies(true);
     try {
       const { data, error } = await supabase.functions.invoke("companies-with-resources", {
-        body: { city: departureCity }
+        body: { 
+          city: departureCity,
+          passengers: passengerCount
+        }
       });
       
       if (error) {
@@ -245,17 +257,50 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     loadInitialCompanies();
   }, [initialLoaded]);
 
+  // Update vehicles and companies when passenger count changes
+  useEffect(() => {
+    if (passengers !== passengerCount && selectedLocation) {
+      setPassengerCount(passengers);
+      
+      if (selectedLocation !== mission.start_location) {
+        // If location has changed, update available companies with the new passenger count
+        fetchCompaniesWithResources(selectedLocation, passengers)
+          .then(companies => {
+            setAvailableCompanies(companies);
+            
+            // If current selected company no longer has vehicles with enough capacity
+            if (selectedCompany) {
+              const currentCompanyStillValid = companies.some(c => c.id === selectedCompany);
+              if (!currentCompanyStillValid && companies.length > 0) {
+                // Reset company selection
+                setSelectedCompany("");
+                form.setValue("company", "");
+                form.setValue("driver", "");
+                form.setValue("vehicle", "");
+                toast.info("L'entreprise précédemment sélectionnée ne dispose pas de véhicules ayant la capacité requise");
+              }
+            }
+          });
+      }
+      
+      // Refetch vehicles if company is selected to filter by passenger count
+      if (selectedCompany) {
+        refetchVehicles();
+      }
+    }
+  }, [passengers, passengerCount, selectedLocation, selectedCompany, mission.start_location]);
+
   // Query for drivers based on selected company and potentially location
-  const { data: drivers = [] } = useQuery({
+  const { data: drivers = [], refetch: refetchDrivers } = useQuery({
     queryKey: ['drivers', selectedCompany, selectedLocation],
     queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation),
     enabled: !!selectedCompany,
   });
 
-  // Query for vehicles based on selected company and potentially location
-  const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', selectedCompany, selectedLocation],
-    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation),
+  // Query for vehicles based on selected company, location, and passenger count
+  const { data: vehicles = [], refetch: refetchVehicles } = useQuery({
+    queryKey: ['vehicles', selectedCompany, selectedLocation, passengers],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation, passengers),
     enabled: !!selectedCompany,
   });
 
@@ -277,7 +322,8 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       
       setLoadingCompanies(true);
       try {
-        const companies = await fetchCompaniesWithResources(selectedLocation);
+        // Pass passenger count to filter companies by vehicle capacity
+        const companies = await fetchCompaniesWithResources(selectedLocation, passengers);
         setAvailableCompanies(companies);
       } catch (error) {
         console.error("Erreur lors du chargement des entreprises:", error);
@@ -288,7 +334,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     };
     
     fetchCompanies();
-  }, [selectedLocation, mission.start_location, initialLoaded]);
+  }, [selectedLocation, mission.start_location, initialLoaded, passengers]);
 
   // Update selected location when startLocation changes
   const handleLocationChange = (location: string) => {
@@ -380,6 +426,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
     return newDate;
   };
 
+  
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-4">
@@ -535,7 +582,37 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           />
         </div>
 
-        {/* Company - Now after date/time */}
+        {/* Passengers - Moved up before company selection */}
+        <FormField
+          control={form.control}
+          name="passengers"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Nombre de passagers
+                </span>
+              </FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  placeholder="Nombre de passagers" 
+                  {...field} 
+                  value={field.value === undefined ? "" : field.value} 
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
+                    field.onChange(value);
+                  }}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Company - Now after passenger count */}
         <FormField
           control={form.control}
           name="company"
@@ -560,7 +637,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                     <SelectValue placeholder={loadingCompanies 
                       ? "Chargement..." 
                       : (!selectedLocation || selectedLocation !== mission.start_location && availableCompanies.length === 0) 
-                        ? "Aucune entreprise disponible dans cette ville" 
+                        ? passengers ? `Aucune entreprise avec véhicules pour ${passengers} passager(s)` : "Aucune entreprise disponible dans cette ville" 
                         : "Sélectionner une entreprise"
                     } />
                   </SelectTrigger>
@@ -568,7 +645,9 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                 <SelectContent className="max-h-[200px] overflow-y-auto">
                   {availableCompanies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
-                      {company.name}
+                      {company.suitable_vehicles_count !== undefined 
+                        ? `${company.name} (${company.suitable_vehicles_count} véhicule(s) adapté(s))` 
+                        : company.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -579,7 +658,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
         />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Driver - Filtered by company and location in case of change */}
+          {/* Driver */}
           <FormField
             control={form.control}
             name="driver"
@@ -617,7 +696,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
 
-          {/* Vehicle - Filtered by company and location in case of change */}
+          {/* Vehicle - Now filtered by passenger count */}
           <FormField
             control={form.control}
             name="vehicle"
@@ -638,6 +717,8 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                     <SelectTrigger>
                       <SelectValue placeholder={!selectedCompany
                         ? "Sélectionnez d'abord une entreprise"
+                        : vehicles.length === 0 
+                        ? `Aucun véhicule disponible${passengers ? " pour " + passengers + " passager(s)" : ""}`
                         : "Sélectionner un véhicule"
                       } />
                     </SelectTrigger>
@@ -645,7 +726,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                   <SelectContent className="max-h-[200px] overflow-y-auto">
                     {vehicles.map((vehicle) => (
                       <SelectItem key={vehicle.id} value={vehicle.id}>
-                        {`${vehicle.brand} ${vehicle.model} (${vehicle.registration})`}
+                        {`${vehicle.brand} ${vehicle.model} (${vehicle.registration}) - ${vehicle.capacity} places`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -727,36 +808,6 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
         </div>
-
-        {/* Passengers */}
-        <FormField
-          control={form.control}
-          name="passengers"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Nombre de passagers
-                </span>
-              </FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  placeholder="Nombre de passagers" 
-                  {...field} 
-                  value={field.value === undefined ? "" : field.value} 
-                  onChange={(e) => {
-                    const value = e.target.value === "" ? undefined : parseInt(e.target.value, 10);
-                    field.onChange(value);
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         {/* Description */}
         <FormField
