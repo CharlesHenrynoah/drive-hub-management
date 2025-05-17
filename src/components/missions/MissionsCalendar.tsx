@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
@@ -16,8 +17,6 @@ interface MissionsCalendarProps {
   displayMode?: 'month' | 'week';
   onMissionSelected?: (mission: Mission) => void;
 }
-
-// This is just the minimal version - there would be more code in the actual component
 
 export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: MissionsCalendarProps) {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -49,13 +48,14 @@ export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: M
       }
       
       // Format the data
-      const formattedMissions = data.map(mission => ({
+      const formattedMissions: Mission[] = data.map(mission => ({
         ...mission,
         date: new Date(mission.date),
         arrival_date: mission.arrival_date ? new Date(mission.arrival_date) : undefined,
         driver: mission.drivers ? `${mission.drivers.prenom} ${mission.drivers.nom}` : undefined,
         vehicle: mission.vehicles ? `${mission.vehicles.brand} ${mission.vehicles.model}` : undefined,
-        company: mission.companies ? mission.companies.name : undefined
+        company: mission.companies ? mission.companies.name : undefined,
+        status: mission.status as "en_cours" | "terminee" | "annulee"
       }));
       
       setMissions(formattedMissions);
@@ -66,8 +66,6 @@ export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: M
       setIsLoading(false);
     }
   };
-
-  // Rest of your component implementation...
   
   return displayMode === 'month' ? (
     <div className="h-[700px]">
@@ -94,9 +92,7 @@ export function MissionsCalendar({ displayMode = 'month', onMissionSelected }: M
     </div>
   ) : (
     <WeeklyMissionsView 
-      missions={missions} 
-      currentDate={currentDate}
-      onDateChange={setCurrentDate}
+      missions={missions}
       onMissionSelected={onMissionSelected}
     />
   );

@@ -1,223 +1,194 @@
 
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Mail, Phone, User, Map, Building, Clock, Calendar, Truck, CheckCircle2, XCircle, AlertCircle, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, MapPin, User, Truck, Building, Users, FileText, AlertCircle } from "lucide-react";
 import { Mission } from "@/types/mission";
 
 interface MissionDetailModalProps {
   mission: Mission;
   isOpen: boolean;
   onClose: () => void;
-  onDelete?: () => void;
-  onEdit?: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-export function MissionDetailModal({
-  mission,
-  isOpen,
-  onClose,
-  onDelete,
-  onEdit,
-}: MissionDetailModalProps) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
+export function MissionDetailModal({ mission, isOpen, onClose, onEdit, onDelete }: MissionDetailModalProps) {
+  // Format date for display
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "";
+    return format(new Date(date), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
+  };
 
-  const handleDelete = () => {
-    if (confirmDelete) {
-      onDelete && onDelete();
-    } else {
-      setConfirmDelete(true);
-    }
-  };
-  
-  const renderStatusBadge = (status: string) => {
+  // Status color and label
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'en_cours':
-        return <Badge className="bg-blue-500 text-white">En cours</Badge>;
-      case 'terminee':
-        return <Badge className="bg-green-500 text-white">Terminée</Badge>;
-      case 'annulee':
-        return <Badge className="bg-red-500 text-white">Annulée</Badge>;
-      default:
-        return <Badge className="bg-gray-500 text-white">{status}</Badge>;
-    }
-  };
-  
-  const renderStatusIcon = (status: string) => {
-    switch (status) {
-      case 'en_cours':
-        return <AlertCircle className="h-5 w-5 text-blue-500" />;
-      case 'terminee':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'annulee':
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      default:
-        return null;
+      case "terminee": return "bg-green-100 text-green-800 border-green-500";
+      case "annulee": return "bg-red-100 text-red-800 border-red-500";
+      default: return "bg-blue-100 text-blue-800 border-blue-500";
     }
   };
 
-  const formatDate = (date: string | Date | undefined) => {
-    if (!date) return "Non spécifiée";
-    return format(new Date(date), "PPP 'à' HH'h'mm", { locale: fr });
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "terminee": return "Terminée";
+      case "annulee": return "Annulée";
+      default: return "En cours";
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {
-      setConfirmDelete(false);
-      onClose();
-    }}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl">{mission.title}</DialogTitle>
-            <div className="flex items-center gap-2">
-              {renderStatusIcon(mission.status)}
-              {renderStatusBadge(mission.status)}
-            </div>
-          </div>
+          <DialogTitle className="text-2xl">{mission.title}</DialogTitle>
+          <DialogDescription>
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mr-2 border ${getStatusColor(mission.status)}`}>
+              {getStatusLabel(mission.status)}
+            </span>
+          </DialogDescription>
         </DialogHeader>
-        
-        <div className="grid gap-4 py-4">
-          {/* Date et horaires */}
-          <div className="flex items-start gap-3 border-b pb-3">
-            <Calendar className="h-5 w-5 text-gray-500 mt-0.5" />
-            <div>
-              <h3 className="font-medium">Date de départ</h3>
-              <p className="text-sm text-gray-600">{formatDate(mission.date)}</p>
-              
-              {mission.arrival_date && (
-                <div className="mt-2">
-                  <h3 className="font-medium">Date d'arrivée prévue</h3>
-                  <p className="text-sm text-gray-600">{formatDate(mission.arrival_date)}</p>
+
+        <div className="space-y-6">
+          {/* Date et détails */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              {/* Date */}
+              <div className="flex items-start space-x-3">
+                <CalendarIcon className="w-5 h-5 text-gray-500 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Date de départ</p>
+                  <p>{formatDate(mission.date)}</p>
+                  {mission.arrival_date && (
+                    <>
+                      <p className="font-semibold mt-2">Date d'arrivée</p>
+                      <p>{formatDate(mission.arrival_date)}</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Lieux */}
+              <div className="flex items-start space-x-3">
+                <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Itinéraire</p>
+                  <p>
+                    <span className="font-medium">Point A:</span> {mission.start_location || 'Non spécifié'}
+                  </p>
+                  <p>
+                    <span className="font-medium">Point B:</span> {mission.end_location || 'Non spécifié'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Passagers */}
+              {mission.passengers !== undefined && mission.passengers > 0 && (
+                <div className="flex items-start space-x-3">
+                  <Users className="w-5 h-5 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Passagers</p>
+                    <p>{mission.passengers} personne(s)</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {/* Chauffeur */}
+              {mission.driver && (
+                <div className="flex items-start space-x-3">
+                  <User className="w-5 h-5 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Chauffeur</p>
+                    <p>{mission.driver}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Véhicule */}
+              {mission.vehicle && (
+                <div className="flex items-start space-x-3">
+                  <Truck className="w-5 h-5 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Véhicule</p>
+                    <p>{mission.vehicle}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Entreprise */}
+              {mission.company && (
+                <div className="flex items-start space-x-3">
+                  <Building className="w-5 h-5 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Entreprise</p>
+                    <p>{mission.company}</p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
-          
-          {/* Trajet */}
-          <div className="flex items-start gap-3 border-b pb-3">
-            <Map className="h-5 w-5 text-gray-500 mt-0.5" />
-            <div>
-              <h3 className="font-medium">Trajet</h3>
-              <p className="text-sm text-gray-600">
-                <strong>Départ:</strong> {mission.start_location || "Non spécifié"}
-              </p>
-              <p className="text-sm text-gray-600">
-                <strong>Destination:</strong> {mission.end_location || "Non spécifiée"}
-              </p>
-            </div>
-          </div>
-          
-          {/* Informations client */}
+
+          {/* Client */}
           {(mission.client || mission.client_email || mission.client_phone) && (
-            <div className="flex items-start gap-3 border-b pb-3">
-              <User className="h-5 w-5 text-gray-500 mt-0.5" />
-              <div>
-                <h3 className="font-medium">Client</h3>
-                {mission.client && <p className="text-sm text-gray-600">{mission.client}</p>}
-                
-                <div className="mt-1 space-y-1">
-                  {mission.client_email && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Mail className="h-4 w-4" />
-                      <a href={`mailto:${mission.client_email}`} className="hover:underline">{mission.client_email}</a>
-                    </div>
-                  )}
-                  
-                  {mission.client_phone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Phone className="h-4 w-4" />
-                      <a href={`tel:${mission.client_phone}`} className="hover:underline">{mission.client_phone}</a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Passagers */}
-          {mission.passengers !== undefined && mission.passengers > 0 && (
-            <div className="flex items-start gap-3 border-b pb-3">
-              <Users className="h-5 w-5 text-gray-500 mt-0.5" />
-              <div>
-                <h3 className="font-medium">Passagers</h3>
-                <p className="text-sm text-gray-600">{mission.passengers} passager(s)</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Ressources */}
-          <div className="flex items-start gap-3 border-b pb-3">
-            <Building className="h-5 w-5 text-gray-500 mt-0.5" />
             <div>
-              <h3 className="font-medium">Entreprise</h3>
-              <p className="text-sm text-gray-600">{mission.company || "Non spécifiée"}</p>
-              
-              <div className="mt-2">
-                <h3 className="font-medium">Chauffeur</h3>
-                <p className="text-sm text-gray-600">{mission.driver || "Non spécifié"}</p>
-              </div>
-              
-              <div className="mt-2">
-                <h3 className="font-medium">Véhicule</h3>
-                <p className="text-sm text-gray-600">{mission.vehicle || "Non spécifié"}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Description */}
-          {(mission.description || mission.additional_details) && (
-            <div className="flex items-start gap-3">
-              <div>
-                {mission.description && (
-                  <div className="mb-3">
-                    <h3 className="font-medium">Description</h3>
-                    <p className="text-sm text-gray-600 whitespace-pre-line">{mission.description}</p>
-                  </div>
-                )}
-                
-                {mission.additional_details && (
+              <h3 className="font-medium text-lg mb-2">Informations client</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-md">
+                {mission.client && (
                   <div>
-                    <h3 className="font-medium">Détails supplémentaires</h3>
-                    <p className="text-sm text-gray-600 whitespace-pre-line">{mission.additional_details}</p>
+                    <p className="text-sm font-medium text-gray-500">Nom</p>
+                    <p>{mission.client}</p>
+                  </div>
+                )}
+                {mission.client_email && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Email</p>
+                    <p className="truncate">{mission.client_email}</p>
+                  </div>
+                )}
+                {mission.client_phone && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Téléphone</p>
+                    <p>{mission.client_phone}</p>
                   </div>
                 )}
               </div>
             </div>
           )}
-        </div>
-        
-        <DialogFooter className="gap-2 sm:gap-0">
-          {onDelete && (
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-            >
-              {confirmDelete ? "Confirmer la suppression" : "Supprimer"}
-            </Button>
+
+          {/* Description */}
+          {mission.description && (
+            <div className="flex items-start space-x-3">
+              <FileText className="w-5 h-5 text-gray-500 mt-0.5" />
+              <div>
+                <p className="font-semibold">Description</p>
+                <p className="whitespace-pre-wrap">{mission.description}</p>
+              </div>
+            </div>
           )}
-          
-          <div className="flex gap-2 justify-end">
-            {onEdit && (
-              <Button onClick={onEdit} variant="outline">
-                Modifier
-              </Button>
-            )}
-            
-            <Button onClick={onClose}>
-              Fermer
+
+          {/* Détails supplémentaires */}
+          {mission.additional_details && (
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-gray-500 mt-0.5" />
+              <div>
+                <p className="font-semibold">Détails supplémentaires</p>
+                <p className="whitespace-pre-wrap">{mission.additional_details}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between pt-4 border-t">
+            <Button variant="outline" onClick={onEdit}>
+              Modifier
+            </Button>
+            <Button variant="destructive" onClick={onDelete}>
+              Supprimer
             </Button>
           </div>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

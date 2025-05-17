@@ -1,6 +1,7 @@
 
 export interface Driver {
   id: string;
+  id_chauffeur: string;
   nom: string;
   prenom: string;
   email: string;
@@ -9,11 +10,9 @@ export interface Driver {
   certificat_medical: string;
   justificatif_domicile: string;
   photo?: string;
-  id_entreprise: string;
-  id_chauffeur: string;
   date_debut_activite: string;
   note_chauffeur: number;
   disponible: boolean;
-  created_at: string;
+  id_entreprise: string;
   ville?: string;
 }

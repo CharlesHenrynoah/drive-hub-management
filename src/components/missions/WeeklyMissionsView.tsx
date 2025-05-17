@@ -1,149 +1,119 @@
-import { useState } from "react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay, parseISO } from "date-fns";
-import { fr } from "date-fns/locale";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { Mission } from "./MissionsCalendar";
-import { Loader2 } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
+import { useState } from 'react';
+import { format, startOfWeek, addDays, isSameDay, isWithinInterval, getDay } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mission } from '@/types/mission';
 
 interface WeeklyMissionsViewProps {
   missions: Mission[];
-  isLoading: boolean;
-  onMissionClick: (mission: Mission) => void;
+  onMissionSelected?: (mission: Mission) => void;
 }
 
-export function WeeklyMissionsView({ missions, isLoading, onMissionClick }: WeeklyMissionsViewProps) {
+export function WeeklyMissionsView({ missions, onMissionSelected }: WeeklyMissionsViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // Obtenir le début et la fin de la semaine
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Commencer par lundi (1)
-  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-  const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
-
-  // Navigation entre les semaines
-  const goToPreviousWeek = () => {
-    setCurrentDate(subWeeks(currentDate, 1));
+  // Get the start of the week (Monday)
+  const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
+  
+  // Create array of dates for the current week
+  const days = [...Array(7)].map((_, i) => addDays(startDate, i));
+  
+  // Navigate to previous/next week
+  const prevWeek = () => setCurrentDate(addDays(startDate, -7));
+  const nextWeek = () => setCurrentDate(addDays(startDate, 7));
+  const today = () => setCurrentDate(new Date());
+  
+  // Get missions for a specific day
+  const getDayMissions = (day: Date) => {
+    return missions.filter(mission => {
+      // Check if mission is on this day
+      if (isSameDay(new Date(mission.date), day)) return true;
+      
+      // Check if mission spans across multiple days and includes this day
+      if (mission.arrival_date) {
+        return isWithinInterval(day, {
+          start: new Date(mission.date),
+          end: new Date(mission.arrival_date)
+        });
+      }
+      
+      return false;
+    });
   };
 
-  const goToNextWeek = () => {
-    setCurrentDate(addWeeks(currentDate, 1));
+  // Format time from date
+  const formatTime = (date: Date | undefined) => {
+    if (!date) return '';
+    return format(new Date(date), 'HH:mm');
   };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
-
-  // Filtrer les missions pour un jour donné
-  const getMissionsForDay = (day: Date) => {
-    return missions.filter(mission => 
-      isSameDay(mission.date, day)
-    );
-  };
-
-  // Fonction pour obtenir la couleur selon le statut
+  
+  // Get status color
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "terminee": return "bg-success text-success-foreground";
-      case "annulee": return "bg-destructive text-destructive-foreground";
-      default: return "bg-primary text-primary-foreground";
-    }
+    if (status === 'terminee') return 'bg-green-100 border-green-500 text-green-700';
+    if (status === 'annulee') return 'bg-red-100 border-red-500 text-red-700';
+    return 'bg-blue-100 border-blue-500 text-blue-700';
   };
 
   return (
-    <div className="space-y-4 w-full overflow-hidden">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="h-5 w-5" />
-          <h2 className="text-xl font-semibold truncate">
-            {format(weekStart, 'd', { locale: fr })} - {format(weekEnd, 'd MMMM yyyy', { locale: fr })}
-          </h2>
+    <div className="bg-white rounded-lg shadow">
+      {/* Navigation */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="text-xl font-semibold">
+          {format(startDate, 'MMMM yyyy', { locale: fr })}
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={prevWeek}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={goToToday}>
-            Aujourd'hui
-          </Button>
-          <Button variant="outline" size="icon" onClick={goToNextWeek}>
+          <Button variant="outline" onClick={today}>Aujourd'hui</Button>
+          <Button variant="outline" size="icon" onClick={nextWeek}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
-
-      {isLoading ? (
-        <div className="flex justify-center items-center h-60">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="ml-2 text-lg">Chargement des missions...</span>
-        </div>
-      ) : (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <ScrollArea className="w-full" orientation="horizontal">
-              <div className="grid grid-cols-7 min-w-max">
-                {/* En-têtes des jours */}
-                {daysInWeek.map((day, index) => {
-                  const isToday = isSameDay(day, new Date());
-                  return (
-                    <div 
-                      key={`header-${index}`}
-                      className={`p-2 border-b text-center font-medium ${isToday ? 'bg-accent text-accent-foreground' : ''}`}
-                      style={{ minWidth: '180px' }}
-                    >
-                      <div className="truncate">{format(day, 'EEEE', { locale: fr })}</div>
-                      <div className="text-sm truncate">{format(day, 'd MMMM', { locale: fr })}</div>
-                    </div>
-                  );
-                })}
-                
-                {/* Conteneurs des missions pour chaque jour */}
-                {daysInWeek.map((day, index) => {
-                  const dayMissions = getMissionsForDay(day);
-                  const isToday = isSameDay(day, new Date());
-                  
-                  return (
-                    <div 
-                      key={`day-${index}`}
-                      className={`min-h-[300px] border border-muted/20 p-2 ${isToday ? 'bg-accent/20' : ''}`}
-                      style={{ minWidth: '180px' }}
-                    >
-                      <div className="space-y-2 max-h-[280px] overflow-y-auto">
-                        {dayMissions.length === 0 ? (
-                          <div className="text-sm text-muted-foreground h-full flex items-center justify-center">
-                            Pas de mission
-                          </div>
-                        ) : (
-                          dayMissions.map(mission => (
-                            <div
-                              key={mission.id}
-                              onClick={() => onMissionClick(mission)}
-                              className={`p-2 rounded cursor-pointer ${getStatusColor(mission.status)} hover:opacity-90`}
-                            >
-                              <div className="font-medium truncate">{format(mission.date, 'HH:mm')}</div>
-                              <div className="truncate">{mission.title}</div>
-                              <div className="text-xs truncate">
-                                {mission.driver || "Chauffeur non assigné"}
-                              </div>
-                              {mission.start_location && (
-                                <div className="text-xs truncate">
-                                  de: {mission.start_location}
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      )}
+      
+      {/* Week view */}
+      <div className="grid grid-cols-7 border-b">
+        {days.map((day) => (
+          <div key={day.toString()} className="p-2 text-center font-semibold border-r last:border-r-0">
+            <div className="text-xs text-gray-500 uppercase">
+              {format(day, 'EEEE', { locale: fr })}
+            </div>
+            <div className={`text-lg ${isSameDay(day, new Date()) ? 'bg-blue-100 rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+              {format(day, 'd')}
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Missions for each day */}
+      <div className="grid grid-cols-7 h-[500px]">
+        {days.map((day) => {
+          const dayMissions = getDayMissions(day);
+          return (
+            <div key={day.toString()} className={`border-r last:border-r-0 p-2 overflow-y-auto ${isSameDay(day, new Date()) ? 'bg-blue-50' : ''}`}>
+              {dayMissions.length > 0 ? (
+                dayMissions.map((mission) => (
+                  <div 
+                    key={mission.id} 
+                    className={`mb-2 p-2 border-l-4 rounded cursor-pointer shadow-sm ${getStatusColor(mission.status)}`}
+                    onClick={() => onMissionSelected?.(mission)}
+                  >
+                    <div className="font-medium">{mission.title}</div>
+                    <div className="text-xs text-gray-600">{formatTime(mission.date)} {mission.arrival_date ? `- ${formatTime(mission.arrival_date)}` : ''}</div>
+                    {mission.driver && <div className="text-xs">{mission.driver}</div>}
+                    {mission.company && <div className="text-xs text-gray-500">{mission.company}</div>}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-400 text-sm">Pas de mission</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

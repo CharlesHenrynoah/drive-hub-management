@@ -15,12 +15,13 @@ import { useLocation } from "react-router-dom";
 import { MissionDetailModal } from "@/components/missions/MissionDetailModal";
 import { EditMissionModal } from "@/components/missions/EditMissionModal";
 import { QueryProvider } from "@/components/QueryProvider";
+import { Mission } from "@/types/mission";
 
 export default function MissionsPage() {
   const [isNewMissionModalOpen, setIsNewMissionModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeView, setActiveView] = useState<"month" | "week">("month");
-  const [selectedMission, setSelectedMission] = useState<any>(null);
+  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [isMissionDetailModalOpen, setIsMissionDetailModalOpen] = useState(false);
   const [isEditMissionModalOpen, setIsEditMissionModalOpen] = useState(false);
   
@@ -49,10 +50,13 @@ export default function MissionsPage() {
           
           if (data) {
             // Format the data similar to how MissionsCalendar does
-            const mission = {
+            const mission: Mission = {
               ...data,
-              driver: data.drivers ? `${data.drivers.prenom} ${data.drivers.nom}` : null,
-              vehicle: data.vehicles ? `${data.vehicles.brand} ${data.vehicles.model}` : null,
+              date: new Date(data.date),
+              arrival_date: data.arrival_date ? new Date(data.arrival_date) : undefined,
+              status: data.status as "en_cours" | "terminee" | "annulee",
+              driver: data.drivers ? `${data.drivers.prenom} ${data.drivers.nom}` : undefined,
+              vehicle: data.vehicles ? `${data.vehicles.brand} ${data.vehicles.model}` : undefined,
             };
             
             setSelectedMission(mission);
@@ -93,7 +97,7 @@ export default function MissionsPage() {
   };
 
   // Handle mission selection
-  const handleMissionSelected = (mission: any) => {
+  const handleMissionSelected = (mission: Mission) => {
     setSelectedMission(mission);
     setIsMissionDetailModalOpen(true);
   };

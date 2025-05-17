@@ -6,7 +6,7 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { EditMissionForm } from "./EditMissionForm";
-import { Mission } from "./MissionsCalendar";
+import { Mission } from "@/types/mission";
 
 interface EditMissionModalProps {
   mission: Mission;
