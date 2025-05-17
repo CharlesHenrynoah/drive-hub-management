@@ -293,9 +293,7 @@ export function VehiclesManagement() {
       <VehiclesAddModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => {
-          fetchVehicles();
-        }}
+        onSuccess={fetchVehicles}
       />
     </div>
   );

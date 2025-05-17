@@ -44,6 +44,7 @@ interface EditMissionFormProps {
   onCancel: () => void;
 }
 
+// Extend the form schema to include arrival_date
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   date: z.date({ required_error: "La date de départ est requise" }),
@@ -59,6 +60,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   additionalDetails: z.string().optional(),
   status: z.enum(["en_cours", "terminee", "annulee"]).default("en_cours"),
+  arrival_date: z.date().optional(),
 });
 
 // Villes françaises et européennes pour les suggestions
@@ -139,6 +141,71 @@ const fetchAllCompanies = async () => {
   return data || [];
 };
 
+// Fetch companies with resources based on location and passenger count
+const fetchCompaniesWithResources = async (location: string, passengers?: number) => {
+  try {
+    // First fetch all companies that have drivers in the selected location
+    const { data: companiesWithDrivers, error: driversError } = await supabase
+      .from('drivers')
+      .select('id_entreprise')
+      .eq('ville', location);
+    
+    if (driversError) throw driversError;
+    
+    const companyIdsWithDrivers = companiesWithDrivers.map(d => d.id_entreprise);
+    
+    // Then fetch all companies that have vehicles in the selected location
+    const vehiclesQuery = supabase
+      .from('vehicles')
+      .select('company_id, capacity')
+      .eq('location', location);
+      
+    if (passengers && passengers > 0) {
+      vehiclesQuery.gte('capacity', passengers);
+    }
+    
+    const { data: vehiclesData, error: vehiclesError } = await vehiclesQuery;
+    
+    if (vehiclesError) throw vehiclesError;
+    
+    // Count vehicles by company
+    const vehicleCountByCompany = vehiclesData.reduce((acc: Record<string, number>, vehicle) => {
+      if (vehicle.company_id) {
+        acc[vehicle.company_id] = (acc[vehicle.company_id] || 0) + 1;
+      }
+      return acc;
+    }, {});
+    
+    // Get companies that have both drivers and vehicles
+    const companyIds = [...new Set([
+      ...companyIdsWithDrivers,
+      ...vehiclesData.map(v => v.company_id)
+    ])].filter(Boolean);
+    
+    if (companyIds.length === 0) {
+      return [];
+    }
+    
+    // Fetch company details
+    const { data: companies, error: companiesError } = await supabase
+      .from('companies')
+      .select('*')
+      .in('id', companyIds);
+    
+    if (companiesError) throw companiesError;
+    
+    // Add vehicle count to companies
+    return (companies || []).map(company => ({
+      ...company,
+      suitable_vehicles_count: vehicleCountByCompany[company.id] || 0
+    }));
+  } catch (error) {
+    console.error("Error fetching companies with resources:", error);
+    toast.error("Error fetching available companies");
+    return [];
+  }
+};
+
 // Fetch drivers based on company
 const fetchDriversByCompany = async (companyId: string, city: string) => {
   if (!companyId) return [];
@@ -196,6 +263,35 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
   const [selectedVehicleType, setSelectedVehicleType] = useState<string | undefined>(undefined);
   const [calculatingDistance, setCalculatingDistance] = useState(false);
   const [manualArrivalTime, setManualArrivalTime] = useState<boolean>(!!mission.arrival_date);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+
+  // Setup query for fetching drivers
+  const { data: driversData, refetch: refetchDrivers } = useQuery({
+    queryKey: ['drivers', selectedCompany, selectedLocation],
+    queryFn: () => fetchDriversByCompany(selectedCompany, selectedLocation),
+    enabled: !!selectedCompany && !!selectedLocation,
+  });
+
+  // Setup query for fetching vehicles
+  const { data: vehiclesData, refetch: refetchVehicles } = useQuery({
+    queryKey: ['vehicles', selectedCompany, selectedLocation, passengerCount],
+    queryFn: () => fetchVehiclesByCompany(selectedCompany, selectedLocation, passengerCount),
+    enabled: !!selectedCompany && !!selectedLocation,
+  });
+
+  // Update drivers and vehicles when data changes
+  useEffect(() => {
+    if (driversData) {
+      setDrivers(driversData);
+    }
+  }, [driversData]);
+
+  useEffect(() => {
+    if (vehiclesData) {
+      setVehicles(vehiclesData);
+    }
+  }, [vehiclesData]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -214,6 +310,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       description: mission.description || "",
       additionalDetails: mission.additional_details || "",
       status: mission.status as "en_cours" | "terminee" | "annulee",
+      arrival_date: mission.arrival_date ? new Date(mission.arrival_date) : undefined,
     },
   });
 
@@ -297,7 +394,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
       setEstimatedDuration(`${hours}h${minutes.toString().padStart(2, '0')}`);
       
       // Mettre à jour le champ arrival_date du formulaire avec l'heure d'arrivée calculée
-      form.setValue('arrival_date', estimatedArrival, { shouldValidate: true });
+      form.setValue("arrival_date", estimatedArrival, { shouldValidate: true });
     } catch (error) {
       console.error("Erreur lors du calcul de l'heure d'arrivée estimée:", error);
     }
@@ -568,7 +665,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
           </div>
         )}
         
-        {/* Departure Date and Time only */}
+        {/* Departure Date and Time */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -622,7 +719,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
             )}
           />
 
-          {/* Arrival Date and Time */}
+          {/* Arrival Date and Time - Using explicit arrival_date field now */}
           {manualArrivalTime ? (
             <FormField
               control={form.control}
@@ -638,7 +735,7 @@ export function EditMissionForm({ mission, onSuccess, onCancel }: EditMissionFor
                       }}
                       placeholder="Date d'arrivée"
                     />
-                    <Popover open={timePopoverOpen} onOpenChange={setTimePopoverOpen}>
+                    <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
