@@ -1,5 +1,5 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AddVehicleForm } from "./AddVehicleForm";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,8 +21,11 @@ export function VehiclesAddModal({ isOpen, onClose, onSuccess }: VehiclesAddModa
       <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>Ajouter un véhicule</DialogTitle>
+          <DialogDescription>
+            Remplissez le formulaire pour ajouter un nouveau véhicule à la flotte
+          </DialogDescription>
         </DialogHeader>
-        <AddVehicleForm onSuccess={handleSuccess} />
+        <AddVehicleForm onSuccess={handleSuccess} isOpen={isOpen} onOpenChange={onClose} />
       </DialogContent>
     </Dialog>
   );

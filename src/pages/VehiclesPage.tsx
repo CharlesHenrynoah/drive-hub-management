@@ -8,33 +8,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function VehiclesPage() {
-  // Création du bucket de stockage pour les images de véhicules si nécessaire
+  // Vérifie si le bucket de stockage pour les images de véhicules existe
   useEffect(() => {
-    const initStorage = async () => {
+    const checkStorageBucket = async () => {
       try {
         // Vérifier si le bucket existe
         const { data, error } = await supabase.storage.getBucket('vehicles');
         
-        // Si le bucket n'existe pas, le créer
-        if (error && error.message.includes('does not exist')) {
-          const { data, error: createError } = await supabase.storage.createBucket('vehicles', {
-            public: true,
-            fileSizeLimit: 5242880, // 5MB
-            allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif']
-          });
-          
-          if (createError) {
-            console.error('Erreur lors de la création du bucket:', createError);
-          } else {
-            console.log('Bucket de stockage "vehicles" créé avec succès');
+        if (error) {
+          if (!error.message.includes("Bucket not found")) {
+            console.error('Erreur lors de la vérification du bucket:', error);
+            toast.error("Erreur lors de la vérification du stockage");
           }
+        } else {
+          console.log('Bucket de stockage "vehicles" existe');
         }
       } catch (err) {
-        console.error('Erreur lors de l\'initialisation du stockage:', err);
+        console.error('Erreur lors de la vérification du stockage:', err);
       }
     };
 
-    initStorage();
+    checkStorageBucket();
   }, []);
 
   return (
