@@ -22,7 +22,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Fleet } from "./FleetsManagement";
@@ -30,6 +30,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Form schema for validation
 const formSchema = z.object({
@@ -64,6 +74,8 @@ export function EditFleetForm({ fleet, companies, onFleetUpdated, onCancel }: Ed
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -185,6 +197,57 @@ export function EditFleetForm({ fleet, companies, onFleetUpdated, onCancel }: Ed
       setIsSubmitting(false);
     }
   }
+
+  // Handle delete action
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      
+      // First delete all fleet_vehicles and fleet_drivers associations
+      const { error: vehicleError } = await supabase
+        .from('fleet_vehicles')
+        .delete()
+        .eq('fleet_id', fleet.id);
+        
+      if (vehicleError) {
+        console.error('Error deleting fleet vehicles:', vehicleError);
+        toast.error("Erreur lors de la suppression des véhicules associés");
+        return;
+      }
+      
+      const { error: driverError } = await supabase
+        .from('fleet_drivers')
+        .delete()
+        .eq('fleet_id', fleet.id);
+        
+      if (driverError) {
+        console.error('Error deleting fleet drivers:', driverError);
+        toast.error("Erreur lors de la suppression des chauffeurs associés");
+        return;
+      }
+      
+      // Then delete the fleet itself
+      const { error } = await supabase
+        .from('fleets')
+        .delete()
+        .eq('id', fleet.id);
+        
+      if (error) {
+        console.error('Error deleting fleet:', error);
+        toast.error("Erreur lors de la suppression de la flotte");
+        return;
+      }
+      
+      toast.success("Flotte supprimée avec succès");
+      onFleetUpdated();
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast.error("Une erreur est survenue lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
 
   return (
     <DialogContent className="sm:max-w-[550px] max-h-[80vh] p-0 overflow-hidden">
@@ -311,15 +374,26 @@ export function EditFleetForm({ fleet, companies, onFleetUpdated, onCancel }: Ed
               <div className="flex justify-end space-x-2 pt-6">
                 <Button
                   type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={isSubmitting || isDeleting}
+                  className="mr-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Supprimer la flotte
+                </Button>
+                
+                <Button
+                  type="button"
                   variant="outline"
                   onClick={onCancel}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isDeleting}
                 >
                   Annuler
                 </Button>
                 <Button 
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isDeleting}
                 >
                   {isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -331,6 +405,38 @@ export function EditFleetForm({ fleet, companies, onFleetUpdated, onCancel }: Ed
           </Form>
         </div>
       </ScrollArea>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette flotte?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement la flotte "{fleet.name}" et toutes ses associations avec les véhicules et chauffeurs.
+              Les véhicules et chauffeurs ne seront pas supprimés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteDialogOpen(false)}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   );
 }
