@@ -79,22 +79,34 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
+          contact_name: string | null
           created_at: string
+          email: string | null
           id: string
           logo_url: string | null
           name: string
+          phone: string | null
         }
         Insert: {
+          address?: string | null
+          contact_name?: string | null
           created_at?: string
+          email?: string | null
           id: string
           logo_url?: string | null
           name: string
+          phone?: string | null
         }
         Update: {
+          address?: string | null
+          contact_name?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
+          phone?: string | null
         }
         Relationships: []
       }

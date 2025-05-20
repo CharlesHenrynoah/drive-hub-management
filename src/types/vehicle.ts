@@ -1,4 +1,5 @@
 
+
 export interface VehicleType {
   id: number;
   type: string;
@@ -31,3 +32,4 @@ export interface Vehicle {
   location?: string;
   Note_Moyenne_Client?: number;
 }
+
