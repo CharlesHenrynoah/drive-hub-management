@@ -15,7 +15,7 @@ interface DriverDetailModalProps {
 }
 
 export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModalProps) {
-  const { data: vehicleTypes, isLoading: isLoadingVehicleTypes } = useDriverVehicleTypes(driver.id);
+  const { vehicleTypes, isLoading: isLoadingVehicleTypes } = useDriverVehicleTypes(driver.id);
   
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -113,12 +113,12 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
             </div>
             
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Pièce d'identité</p>
+              <p className="text-sm font-medium text-muted-foreground">Permis de conduire</p>
               <p className="font-medium">{driver.piece_identite}</p>
             </div>
             
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Certificat médical</p>
+              <p className="text-sm font-medium text-muted-foreground">Carte VTC</p>
               <p className="font-medium">{driver.certificat_medical}</p>
             </div>
             

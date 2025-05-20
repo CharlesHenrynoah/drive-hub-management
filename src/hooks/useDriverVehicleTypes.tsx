@@ -7,7 +7,7 @@ import { Database } from "@/integrations/supabase/types";
 type VehicleType = Database["public"]["Enums"]["vehicle_type"];
 
 export function useDriverVehicleTypes(driverId?: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["driver-vehicle-types", driverId],
     queryFn: async () => {
       if (!driverId) return [];
@@ -26,4 +26,10 @@ export function useDriverVehicleTypes(driverId?: string) {
     },
     enabled: !!driverId,
   });
+
+  return {
+    vehicleTypes: query.data || [],
+    isLoading: query.isLoading,
+    error: query.error
+  };
 }
