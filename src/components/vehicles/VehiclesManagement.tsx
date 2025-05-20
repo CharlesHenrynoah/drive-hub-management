@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   ColumnDef,
@@ -74,10 +75,11 @@ export function VehiclesManagement() {
         toast.error("Erreur lors de la récupération des véhicules");
       } else {
         // Format vehicles and handle Note_Moyenne_Client properly
-        const formattedVehicles: Vehicle[] = (data || []).map(vehicle => ({
+        const formattedVehicles = (data || []).map(vehicle => ({
           ...vehicle,
           Note_Moyenne_Client: vehicle.Note_Moyenne_Client || undefined
-        }));
+        })) as Vehicle[];
+        
         setVehicles(formattedVehicles);
       }
     } catch (error) {

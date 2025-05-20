@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddDriverForm } from "./AddDriverForm";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AddDriverModalProps {
   isOpen: boolean;
@@ -18,18 +19,22 @@ interface AddDriverModalProps {
 export function AddDriverModal({ isOpen, onClose, onSuccess }: AddDriverModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>Ajouter un chauffeur</DialogTitle>
         </DialogHeader>
         
-        <AddDriverForm 
-          onDriverAdded={() => {
-            onSuccess();
-            onClose();
-          }}
-          buttonText="Ajouter"
-        />
+        <ScrollArea className="h-[calc(85vh-80px)]">
+          <div className="pr-4 pb-4">
+            <AddDriverForm 
+              onDriverAdded={() => {
+                onSuccess();
+                onClose();
+              }}
+              buttonText="Ajouter"
+            />
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

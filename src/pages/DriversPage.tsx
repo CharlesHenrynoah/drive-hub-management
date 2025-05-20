@@ -20,7 +20,7 @@ export default function DriversPage() {
               Gérez vos chauffeurs, leurs qualifications et leurs disponibilités
             </p>
           </div>
-          <ScrollArea className="w-full h-[calc(100vh-200px)] mt-6">
+          <ScrollArea className="w-full h-[calc(100vh-180px)] mt-6">
             <div className="pr-4 pb-8">
               <DriversManagement />
             </div>

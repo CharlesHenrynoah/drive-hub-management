@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
-interface VehicleTypeSelectorProps {
+export interface VehicleTypeSelectorProps {
   selectedType?: string;
   onTypeChange: (type: string) => void;
 }
