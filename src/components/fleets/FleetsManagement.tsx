@@ -141,7 +141,7 @@ export function FleetsManagement() {
               const driverIds = fleetDriversData.map(fd => fd.driver_id);
               const { data: driversData, error: driversError } = await supabase
                 .from('drivers')
-                .select('id, nom, prenom, ville')
+                .select('*')  // Fetch all driver fields to satisfy the Driver type
                 .in('id', driverIds);
                 
               if (driversError) {

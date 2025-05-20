@@ -125,6 +125,16 @@ Deno.serve(async (req) => {
       });
     }
     
+    // Récupérer les types de véhicules disponibles pour assurer la cohérence
+    const { data: vehicleTypes, error: vehicleTypesError } = await supabase
+      .from('vehicle_types')
+      .select('*')
+      .order('capacity_min');
+      
+    if (vehicleTypesError) {
+      throw new Error(`Erreur lors de la récupération des types de véhicules: ${vehicleTypesError.message}`);
+    }
+    
     // Récupérer les détails des chauffeurs si nécessaire
     let drivers = [];
     
@@ -132,7 +142,7 @@ Deno.serve(async (req) => {
       const driverIds = fleetDrivers.map(fd => fd.driver_id);
       const { data: driversData, error: driversError } = await supabase
         .from('drivers')
-        .select('id, id_chauffeur, nom, prenom, email, telephone, photo, ville, disponible')
+        .select('*')
         .in('id', driverIds);
         
       if (driversError) {
@@ -147,6 +157,7 @@ Deno.serve(async (req) => {
         fleet: fleet,
         vehicles: vehicles,
         vehicles_by_type: vehiclesByType,
+        vehicle_types: vehicleTypes,
         drivers: drivers,
         total_vehicles: vehicles.length,
         total_drivers: drivers.length
