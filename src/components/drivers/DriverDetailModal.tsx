@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Driver } from "@/types/driver";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -21,7 +22,7 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
         <ScrollArea className="h-[calc(85vh-80px)]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 pr-4">
             {driver.photo && (
-              <div className="col-span-2 flex justify-center">
+              <div className="col-span-2 flex justify-center mb-4">
                 <img 
                   src={driver.photo} 
                   alt={`${driver.prenom} ${driver.nom}`} 
@@ -73,6 +74,31 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Disponibilité</p>
               <p className="font-medium">{driver.disponible ? "Disponible" : "Indisponible"}</p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">ID Entreprise</p>
+              <p className="font-medium">{driver.id_entreprise}</p>
+            </div>
+
+            <div className="col-span-2">
+              <Separator className="my-4" />
+              <h3 className="font-medium mb-2">Documents</h3>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Pièce d'identité</p>
+              <p className="font-medium">{driver.piece_identite}</p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Certificat médical</p>
+              <p className="font-medium">{driver.certificat_medical}</p>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Justificatif de domicile</p>
+              <p className="font-medium">{driver.justificatif_domicile}</p>
             </div>
             
             <div className="col-span-2 flex justify-end space-x-2 pt-4">
