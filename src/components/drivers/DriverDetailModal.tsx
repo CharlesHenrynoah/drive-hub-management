@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Driver } from "@/types/driver";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
+import { Loader2 } from "lucide-react";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -12,6 +15,8 @@ interface DriverDetailModalProps {
 }
 
 export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModalProps) {
+  const { data: vehicleTypes, isLoading: isLoadingVehicleTypes } = useDriverVehicleTypes(driver.id);
+  
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh]">
@@ -79,6 +84,27 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">ID Entreprise</p>
               <p className="font-medium">{driver.id_entreprise}</p>
+            </div>
+
+            <div className="col-span-2">
+              <Separator className="my-4" />
+              <h3 className="font-medium mb-2">Types de véhicules</h3>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {isLoadingVehicleTypes ? (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Chargement...
+                  </div>
+                ) : vehicleTypes && vehicleTypes.length > 0 ? (
+                  vehicleTypes.map((type) => (
+                    <Badge key={type} variant="secondary">
+                      {type}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucun type de véhicule associé</p>
+                )}
+              </div>
             </div>
 
             <div className="col-span-2">
