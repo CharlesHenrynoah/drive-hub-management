@@ -178,12 +178,36 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
   
   // Gérer le changement de type de véhicule et mettre à jour automatiquement la capacité
   const handleVehicleTypeChange = (value: string) => {
-    const selectedType = vehicleTypes?.find(vt => vt.type === value);
+    // Déterminer la capacité en fonction du type sélectionné
+    let defaultCapacity = 0;
+    
+    switch(value) {
+      case "Minibus":
+        defaultCapacity = 18;
+        break;
+      case "Minicar":
+        defaultCapacity = 25;
+        break;
+      case "Autocar Standard":
+        defaultCapacity = 50;
+        break;
+      case "Autocar Grand Tourisme":
+        defaultCapacity = 45;
+        break;
+      case "VTC":
+        defaultCapacity = 4;
+        break;
+      case "Berline":
+        defaultCapacity = 4;
+        break;
+      default:
+        defaultCapacity = 0;
+    }
     
     setFormData(prev => ({
       ...prev,
       type: value,
-      capacity: selectedType ? Math.floor((selectedType.capacity_min + selectedType.capacity_max) / 2) : prev.capacity
+      capacity: defaultCapacity
     }));
   };
 
@@ -272,7 +296,7 @@ export function AddVehicleForm({ onSuccess, isOpen, onOpenChange, vehicleToEdit 
         }
       }
 
-      // Si nous éditons un véhicule existant
+      // Si nous édits un véhicule existant
       if (vehicleToEdit) {
         const { error } = await supabase
           .from("vehicles")
