@@ -33,9 +33,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Gauge, Loader2, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
 
 // Type for vehicles
 type Vehicle = {
@@ -61,6 +63,9 @@ interface NewVehicle {
   type: string;
   capacity: number;
   fuel_type: string;
+  mileage: number;
+  year: number;
+  ecological_score?: number;
 }
 
 // Form schema for adding a fleet
@@ -85,7 +90,9 @@ const vehicleSchema = z.object({
   registration: z.string().min(1, "L'immatriculation est requise"),
   type: z.string().min(1, "Le type est requis"),
   capacity: z.coerce.number().min(1, "La capacité doit être au moins 1"),
-  fuel_type: z.string().min(1, "Le type de carburant est requis")
+  fuel_type: z.string().min(1, "Le type de carburant est requis"),
+  mileage: z.coerce.number().min(0, "Le kilométrage ne peut pas être négatif"),
+  year: z.coerce.number().min(1900, "L'année doit être au moins 1900").max(new Date().getFullYear() + 1, `L'année ne peut pas dépasser ${new Date().getFullYear() + 1}`)
 });
 
 interface AddFleetFormProps {
@@ -101,8 +108,10 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("existing");
   const [newVehicles, setNewVehicles] = useState<NewVehicle[]>([]);
-  const [availableFuelTypes] = useState(['Essence', 'Diesel', 'Électrique', 'Hybride', 'GPL', 'GNV']);
-  const [availableVehicleTypes] = useState(['Berline', 'SUV', 'Monospace', 'Utilitaire', 'Minibus', 'Autocar']);
+  const [availableFuelTypes] = useState(['Essence', 'Diesel', 'Électrique', 'Hybride', 'GPL', 'GNV', 'Biodiesel', 'Hydrogène']);
+  const [availableVehicleTypes] = useState(['Berline', 'SUV', 'Monospace', 'Utilitaire', 'Minibus', 'Autocar', 'Minicar', 'Autocar Standard', 'Autocar Grand Tourisme', 'VTC', 'Van']);
+  const [calculatingScore, setCalculatingScore] = useState(false);
+  const [currentEcologicalScore, setCurrentEcologicalScore] = useState(50);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -123,7 +132,9 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
       registration: "",
       type: "",
       capacity: 1,
-      fuel_type: ""
+      fuel_type: "",
+      mileage: 0,
+      year: new Date().getFullYear()
     }
   });
 
@@ -174,6 +185,54 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
     loadCompanyResources();
   }, [selectedCompanyId]);
 
+  // Calculate ecological score when relevant fields change
+  useEffect(() => {
+    const calculateScore = async () => {
+      const type = vehicleForm.watch("type");
+      const fuel = vehicleForm.watch("fuel_type");
+      const capacity = vehicleForm.watch("capacity");
+      const year = vehicleForm.watch("year");
+      const mileage = vehicleForm.watch("mileage");
+
+      // Ne pas calculer si les champs requis sont manquants
+      if (!type || !fuel || !capacity) {
+        return;
+      }
+
+      setCalculatingScore(true);
+      try {
+        const score = await calculateEcologicalScore({
+          type,
+          fuel,
+          capacity,
+          year,
+          emissions: mileage > 0 ? Math.floor(mileage / 10000) : undefined // Estimation simple des émissions basée sur le kilométrage
+        });
+        setCurrentEcologicalScore(score);
+      } catch (error) {
+        console.error("Error calculating ecological score:", error);
+      } finally {
+        setCalculatingScore(false);
+      }
+    };
+
+    // Utiliser un délai pour ne pas surcharger l'API
+    const timer = setTimeout(() => {
+      calculateScore();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [vehicleForm.watch("type"), vehicleForm.watch("fuel_type"), vehicleForm.watch("capacity"), vehicleForm.watch("year"), vehicleForm.watch("mileage")]);
+
+  // Déterminer la couleur de la barre de progression en fonction du score écologique
+  const getProgressColor = (score: number) => {
+    if (score >= 80) return "bg-green-500"; // Très écologique
+    if (score >= 60) return "bg-green-400";
+    if (score >= 40) return "bg-yellow-400";
+    if (score >= 20) return "bg-orange-400";
+    return "bg-red-500"; // Peu écologique
+  };
+
   // Handle company change
   const handleCompanyChange = (value: string) => {
     setSelectedCompanyId(value);
@@ -186,8 +245,13 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
 
   // Add new vehicle to list
   const handleAddVehicle = (data: z.infer<typeof vehicleSchema>) => {
-    setNewVehicles([...newVehicles, data]);
+    const newVehicle: NewVehicle = {
+      ...data,
+      ecological_score: currentEcologicalScore,
+    };
+    setNewVehicles([...newVehicles, newVehicle]);
     vehicleForm.reset();
+    setCurrentEcologicalScore(50); // Reset score for next vehicle
   };
 
   // Remove vehicle from list
@@ -231,10 +295,11 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
           capacity: vehicle.capacity,
           fuel_type: vehicle.fuel_type,
           company_id: values.entrepriseId,
-          ecological_score: 0, // Default value
-          emissions: 0, // Default value
-          year: new Date().getFullYear(), // Current year as default
-          mileage: 0, // Default value
+          ecological_score: vehicle.ecological_score || 50,
+          emissions: 0, // Valeur par défaut
+          year: vehicle.year,
+          mileage: vehicle.mileage,
+          last_maintenance: new Date().toISOString().split('T')[0], // Date actuelle comme valeur par défaut
         }));
         
         const { data: createdVehicles, error: createVehiclesError } = await supabase
@@ -561,14 +626,80 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
                               <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.fuel_type.message}</p>
                             )}
                           </div>
+
+                          <div>
+                            <FormLabel htmlFor="mileage">Kilométrage</FormLabel>
+                            <FormControl>
+                              <Input 
+                                id="mileage" 
+                                type="number" 
+                                min="0"
+                                {...vehicleForm.register("mileage", { valueAsNumber: true })}
+                              />
+                            </FormControl>
+                            {vehicleForm.formState.errors.mileage && (
+                              <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.mileage.message}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <FormLabel htmlFor="year">Année</FormLabel>
+                            <FormControl>
+                              <Input 
+                                id="year" 
+                                type="number" 
+                                min="1900"
+                                max={new Date().getFullYear() + 1}
+                                {...vehicleForm.register("year", { valueAsNumber: true })}
+                              />
+                            </FormControl>
+                            {vehicleForm.formState.errors.year && (
+                              <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.year.message}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Score écologique */}
+                        <div className="mb-4">
+                          <FormLabel htmlFor="ecological_score" className="flex items-center gap-1">
+                            Score écologique (0-100)
+                            {calculatingScore && <Loader2 className="h-3 w-3 animate-spin ml-2" />}
+                          </FormLabel>
+                          
+                          <div className="flex items-center gap-2 mb-2">
+                            <Gauge className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium text-lg">{currentEcologicalScore}</span>
+                          </div>
+                          
+                          <div className="relative w-full h-6 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                              className={`absolute left-0 top-0 h-full transition-all duration-500 ease-in-out ${getProgressColor(currentEcologicalScore)}`}
+                              style={{ width: `${currentEcologicalScore}%` }}
+                            />
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Le score écologique est calculé automatiquement en fonction du type de véhicule, 
+                            du carburant, de la capacité, de l'année et du kilométrage du véhicule
+                          </p>
                         </div>
                         
                         <Button 
                           type="button" 
                           onClick={vehicleForm.handleSubmit(handleAddVehicle)}
                           variant="outline"
+                          disabled={calculatingScore}
                         >
-                          <Plus className="h-4 w-4 mr-2" /> Ajouter ce véhicule
+                          {calculatingScore ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Calcul en cours...
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 mr-2" /> Ajouter ce véhicule
+                            </>
+                          )}
                         </Button>
                       </div>
                       
@@ -579,8 +710,13 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
                             <div className="space-y-2">
                               {newVehicles.map((vehicle, index) => (
                                 <div key={index} className="flex justify-between items-center border p-2 rounded-md">
-                                  <div>
-                                    <span className="font-medium">{vehicle.registration}</span> - {vehicle.brand} {vehicle.model} ({vehicle.capacity} places)
+                                  <div className="pr-2">
+                                    <div>
+                                      <span className="font-medium">{vehicle.registration}</span> - {vehicle.brand} {vehicle.model} ({vehicle.capacity} places)
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {vehicle.fuel_type} | {vehicle.mileage} km | Score écologique: {vehicle.ecological_score || 50}
+                                    </div>
                                   </div>
                                   <Button 
                                     variant="ghost" 

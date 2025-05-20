@@ -26,10 +26,12 @@ serve(async (req) => {
       - Fuel type: ${vehicleData.fuel}
       - Passenger capacity: ${vehicleData.capacity}
       ${vehicleData.year ? `- Year: ${vehicleData.year}` : ''}
+      ${vehicleData.mileage ? `- Mileage: ${vehicleData.mileage} km` : ''}
 
       Please provide ONLY a number between 0 and 100 representing the ecological score,
       where 100 is the most ecological (clean, efficient, sustainable) and 0 is the least ecological.
       Consider factors like emissions, fuel efficiency per passenger, and environmental impact.
+      Higher mileage vehicles should generally score lower due to decreased efficiency over time.
       Return ONLY the number, no explanation.
     `;
 

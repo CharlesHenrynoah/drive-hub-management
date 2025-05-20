@@ -10,6 +10,7 @@ interface VehicleData {
   capacity: number;
   year?: number;
   emissions?: number;
+  mileage?: number;
 }
 
 export async function calculateEcologicalScore(vehicleData: VehicleData): Promise<number> {
@@ -61,7 +62,7 @@ function getDefaultEcologicalScore(vehicleData: VehicleData): number {
   
   // Adjust based on fuel type
   switch (vehicleData.fuel) {
-    case "Electrique":
+    case "Électrique":
       score += 30;
       break;
     case "Hybride":
@@ -95,6 +96,17 @@ function getDefaultEcologicalScore(vehicleData: VehicleData): number {
       score += 5;
     } else if (age > 10) {
       score -= 10; // Older vehicles are typically less efficient
+    }
+  }
+  
+  // Adjust based on mileage if provided
+  if (vehicleData.mileage !== undefined) {
+    if (vehicleData.mileage < 10000) {
+      score += 5; // Low mileage is better
+    } else if (vehicleData.mileage > 100000) {
+      score -= 10; // High mileage vehicles tend to be less efficient
+    } else if (vehicleData.mileage > 50000) {
+      score -= 5; // Medium-high mileage
     }
   }
   
