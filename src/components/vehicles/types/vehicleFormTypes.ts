@@ -24,3 +24,12 @@ export interface AddVehicleFormProps {
   onOpenChange?: (open: boolean) => void;
   vehicleToEdit?: Vehicle;
 }
+
+// Définition simplifiée de Driver pour les composants de flotte
+export interface FleetDriver {
+  id: string;
+  id_chauffeur: string;
+  nom: string;
+  prenom: string;
+  ville?: string;
+}

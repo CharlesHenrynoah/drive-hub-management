@@ -16,16 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-// Types de véhicules fixes correspondant à ceux proposés dans la partie chauffeur
-const fixedVehicleTypes = [
-  { value: "Minibus", label: "Minibus" },
-  { value: "Minicar", label: "Minicar" },
-  { value: "Autocar Standard", label: "Autocar Standard" },
-  { value: "Autocar Grand Tourisme", label: "Autocar Grand Tourisme" },
-  { value: "VTC", label: "VTC" },
-  { value: "Berline", label: "Berline" }
-];
+import { vehicleTypes } from "./constants/vehicleFormConstants";
 
 interface VehicleTypeFieldProps {
   value: string;
@@ -41,7 +32,7 @@ export function VehicleTypeField({
   const [open, setOpen] = useState(false);
 
   // Trouver le type sélectionné pour l'affichage
-  const selectedType = fixedVehicleTypes.find(
+  const selectedType = vehicleTypes.find(
     (type) => type.value === value
   );
 
@@ -68,7 +59,7 @@ export function VehicleTypeField({
           <CommandList>
             <CommandEmpty>Aucun type trouvé.</CommandEmpty>
             <CommandGroup>
-              {fixedVehicleTypes.map((type) => (
+              {vehicleTypes.map((type) => (
                 <CommandItem
                   key={type.value}
                   onSelect={() => {

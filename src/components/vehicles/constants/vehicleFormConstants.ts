@@ -20,6 +20,16 @@ export const cities = [
   "Saint-Étienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nîmes", "Clermont-Ferrand"
 ];
 
+// Liste des types de véhicules - UNIQUEMENT les 6 types de la partie chauffeur
+export const vehicleTypes = [
+  { value: "Minibus", label: "Minibus" },
+  { value: "Minicar", label: "Minicar" },
+  { value: "Autocar Standard", label: "Autocar Standard" },
+  { value: "Autocar Grand Tourisme", label: "Autocar Grand Tourisme" },
+  { value: "VTC", label: "VTC" },
+  { value: "Berline", label: "Berline" }
+];
+
 // Capacités par défaut pour chaque type de véhicule
 export const getDefaultCapacityByType = (vehicleType: string): number => {
   switch(vehicleType) {
