@@ -25,14 +25,14 @@ export interface AddVehicleFormProps {
   vehicleToEdit?: Vehicle;
 }
 
-// Définition simplifiée de Driver pour les composants de flotte
+// Définition simplifiée de Driver pour les composants de flotte, en accord avec le type Driver complet
 export interface FleetDriver {
   id: string;
   id_chauffeur: string;
   nom: string;
   prenom: string;
   ville?: string;
-  email?: string;
-  telephone?: string;
-  piece_identite?: string;
+  email: string;
+  telephone: string;
+  piece_identite: string;
 }
