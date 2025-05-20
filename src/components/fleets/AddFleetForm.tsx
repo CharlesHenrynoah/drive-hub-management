@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -16,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
+import { vehicleTypes, fuelTypes } from "@/components/vehicles/constants/vehicleFormConstants";
+import { VehicleTypeField } from "@/components/vehicles/VehicleTypeField";
 
 // Type for vehicles
 type Vehicle = {
@@ -32,6 +35,9 @@ type Driver = {
   nom: string;
   prenom: string;
   ville?: string;
+  email: string;
+  telephone: string;
+  piece_identite: string;
 };
 
 // Type for new vehicle creation
@@ -88,8 +94,6 @@ export function AddFleetForm({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("existing");
   const [newVehicles, setNewVehicles] = useState<NewVehicle[]>([]);
-  const [availableFuelTypes] = useState(['Essence', 'Diesel', 'Électrique', 'Hybride', 'GPL', 'GNV', 'Biodiesel', 'Hydrogène']);
-  const [availableVehicleTypes] = useState(['Berline', 'SUV', 'Monospace', 'Utilitaire', 'Minibus', 'Autocar', 'Minicar', 'Autocar Standard', 'Autocar Grand Tourisme', 'VTC', 'Van']);
   const [calculatingScore, setCalculatingScore] = useState(false);
   const [currentEcologicalScore, setCurrentEcologicalScore] = useState(50);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -470,9 +474,24 @@ export function AddFleetForm({
                             {vehicleForm.formState.errors.registration && <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.registration.message}</p>}
                           </div>
                           
+                          <div>
+                            <FormLabel htmlFor="type">Type de véhicule</FormLabel>
+                            <VehicleTypeField
+                              value={vehicleForm.watch("type")}
+                              onChange={(value) => vehicleForm.setValue("type", value)}
+                            />
+                            {vehicleForm.formState.errors.type && <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.type.message}</p>}
+                          </div>
                           
-                          
-                          
+                          <div>
+                            <FormLabel htmlFor="capacity">Capacité (places)</FormLabel>
+                            <FormControl>
+                              <Input id="capacity" type="number" min="1" {...vehicleForm.register("capacity", {
+                              valueAsNumber: true
+                            })} />
+                            </FormControl>
+                            {vehicleForm.formState.errors.capacity && <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.capacity.message}</p>}
+                          </div>
                           
                           <div>
                             <FormLabel htmlFor="fuel_type">Type de carburant</FormLabel>
@@ -483,7 +502,7 @@ export function AddFleetForm({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {availableFuelTypes.map(fuel => <SelectItem key={fuel} value={fuel}>{fuel}</SelectItem>)}
+                                {fuelTypes.map(fuel => <SelectItem key={fuel} value={fuel}>{fuel}</SelectItem>)}
                               </SelectContent>
                             </Select>
                             {vehicleForm.formState.errors.fuel_type && <p className="text-sm font-medium text-destructive">{vehicleForm.formState.errors.fuel_type.message}</p>}
