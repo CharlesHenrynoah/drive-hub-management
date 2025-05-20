@@ -208,7 +208,7 @@ export function VehiclesManagement() {
               <TableHead>Score écologique</TableHead>
               <TableHead>Localisation</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -226,7 +226,7 @@ export function VehiclesManagement() {
               </TableRow>
             ) : (
               filteredVehicles.map((vehicle) => (
-                <TableRow key={vehicle.id}>
+                <TableRow key={vehicle.id} onClick={() => handleViewDetails(vehicle)} className="cursor-pointer">
                   <TableCell className="font-medium">
                     {vehicle.brand} {vehicle.model}
                   </TableCell>
@@ -269,31 +269,38 @@ export function VehiclesManagement() {
                       {vehicle.status || "Disponible"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
+                  <TableCell className="text-right">
+                    <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleViewDetails(vehicle)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDetails(vehicle);
+                        }}
                       >
                         <Truck className="h-4 w-4" />
                         <span className="sr-only">Détails</span>
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditVehicle(vehicle)}
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditVehicle(vehicle);
+                        }}
                       >
-                        Modifier
+                        <span className="sr-only">Modifier</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive/80"
+                        size="icon"
                         onClick={(e) => handleDeleteClick(vehicle, e)}
+                        className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                        aria-label="Supprimer le véhicule"
                       >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Supprimer
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
