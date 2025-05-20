@@ -8,21 +8,33 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
 interface VehicleTypeSelectorProps {
-  selectedTypes: string[];
-  onChange: (selectedTypes: string[]) => void;
-  maxSelections?: number;
+  selectedType?: string;
+  onTypeChange: (type: string) => void;
 }
 
 export function VehicleTypeSelector({
-  selectedTypes,
-  onChange,
-  maxSelections = 6,
+  selectedType = "",
+  onTypeChange,
 }: VehicleTypeSelectorProps) {
   const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
-  const [internalSelectedTypes, setInternalSelectedTypes] = useState<string[]>([]);
+  
+  // Handle type selection
+  const handleTypeClick = (type: string) => {
+    if (!type || type.trim() === '') {
+      console.warn("Attempted to select empty vehicle type");
+      return;
+    }
+    
+    // If the same type is clicked, deselect it
+    if (selectedType === type) {
+      onTypeChange("");
+    } else {
+      onTypeChange(type);
+    }
+  };
 
-  // Ensure all vehicle types are valid (no empty strings)
+  // Filter valid vehicle types
   const validVehicleTypes = vehicleTypes.filter(vt => 
     vt && 
     typeof vt.type === 'string' && 
@@ -30,70 +42,6 @@ export function VehicleTypeSelector({
     vt.id !== null && 
     vt.id !== undefined
   );
-  
-  // Use effect to initialize internal state and sync with parent
-  useEffect(() => {
-    if (!selectedTypes) {
-      setInternalSelectedTypes([]);
-      return;
-    }
-    
-    // Filter out any empty values
-    const validSelections = selectedTypes.filter(type => type && type.trim() !== '');
-    setInternalSelectedTypes(validSelections);
-    
-    // If we filtered anything, update parent
-    if (validSelections.length !== selectedTypes.length) {
-      onChange(validSelections);
-    }
-  }, [selectedTypes, onChange]);
-  
-  // Clean up any invalid selections whenever vehicle types change
-  useEffect(() => {
-    if (validVehicleTypes.length > 0 && internalSelectedTypes.length > 0) {
-      // Filter out any invalid or empty selected types
-      const validSelectedTypes = internalSelectedTypes.filter(type => 
-        type && 
-        type.trim() !== '' && 
-        validVehicleTypes.some(vt => vt.type === type)
-      );
-      
-      // Update selected types if any were filtered out
-      if (validSelectedTypes.length !== internalSelectedTypes.length) {
-        setInternalSelectedTypes(validSelectedTypes);
-        onChange(validSelectedTypes);
-      }
-    }
-  }, [validVehicleTypes, internalSelectedTypes, onChange]);
-
-  const handleTypeClick = (type: string) => {
-    if (!type || type.trim() === '') {
-      console.warn("Attempted to select empty vehicle type");
-      return;
-    }
-    
-    // Check if already selected
-    const isSelected = internalSelectedTypes.includes(type);
-    
-    if (isSelected) {
-      // Remove from selection
-      const newSelectedTypes = internalSelectedTypes.filter(t => t !== type);
-      setInternalSelectedTypes(newSelectedTypes);
-      onChange(newSelectedTypes);
-      setError(null);
-    } else {
-      // Add to selection if under max limit
-      if (internalSelectedTypes.length >= maxSelections) {
-        setError(`Vous pouvez sélectionner maximum ${maxSelections} types de véhicules`);
-        return;
-      }
-      
-      const newSelectedTypes = [...internalSelectedTypes, type];
-      setInternalSelectedTypes(newSelectedTypes);
-      onChange(newSelectedTypes);
-      setError(null);
-    }
-  };
 
   if (isLoading) {
     return <div>Chargement des types de véhicules...</div>;
@@ -106,12 +54,10 @@ export function VehicleTypeSelector({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2 mb-2">
-        {internalSelectedTypes.length > 0 ? (
-          internalSelectedTypes.map((type) => (
-            <Badge key={type} variant="outline" className="bg-primary/10">
-              {type}
-            </Badge>
-          ))
+        {selectedType ? (
+          <Badge key={selectedType} variant="outline" className="bg-primary/10">
+            {selectedType}
+          </Badge>
         ) : (
           <div className="text-sm text-muted-foreground">Aucun type sélectionné</div>
         )}
@@ -120,9 +66,9 @@ export function VehicleTypeSelector({
       <ScrollArea className="h-[220px] pr-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {validVehicleTypes.map((vehicleType) => {
-            // Ensure type is non-empty to prevent SelectItem errors
+            // Ensure type is non-empty to prevent errors
             if (!vehicleType.type || vehicleType.type.trim() === '') {
-              return null; // Skip this item completely
+              return null;
             }
             
             return (
@@ -133,7 +79,7 @@ export function VehicleTypeSelector({
                 onClick={() => handleTypeClick(vehicleType.type)}
                 className={cn(
                   "flex items-start justify-between p-3 h-auto",
-                  internalSelectedTypes.includes(vehicleType.type) && "border-primary ring-1 ring-primary"
+                  selectedType === vehicleType.type && "border-primary ring-1 ring-primary"
                 )}
               >
                 <div className="flex flex-col items-start text-left">
@@ -145,7 +91,7 @@ export function VehicleTypeSelector({
                     Capacité: {vehicleType.capacity_min} - {vehicleType.capacity_max} passagers
                   </span>
                 </div>
-                {internalSelectedTypes.includes(vehicleType.type) && (
+                {selectedType === vehicleType.type && (
                   <CheckIcon className="h-4 w-4 text-primary" />
                 )}
               </Button>
@@ -153,11 +99,6 @@ export function VehicleTypeSelector({
           })}
         </div>
       </ScrollArea>
-      
-      {error && <div className="text-sm text-destructive mt-1">{error}</div>}
-      <div className="text-xs text-muted-foreground mt-1">
-        Sélectionnez jusqu'à {maxSelections} types de véhicules
-      </div>
     </div>
   );
 }
