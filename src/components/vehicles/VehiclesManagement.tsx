@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, RefreshCcw, MapPin, Truck } from "lucide-react";
 import { VehiclesAddModal } from "./VehiclesAddModal";
@@ -28,8 +27,6 @@ export function VehiclesManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [isViewingDetails, setIsViewingDetails] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const navigate = useNavigate();
 
   const fetchVehicles = async () => {
     try {

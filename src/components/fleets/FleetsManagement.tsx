@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EditFleetForm } from "./EditFleetForm";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Driver } from "@/types/driver";
 
 // Type for fleets from the database
 export type Fleet = {
@@ -42,9 +43,10 @@ export type Fleet = {
   created_at: string;
   updated_at: string;
   vehicles?: { id: string; registration: string }[];
-  drivers?: { id: string; nom: string; prenom: string }[];
+  drivers?: Driver[];
   companyName?: string;
   vehicleCount?: number;
+  driverCount?: number;
 };
 
 // Type for companies
@@ -101,7 +103,7 @@ export function FleetsManagement() {
           return;
         }
         
-        // Enhance fleet data with company names and counts
+        // Enhance fleet data with company names, counts, and related data
         const enhancedFleets = await Promise.all(
           fleetsData.map(async (fleet) => {
             // Count vehicles for this fleet
@@ -114,10 +116,47 @@ export function FleetsManagement() {
               console.error('Error counting vehicles:', vehicleError);
             }
             
+            // Count drivers for this fleet
+            const { count: driverCount, error: driverError } = await supabase
+              .from('fleet_drivers')
+              .select('*', { count: 'exact', head: true })
+              .eq('fleet_id', fleet.id);
+              
+            if (driverError) {
+              console.error('Error counting drivers:', driverError);
+            }
+            
+            // Get driver details for this fleet
+            const { data: fleetDriversData, error: fleetDriversError } = await supabase
+              .from('fleet_drivers')
+              .select('driver_id')
+              .eq('fleet_id', fleet.id);
+              
+            if (fleetDriversError) {
+              console.error('Error fetching fleet drivers:', fleetDriversError);
+            }
+            
+            let drivers: Driver[] = [];
+            if (fleetDriversData && fleetDriversData.length > 0) {
+              const driverIds = fleetDriversData.map(fd => fd.driver_id);
+              const { data: driversData, error: driversError } = await supabase
+                .from('drivers')
+                .select('id, nom, prenom, ville')
+                .in('id', driverIds);
+                
+              if (driversError) {
+                console.error('Error fetching drivers:', driversError);
+              } else {
+                drivers = driversData || [];
+              }
+            }
+            
             return {
               ...fleet,
               companyName: companyMap[fleet.company_id] || 'Entreprise inconnue',
-              vehicleCount: vehicleCount || 0
+              vehicleCount: vehicleCount || 0,
+              driverCount: driverCount || 0,
+              drivers
             };
           })
         );
@@ -214,6 +253,22 @@ export function FleetsManagement() {
     (fleet.companyName && fleet.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Format driver information for display
+  const formatDriverInfo = (drivers: Driver[] | undefined) => {
+    if (!drivers || drivers.length === 0) return "Aucun chauffeur";
+    
+    // Show only the first 2 drivers with their names and locations
+    const displayDrivers = drivers.slice(0, 2).map(driver => {
+      const location = driver.ville ? ` (${driver.ville})` : '';
+      return `${driver.prenom} ${driver.nom}${location}`;
+    });
+    
+    // If there are more than 2 drivers, show a count of additional drivers
+    const additionalCount = drivers.length > 2 ? ` +${drivers.length - 2} autres` : '';
+    
+    return displayDrivers.join(", ") + additionalCount;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -239,7 +294,7 @@ export function FleetsManagement() {
       
       <div className="rounded-md border">
         <ScrollArea className="w-full" orientation="both">
-          <div className="min-w-[900px]">
+          <div className="min-w-[1100px]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -247,6 +302,7 @@ export function FleetsManagement() {
                   <TableHead className="w-40">Nom</TableHead>
                   <TableHead className="w-40">Entreprise</TableHead>
                   <TableHead className="w-40">Nombre de véhicules</TableHead>
+                  <TableHead className="w-40">Chauffeurs</TableHead>
                   <TableHead className="w-40">Date de création</TableHead>
                   <TableHead className="w-40">Dernière modification</TableHead>
                   <TableHead className="w-48">Actions</TableHead>
@@ -255,7 +311,7 @@ export function FleetsManagement() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={8} className="text-center py-6">
                       <div className="flex justify-center items-center">
                         <Loader2 className="h-6 w-6 animate-spin mr-2" />
                         Chargement des données...
@@ -264,7 +320,7 @@ export function FleetsManagement() {
                   </TableRow>
                 ) : filteredFleets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10">
+                    <TableCell colSpan={8} className="text-center py-10">
                       <div className="flex flex-col items-center space-y-4">
                         <p className="text-lg font-medium">Aucune flotte disponible</p>
                         <p className="text-muted-foreground">Ajoutez votre première flotte pour démarrer</p>
@@ -282,6 +338,11 @@ export function FleetsManagement() {
                       <TableCell>{fleet.name}</TableCell>
                       <TableCell>{fleet.companyName}</TableCell>
                       <TableCell>{fleet.vehicleCount || 0}</TableCell>
+                      <TableCell>
+                        <div className="max-w-[250px] truncate" title={fleet.drivers ? fleet.drivers.map(d => `${d.prenom} ${d.nom} ${d.ville ? `(${d.ville})` : ''}`).join(', ') : 'Aucun chauffeur'}>
+                          {formatDriverInfo(fleet.drivers)}
+                        </div>
+                      </TableCell>
                       <TableCell>{new Date(fleet.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(fleet.updated_at).toLocaleDateString()}</TableCell>
                       <TableCell>

@@ -53,6 +53,7 @@ type Driver = {
   id_chauffeur: string;
   nom: string;
   prenom: string;
+  ville?: string;
 };
 
 // Type for new vehicle creation
@@ -162,10 +163,10 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
           setVehicles(vehiclesData || []);
         }
         
-        // Fetch drivers for selected company
+        // Fetch drivers for selected company with ville (location) information
         const { data: driversData, error: driversError } = await supabase
           .from('drivers')
-          .select('id, id_chauffeur, nom, prenom')
+          .select('id, id_chauffeur, nom, prenom, ville')
           .eq('id_entreprise', selectedCompanyId);
           
         if (driversError) {
@@ -246,7 +247,14 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
   // Add new vehicle to list
   const handleAddVehicle = (data: z.infer<typeof vehicleSchema>) => {
     const newVehicle: NewVehicle = {
-      ...data,
+      brand: data.brand,
+      model: data.model,
+      registration: data.registration,
+      type: data.type,
+      capacity: data.capacity,
+      fuel_type: data.fuel_type,
+      mileage: data.mileage,
+      year: data.year,
       ecological_score: currentEcologicalScore,
     };
     setNewVehicles([...newVehicles, newVehicle]);
@@ -783,6 +791,7 @@ export function AddFleetForm({ companies, onFleetAdded }: AddFleetFormProps) {
                                       </FormControl>
                                       <FormLabel className="font-normal cursor-pointer">
                                         {driver.id_chauffeur} - {driver.prenom} {driver.nom}
+                                        {driver.ville && <span className="text-xs text-muted-foreground ml-1">({driver.ville})</span>}
                                       </FormLabel>
                                     </FormItem>
                                   )

@@ -73,12 +73,23 @@ Deno.serve(async (req) => {
       throw new Error(`Erreur lors de la récupération des véhicules de la flotte: ${fleetVehiclesError.message}`);
     }
     
-    // Si aucun véhicule n'est trouvé dans cette flotte
-    if (fleetVehicles.length === 0) {
+    // Récupérer les IDs des chauffeurs de cette flotte
+    const { data: fleetDrivers, error: fleetDriversError } = await supabase
+      .from('fleet_drivers')
+      .select('driver_id')
+      .eq('fleet_id', fleetId);
+      
+    if (fleetDriversError) {
+      throw new Error(`Erreur lors de la récupération des chauffeurs de la flotte: ${fleetDriversError.message}`);
+    }
+    
+    // Si aucun véhicule et aucun chauffeur n'est trouvé dans cette flotte
+    if (fleetVehicles.length === 0 && fleetDrivers.length === 0) {
       return new Response(
         JSON.stringify({ 
           fleet: fleet,
-          vehicles: []
+          vehicles: [],
+          drivers: []
         }),
         {
           status: 200,
@@ -87,32 +98,58 @@ Deno.serve(async (req) => {
       );
     }
     
-    // Récupérer les détails des véhicules
-    const vehicleIds = fleetVehicles.map(fv => fv.vehicle_id);
-    const { data: vehicles, error: vehiclesError } = await supabase
-      .from('vehicles')
-      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status')
-      .in('id', vehicleIds);
+    // Récupérer les détails des véhicules si nécessaire
+    let vehicles = [];
+    let vehiclesByType = {};
+    
+    if (fleetVehicles.length > 0) {
+      const vehicleIds = fleetVehicles.map(fv => fv.vehicle_id);
+      const { data: vehiclesData, error: vehiclesError } = await supabase
+        .from('vehicles')
+        .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status')
+        .in('id', vehicleIds);
+        
+      if (vehiclesError) {
+        throw new Error(`Erreur lors de la récupération des véhicules: ${vehiclesError.message}`);
+      }
       
-    if (vehiclesError) {
-      throw new Error(`Erreur lors de la récupération des véhicules: ${vehiclesError.message}`);
+      vehicles = vehiclesData || [];
+      
+      // Grouper les véhicules par type
+      vehiclesByType = {};
+      vehiclesData.forEach(vehicle => {
+        if (!vehiclesByType[vehicle.type]) {
+          vehiclesByType[vehicle.type] = [];
+        }
+        vehiclesByType[vehicle.type].push(vehicle);
+      });
     }
     
-    // Grouper les véhicules par type
-    const vehiclesByType: Record<string, any[]> = {};
-    vehicles.forEach(vehicle => {
-      if (!vehiclesByType[vehicle.type]) {
-        vehiclesByType[vehicle.type] = [];
+    // Récupérer les détails des chauffeurs si nécessaire
+    let drivers = [];
+    
+    if (fleetDrivers.length > 0) {
+      const driverIds = fleetDrivers.map(fd => fd.driver_id);
+      const { data: driversData, error: driversError } = await supabase
+        .from('drivers')
+        .select('id, id_chauffeur, nom, prenom, email, telephone, photo, ville, disponible')
+        .in('id', driverIds);
+        
+      if (driversError) {
+        throw new Error(`Erreur lors de la récupération des chauffeurs: ${driversError.message}`);
       }
-      vehiclesByType[vehicle.type].push(vehicle);
-    });
+      
+      drivers = driversData || [];
+    }
     
     return new Response(
       JSON.stringify({ 
         fleet: fleet,
         vehicles: vehicles,
         vehicles_by_type: vehiclesByType,
-        total_count: vehicles.length
+        drivers: drivers,
+        total_vehicles: vehicles.length,
+        total_drivers: drivers.length
       }),
       {
         status: 200,
