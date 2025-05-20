@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, RefreshCcw, MapPin, Truck } from "lucide-react";
-import VehiclesAddModal from "./VehiclesAddModal";
-import VehiclesEditModal from "./VehiclesEditModal";
+import { VehiclesAddModal } from "./VehiclesAddModal";
+import { VehiclesEditModal } from "./VehiclesEditModal";
 import { VehicleDetailModal } from "./VehicleDetailModal";
 
 import {
@@ -239,6 +239,10 @@ export function VehiclesManagement() {
           isOpen={isViewingDetails}
           onClose={() => setIsViewingDetails(false)}
           vehicle={selectedVehicle}
+          onEdit={() => {
+            setIsViewingDetails(false);
+            handleEditVehicle(selectedVehicle);
+          }}
         />
       )}
     </div>

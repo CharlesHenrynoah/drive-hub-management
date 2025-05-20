@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 
 // Liste des villes par défaut
 const DEFAULT_CITIES = [
@@ -250,6 +251,24 @@ export function EditDriverForm({
     }
   }
 
+  // Convertir les entreprises en format compatible avec le Combobox
+  const companyItems = companies.map((company) => ({
+    label: company.name,
+    value: company.id,
+  }));
+
+  // Convertir les villes en format compatible avec le Combobox
+  const cityItems = DEFAULT_CITIES.map((city) => ({
+    label: city,
+    value: city,
+  }));
+  
+  // Pour le débogage seulement
+  console.log("Entreprise actuelle:", driver.id_entreprise);
+  console.log("Ville actuelle:", driver.ville);
+  console.log("Companies disponibles:", companies);
+  console.log("Form values:", form.getValues());
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -278,7 +297,7 @@ export function EditDriverForm({
                     <FormLabel>Disponibilité</FormLabel>
                     <Select 
                       onValueChange={(value) => field.onChange(value === "true")} 
-                      defaultValue={field.value ? "true" : "false"}
+                      value={field.value ? "true" : "false"}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -359,20 +378,15 @@ export function EditDriverForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ville</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez une ville" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {DEFAULT_CITIES.map((city) => (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Combobox
+                      items={cityItems}
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="Sélectionnez une ville"
+                      emptyMessage="Aucune ville trouvée"
+                    />
+                  </FormControl>
                   <FormMessage />
                   <FormDescription>
                     Ville où le chauffeur opère principalement
@@ -430,31 +444,16 @@ export function EditDriverForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Entreprise</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionnez une entreprise" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {isLoadingCompanies ? (
-                          <div className="flex items-center justify-center p-2">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" /> 
-                            Chargement...
-                          </div>
-                        ) : companies.length === 0 ? (
-                          <div className="p-2 text-center text-sm text-muted-foreground">
-                            Aucune entreprise disponible
-                          </div>
-                        ) : (
-                          companies.map((company) => (
-                            <SelectItem key={company.id} value={company.id}>
-                              {company.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        items={companyItems}
+                        value={field.value} 
+                        onChange={field.onChange}
+                        placeholder="Sélectionnez une entreprise"
+                        emptyMessage="Aucune entreprise disponible"
+                        loading={isLoadingCompanies}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
