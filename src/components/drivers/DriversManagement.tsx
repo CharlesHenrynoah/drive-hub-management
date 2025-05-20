@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { AddDriverModal } from "./AddDriverModal"
 import { EditDriverModal } from "./EditDriverModal"
 import { DriverDetailModal } from "./DriverDetailModal";
@@ -33,6 +33,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DotsHorizontalIcon } from "@radix-ui/react-icons"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Driver } from "@/types/driver";
 
 export function DriversManagement() {
@@ -42,6 +52,8 @@ export function DriversManagement() {
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   
   const [availableFilter, setAvailableFilter] = useState<boolean | null>(null);
 
@@ -94,6 +106,37 @@ export function DriversManagement() {
     }
   };
 
+  // Fonction pour supprimer un chauffeur
+  const deleteDriver = async (driverId: string) => {
+    try {
+      const { error } = await supabase
+        .from('drivers')
+        .delete()
+        .eq('id', driverId);
+
+      if (error) {
+        console.error("Erreur lors de la suppression du chauffeur:", error);
+        toast.error("Erreur lors de la suppression du chauffeur");
+        return;
+      }
+
+      toast.success("Chauffeur supprimé avec succès");
+      fetchDrivers(); // Actualiser la liste après suppression
+      setIsDeleteDialogOpen(false);
+      setDriverToDelete(null);
+    } catch (error) {
+      console.error("Erreur lors de la suppression du chauffeur:", error);
+      toast.error("Erreur lors de la suppression du chauffeur");
+    }
+  };
+
+  // Fonction pour ouvrir la boîte de dialogue de confirmation de suppression
+  const confirmDelete = (driver: Driver, e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêcher le déclenchement du clic sur la ligne
+    setDriverToDelete(driver);
+    setIsDeleteDialogOpen(true);
+  };
+
   const columns: ColumnDef<Driver>[] = [
     {
       accessorKey: "nom",
@@ -118,38 +161,56 @@ export function DriversManagement() {
     },
     {
       id: "actions",
+      header: "Actions",
       cell: ({ row }) => {
         const driver = row.original
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <DotsHorizontalIcon className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  navigator.clipboard.writeText(driver.id);
-                  toast("ID du chauffeur copié dans le presse-papier");
-                }}
-              >
-                Copier l'ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => {
-                setSelectedDriver(driver);
-                setIsDetailModalOpen(true);
-              }}>Voir</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setSelectedDriver(driver);
-                setIsEditModalOpen(true);
-              }}>Modifier</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <DotsHorizontalIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(driver.id);
+                    toast("ID du chauffeur copié dans le presse-papier");
+                  }}
+                >
+                  Copier l'ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  setSelectedDriver(driver);
+                  setIsDetailModalOpen(true);
+                }}>Voir</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setSelectedDriver(driver);
+                  setIsEditModalOpen(true);
+                }}>Modifier</DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={(e) => confirmDelete(driver, e)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  Supprimer
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+              onClick={(e) => confirmDelete(driver, e)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Supprimer</span>
+            </Button>
+          </div>
         )
       },
     },
@@ -275,6 +336,28 @@ export function DriversManagement() {
           setIsAddModalOpen(false);
         }}
       />
+
+      {/* Boîte de dialogue de confirmation de suppression */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le chauffeur {driverToDelete?.prenom} {driverToDelete?.nom} ?
+              Cette action ne peut pas être annulée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => driverToDelete && deleteDriver(driverToDelete.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
