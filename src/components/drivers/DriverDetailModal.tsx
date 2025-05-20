@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
 import { Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DriverDetailModalProps {
   driver: Driver;
@@ -16,6 +18,25 @@ interface DriverDetailModalProps {
 
 export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModalProps) {
   const { vehicleTypes, isLoading: isLoadingVehicleTypes } = useDriverVehicleTypes(driver.id);
+  
+  // Fetch company name
+  const { data: company, isLoading: isLoadingCompany } = useQuery({
+    queryKey: ["company", driver.id_entreprise],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("name")
+        .eq("id", driver.id_entreprise)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching company:", error);
+        return null;
+      }
+      
+      return data;
+    },
+  });
   
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -82,8 +103,17 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
             </div>
             
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">ID Entreprise</p>
-              <p className="font-medium">{driver.id_entreprise}</p>
+              <p className="text-sm font-medium text-muted-foreground">Entreprise</p>
+              {isLoadingCompany ? (
+                <div className="flex items-center">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Chargement...</span>
+                </div>
+              ) : company ? (
+                <p className="font-medium">{company.name}</p>
+              ) : (
+                <p className="font-medium">{driver.id_entreprise}</p>
+              )}
             </div>
 
             <div className="col-span-2">
