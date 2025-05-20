@@ -1,15 +1,17 @@
 
-// Importez les modules et composants nécessaires
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Driver } from "@/types/driver";
+import { VehicleTypeSelector } from "@/components/vehicles/VehicleTypeSelector";
+import { Database } from "@/integrations/supabase/types";
 
 import {
   Form,
@@ -18,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+// Liste des villes par défaut
+const DEFAULT_CITIES = [
+  "Paris",
+  "Marseille",
+  "Lyon",
+  "Toulouse",
+  "Nice",
+  "Nantes",
+  "Strasbourg",
+  "Montpellier",
+  "Bordeaux",
+  "Lille",
+  "Rennes",
+  "Reims",
+  "Le Havre",
+  "Saint-Étienne",
+  "Toulon",
+  "Grenoble",
+  "Dijon",
+  "Angers",
+  "Nîmes",
+  "Clermont-Ferrand",
+];
 
 // Définir les props pour le composant
 export interface EditDriverFormProps {
@@ -62,6 +89,9 @@ const formSchema = z.object({
   note_chauffeur: z.number(),
 });
 
+// Type VehicleType basé sur l'enum de la base de données
+type VehicleType = Database["public"]["Enums"]["vehicle_type"];
+
 export function EditDriverForm({ 
   driver,
   onSuccess,
@@ -69,6 +99,8 @@ export function EditDriverForm({
 }: EditDriverFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>([]);
 
   // Initialiser le formulaire avec les valeurs du chauffeur
   const form = useForm<z.infer<typeof formSchema>>({
@@ -82,14 +114,67 @@ export function EditDriverForm({
       date_debut_activite: new Date(driver.date_debut_activite),
       id_entreprise: driver.id_entreprise,
       disponible: driver.disponible,
-      ville: driver.ville,
+      ville: driver.ville || "",
       piece_identite: driver.piece_identite,
       certificat_medical: driver.certificat_medical,
       justificatif_domicile: driver.justificatif_domicile,
-      photo: driver.photo,
+      photo: driver.photo || "",
       note_chauffeur: driver.note_chauffeur,
     },
   });
+
+  // Charger les types de véhicules associés au chauffeur
+  useEffect(() => {
+    const fetchDriverVehicleTypes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('driver_vehicle_types')
+          .select('vehicle_type')
+          .eq('driver_id', driver.id);
+          
+        if (error) {
+          console.error("Error fetching driver vehicle types:", error);
+          return;
+        }
+        
+        if (data) {
+          const types = data.map((item) => item.vehicle_type);
+          setSelectedVehicleTypes(types);
+        }
+      } catch (error) {
+        console.error("Exception while fetching driver vehicle types:", error);
+      }
+    };
+    
+    fetchDriverVehicleTypes();
+  }, [driver.id]);
+
+  // Effet pour charger la liste des entreprises
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setIsLoadingCompanies(true);
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .order('name');
+        
+        if (error) {
+          console.error("Erreur lors du chargement des entreprises:", error);
+          toast.error("Impossible de charger la liste des entreprises");
+        } else {
+          setCompanies(data || []);
+        }
+      } catch (error) {
+        console.error("Exception lors du chargement des entreprises:", error);
+        toast.error("Erreur lors du chargement des entreprises");
+      } finally {
+        setIsLoadingCompanies(false);
+      }
+    };
+    
+    fetchCompanies();
+  }, []);
 
   // Soumettre le formulaire
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -119,6 +204,35 @@ export function EditDriverForm({
       
       if (error) throw error;
       
+      // Mise à jour des types de véhicules
+      // D'abord, supprimer toutes les anciennes associations
+      const { error: deleteError } = await supabase
+        .from('driver_vehicle_types')
+        .delete()
+        .eq('driver_id', driver.id);
+        
+      if (deleteError) {
+        console.error("Erreur lors de la suppression des types de véhicules:", deleteError);
+        toast.error("Erreur lors de la mise à jour des qualifications");
+      }
+      
+      // Ensuite, ajouter les nouvelles associations
+      if (selectedVehicleTypes.length > 0) {
+        const vehicleTypeAssociations = selectedVehicleTypes.map(type => ({
+          driver_id: driver.id,
+          vehicle_type: type as VehicleType
+        }));
+        
+        const { error: insertError } = await supabase
+          .from('driver_vehicle_types')
+          .insert(vehicleTypeAssociations);
+          
+        if (insertError) {
+          console.error("Erreur lors de l'ajout des types de véhicules:", insertError);
+          toast.error("Erreur lors de l'ajout des qualifications");
+        }
+      }
+      
       toast.success("Chauffeur mis à jour avec succès !");
       if (onSuccess) onSuccess();
     } catch (error: any) {
@@ -129,306 +243,336 @@ export function EditDriverForm({
     }
   }
 
-  // Effet pour charger la liste des entreprises
-  useState(() => {
-    async function fetchCompanies() {
-      try {
-        const { data, error } = await supabase
-          .from('companies')
-          .select('id, name');
-        
-        if (error) throw error;
-        
-        setCompanies(data || []);
-      } catch (error) {
-        console.error("Erreur lors du chargement des entreprises:", error);
-      }
-    }
-    
-    fetchCompanies();
-  });
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* ID Chauffeur */}
-          <FormField
-            control={form.control}
-            name="id_chauffeur"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>ID Chauffeur</FormLabel>
-                <FormControl>
-                  <Input placeholder="ID Chauffeur" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Disponibilité */}
-          <FormField
-            control={form.control}
-            name="disponible"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Disponibilité</FormLabel>
-                <Select 
-                  onValueChange={(value) => field.onChange(value === "true")} 
-                  defaultValue={field.value ? "true" : "false"}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une disponibilité" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="true">Disponible</SelectItem>
-                    <SelectItem value="false">Indisponible</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Nom */}
-          <FormField
-            control={form.control}
-            name="nom"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nom" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Prénom */}
-          <FormField
-            control={form.control}
-            name="prenom"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prénom</FormLabel>
-                <FormControl>
-                  <Input placeholder="Prénom" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Email */}
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="Email" type="email" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Téléphone */}
-          <FormField
-            control={form.control}
-            name="telephone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Téléphone</FormLabel>
-                <FormControl>
-                  <Input placeholder="Téléphone" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Date de début d'activité */}
-          <FormField
-            control={form.control}
-            name="date_debut_activite"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date de début d'activité</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Colonne de gauche - Informations personnelles */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="id_chauffeur"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ID Chauffeur</FormLabel>
                     <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Sélectionner une date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
+                      <Input placeholder="C-XXXX" {...field} />
                     </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Ville */}
-          <FormField
-            control={form.control}
-            name="ville"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Ville</FormLabel>
-                <FormControl>
-                  <Input placeholder="Ville" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Entreprise */}
-          <FormField
-            control={form.control}
-            name="id_entreprise"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Entreprise</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="disponible"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Disponibilité</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "true")} 
+                      defaultValue={field.value ? "true" : "false"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une disponibilité" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Disponible</SelectItem>
+                        <SelectItem value="false">Indisponible</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="nom"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Dupont" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="prenom"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prénom</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Jean" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une entreprise" />
-                    </SelectTrigger>
+                    <Input placeholder="jean.dupont@exemple.fr" type="email" {...field} />
                   </FormControl>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="telephone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Téléphone</FormLabel>
+                  <FormControl>
+                    <Input placeholder="06 12 34 56 78" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="ville"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ville</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez une ville" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {DEFAULT_CITIES.map((city) => (
+                        <SelectItem key={city} value={city}>
+                          {city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                  <FormDescription>
+                    Ville où le chauffeur opère principalement
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="date_debut_activite"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date de début d'activité</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "dd/MM/yyyy", { locale: fr })
+                            ) : (
+                              <span>Sélectionner une date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="id_entreprise"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entreprise</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionnez une entreprise" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {isLoadingCompanies ? (
+                          <div className="flex items-center justify-center p-2">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" /> 
+                            Chargement...
+                          </div>
+                        ) : companies.length === 0 ? (
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            Aucune entreprise disponible
+                          </div>
+                        ) : (
+                          companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>
+                              {company.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-          {/* Note */}
-          <FormField
-            control={form.control}
-            name="note_chauffeur"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Note</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="Note" 
-                    min="0" 
-                    max="5" 
-                    step="0.5" 
-                    {...field} 
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <div className="space-y-2">
+              <FormLabel>Types de véhicules (max 6)</FormLabel>
+              <VehicleTypeSelector 
+                selectedTypes={selectedVehicleTypes} 
+                onChange={setSelectedVehicleTypes} 
+                maxSelections={6} 
+              />
+              <FormDescription className="text-xs">
+                Sélectionnez jusqu'à 6 types de véhicules que ce chauffeur peut conduire
+              </FormDescription>
+            </div>
+          </div>
+          
+          {/* Colonne de droite - Documents */}
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="photo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Photo (URL)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="URL de la photo" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                  {field.value && (
+                    <div className="mt-2 p-2 border rounded-md">
+                      <img 
+                        src={field.value} 
+                        alt="Aperçu" 
+                        className="w-full h-40 object-cover rounded-md" 
+                      />
+                    </div>
+                  )}
+                </FormItem>
+              )}
+            />
 
-        {/* Pièce d'identité et Certificat Médical sur la même ligne */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="piece_identite"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Pièce d'identité</FormLabel>
-                <FormControl>
-                  <Input placeholder="Référence pièce d'identité" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="certificat_medical"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Certificat médical</FormLabel>
-                <FormControl>
-                  <Input placeholder="Référence certificat médical" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="piece_identite"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pièce d'identité</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Référence pièce d'identité" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="certificat_medical"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Certificat médical</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Référence certificat médical" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        {/* Justificatif de domicile et Photo sur la même ligne */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="justificatif_domicile"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Justificatif de domicile</FormLabel>
-                <FormControl>
-                  <Input placeholder="Référence justificatif de domicile" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="photo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Photo (URL)</FormLabel>
-                <FormControl>
-                  <Input placeholder="URL de la photo" {...field} value={field.value || ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="justificatif_domicile"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Justificatif de domicile</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Référence justificatif de domicile" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="note_chauffeur"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="Note" 
+                      min="0" 
+                      max="5" 
+                      step="0.5" 
+                      {...field} 
+                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <FormDescription>
+                    Note attribuée au chauffeur (0-5)
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         {/* Bouton de soumission */}
         <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? "Mise à jour en cours..." : buttonText}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Mise à jour en cours...
+            </>
+          ) : (
+            buttonText
+          )}
         </Button>
       </form>
     </Form>

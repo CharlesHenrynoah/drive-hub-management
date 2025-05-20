@@ -21,7 +21,7 @@ export default function DriversPage() {
             </p>
           </div>
           <ScrollArea className="w-full h-[calc(100vh-180px)] mt-6">
-            <div className="pr-4 pb-8">
+            <div className="pr-4 pb-12">
               <DriversManagement />
             </div>
           </ScrollArea>

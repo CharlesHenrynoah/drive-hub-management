@@ -13,7 +13,7 @@ interface EditDriverModalProps {
 export function EditDriverModal({ isOpen, onClose, driver, onSuccess }: EditDriverModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifier le chauffeur</DialogTitle>
         </DialogHeader>
