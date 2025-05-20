@@ -32,4 +32,7 @@ export interface FleetDriver {
   nom: string;
   prenom: string;
   ville?: string;
+  email?: string;
+  telephone?: string;
+  piece_identite?: string;
 }
