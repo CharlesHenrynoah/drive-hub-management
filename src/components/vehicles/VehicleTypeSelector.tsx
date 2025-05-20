@@ -13,7 +13,6 @@ export interface VehicleTypeSelectorProps {
   onTypeChange?: (type: string) => void;
   onChange?: (types: string[]) => void;
   maxSelections?: number;
-  vehicleTypesOverride?: any[];
 }
 
 export function VehicleTypeSelector({
@@ -22,13 +21,9 @@ export function VehicleTypeSelector({
   onTypeChange,
   onChange,
   maxSelections = 1,
-  vehicleTypesOverride,
 }: VehicleTypeSelectorProps) {
-  const { data: fetchedVehicleTypes = [], isLoading } = useVehicleTypes();
+  const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
-  
-  // Use override if provided, otherwise use fetched types
-  const vehicleTypes = vehicleTypesOverride || fetchedVehicleTypes;
   
   const isMultiSelect = maxSelections > 1;
   
@@ -82,7 +77,7 @@ export function VehicleTypeSelector({
     vt.id !== undefined
   );
 
-  if (isLoading && !vehicleTypesOverride) {
+  if (isLoading) {
     return <div>Chargement des types de véhicules...</div>;
   }
 
