@@ -2,7 +2,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AddVehicleForm } from "./AddVehicleForm";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 
 interface VehiclesAddModalProps {
