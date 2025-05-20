@@ -122,11 +122,6 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
               <p className="font-medium">{driver.certificat_medical}</p>
             </div>
             
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Justificatif de domicile</p>
-              <p className="font-medium">{driver.justificatif_domicile}</p>
-            </div>
-            
             <div className="col-span-2 flex justify-end space-x-2 pt-4">
               <Button variant="outline" onClick={onClose}>
                 Fermer
