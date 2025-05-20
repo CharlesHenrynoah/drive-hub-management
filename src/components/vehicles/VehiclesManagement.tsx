@@ -1,11 +1,14 @@
 
 import { useState, useEffect } from "react";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { PlusCircle, RefreshCcw, MapPin, Truck } from "lucide-react";
+import VehiclesAddModal from "./VehiclesAddModal";
+import VehiclesEditModal from "./VehiclesEditModal";
+import { VehicleDetailModal } from "./VehicleDetailModal";
+
 import {
   Table,
   TableBody,
@@ -13,290 +16,231 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { VehiclesAddModal } from "./VehiclesAddModal";
-import { VehiclesEditModal } from "./VehiclesEditModal";
-import { VehicleDetailModal } from "./VehicleDetailModal";
-import { MoreHorizontal } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Vehicle } from "@/types/vehicle";
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 export function VehiclesManagement() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAddingVehicle, setIsAddingVehicle] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isViewingDetails, setIsViewingDetails] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  
-  useEffect(() => {
-    fetchVehicles();
-    fetchCompanies();
-  }, [companyFilter]);
+  const navigate = useNavigate();
 
   const fetchVehicles = async () => {
-    setIsLoading(true);
     try {
-      let query = supabase
-        .from('vehicles')
-        .select('*');
-        
-      if (companyFilter) {
-        query = query.eq('company_id', companyFilter);
-      }
-      
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Erreur lors de la récupération des véhicules:", error);
-        toast.error("Erreur lors de la récupération des véhicules");
-      } else {
-        // Format vehicles and handle Note_Moyenne_Client properly
-        const formattedVehicles = (data || []).map(vehicle => ({
-          ...vehicle,
-          Note_Moyenne_Client: vehicle.Note_Moyenne_Client || undefined
-        })) as Vehicle[];
-        
-        setVehicles(formattedVehicles);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la récupération des véhicules:", error);
-      toast.error("Erreur lors de la récupération des véhicules");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCompanies = async () => {
-    try {
+      setLoading(true);
       const { data, error } = await supabase
-        .from('companies')
-        .select('id, name');
+        .from("vehicles")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Erreur lors de la récupération des entreprises:", error);
-        toast.error("Erreur lors de la récupération des entreprises");
-      } else {
-        setCompanies(data || []);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la récupération des entreprises:", error);
-      toast.error("Erreur lors de la récupération des entreprises");
+      if (error) throw error;
+      setVehicles(data || []);
+    } catch (error: any) {
+      toast.error(`Erreur lors du chargement des véhicules: ${error.message}`);
+      console.error("Error fetching vehicles:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getCompanyName = (companyId: string | undefined) => {
-    const company = companies.find(c => c.id === companyId);
-    return company ? company.name : "N/A";
+  useEffect(() => {
+    fetchVehicles();
+  }, []);
+
+  const handleAddVehicle = () => {
+    setIsAddingVehicle(true);
   };
 
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const searchTerm = search.toLowerCase();
-    return (
-      vehicle.brand.toLowerCase().includes(searchTerm) ||
-      vehicle.model.toLowerCase().includes(searchTerm) ||
-      vehicle.registration.toLowerCase().includes(searchTerm)
-    );
-  });
-
-  // Handle row selection
-  const handleRowClick = (vehicle: Vehicle) => {
+  const handleEditVehicle = (vehicle: any) => {
     setSelectedVehicle(vehicle);
-    setIsDetailModalOpen(true);
+    setIsEditing(true);
   };
 
-  const columns: ColumnDef<Vehicle>[] = [
-    {
-      accessorKey: "brand",
-      header: "Marque",
-    },
-    {
-      accessorKey: "model",
-      header: "Modèle",
-    },
-    {
-      accessorKey: "type",
-      header: "Type",
-    },
-    {
-      accessorKey: "capacity",
-      header: "Capacité",
-    },
-    {
-      accessorKey: "registration",
-      header: "Immatriculation",
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const vehicle = row.original
+  const handleViewDetails = (vehicle: any) => {
+    setSelectedVehicle(vehicle);
+    setIsViewingDetails(true);
+  };
 
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(vehicle.id)}
-              >
-                Copier l'identifiant
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                Voir les détails
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      },
-    },
-  ]
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Disponible":
+        return "bg-green-500 hover:bg-green-600";
+      case "En mission":
+        return "bg-blue-500 hover:bg-blue-600";
+      case "En maintenance":
+        return "bg-yellow-500 hover:bg-yellow-600";
+      case "Hors service":
+        return "bg-red-500 hover:bg-red-600";
+      default:
+        return "bg-gray-500 hover:bg-gray-600";
+    }
+  };
 
-  const table = useReactTable({
-    data: filteredVehicles,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  })
+  const filteredVehicles = vehicles.filter(
+    (vehicle) =>
+      vehicle.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      vehicle.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      vehicle.registration.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (vehicle.location &&
+        vehicle.location.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <div className="w-full">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
-        <div className="flex flex-col md:flex-row items-center gap-2">
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="w-1/3">
           <Input
-            type="search"
             placeholder="Rechercher un véhicule..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-xs"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Select onValueChange={(value) => setCompanyFilter(value === "all" ? null : value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrer par entreprise" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les entreprises</SelectItem>
-              {companies.map(company => (
-                <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
-        <Button onClick={() => setIsAddModalOpen(true)}>Ajouter un véhicule</Button>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={fetchVehicles}>
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
+          <Button onClick={handleAddVehicle}>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Ajouter un véhicule
+          </Button>
+        </div>
       </div>
-      
-      <div className="rounded-md border bg-card">
+
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
+            <TableRow>
+              <TableHead>Marque & Modèle</TableHead>
+              <TableHead>Immatriculation</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Capacité</TableHead>
+              <TableHead>Score écologique</TableHead>
+              <TableHead>Localisation</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   Chargement des véhicules...
                 </TableCell>
               </TableRow>
+            ) : filteredVehicles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center">
+                  Aucun véhicule trouvé
+                </TableCell>
+              </TableRow>
             ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  onClick={() => handleRowClick(row.original)}
-                  className="cursor-pointer hover:bg-secondary"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+              filteredVehicles.map((vehicle) => (
+                <TableRow key={vehicle.id}>
+                  <TableCell className="font-medium">
+                    {vehicle.brand} {vehicle.model}
+                  </TableCell>
+                  <TableCell>{vehicle.registration}</TableCell>
+                  <TableCell>{vehicle.vehicle_type || vehicle.type}</TableCell>
+                  <TableCell>{vehicle.capacity} places</TableCell>
+                  <TableCell>
+                    {vehicle.ecological_score !== null ? (
+                      <div className="flex items-center">
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full mr-2 ${
+                            vehicle.ecological_score >= 80
+                              ? "bg-green-500"
+                              : vehicle.ecological_score >= 50
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                        ></span>
+                        {vehicle.ecological_score}/100
+                      </div>
+                    ) : (
+                      "N/A"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {vehicle.location ? (
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                        {vehicle.location}
+                      </div>
+                    ) : (
+                      "Non définie"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="secondary"
+                      className={`${getStatusColor(vehicle.status)} text-white`}
+                    >
+                      {vehicle.status || "Disponible"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewDetails(vehicle)}
+                      >
+                        <Truck className="h-4 w-4" />
+                        <span className="sr-only">Détails</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditVehicle(vehicle)}
+                      >
+                        Modifier
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             )}
-            {filteredVehicles.length === 0 && !isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
-                  Aucun véhicule trouvé.
-                </TableCell>
-              </TableRow>
-            ) : null}
           </TableBody>
         </Table>
       </div>
-      
-      {/* Modals */}
-      {selectedVehicle && (
-        <>
-          <VehicleDetailModal
-            vehicle={selectedVehicle}
-            companyName={getCompanyName(selectedVehicle.company_id)}
-            onEdit={() => {
-              setIsDetailModalOpen(false);
-              setIsEditModalOpen(true);
-            }}
-            onClose={() => setIsDetailModalOpen(false)}
-            isOpen={isDetailModalOpen}
-          />
-          
-          <VehiclesEditModal
-            isOpen={isEditModalOpen}
-            onClose={() => setIsEditModalOpen(false)}
-            vehicle={selectedVehicle}
-            onSuccess={() => {
-              setIsEditModalOpen(false);
-              fetchVehicles();
-            }}
-          />
-        </>
+
+      {isAddingVehicle && (
+        <VehiclesAddModal
+          isOpen={isAddingVehicle}
+          onClose={() => setIsAddingVehicle(false)}
+          onSuccess={() => {
+            fetchVehicles();
+            setIsAddingVehicle(false);
+          }}
+        />
       )}
-      
-      <VehiclesAddModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={fetchVehicles}
-      />
+
+      {isEditing && selectedVehicle && (
+        <VehiclesEditModal
+          isOpen={isEditing}
+          onClose={() => setIsEditing(false)}
+          vehicle={selectedVehicle}
+          onSuccess={() => {
+            fetchVehicles();
+            setIsEditing(false);
+          }}
+        />
+      )}
+
+      {isViewingDetails && selectedVehicle && (
+        <VehicleDetailModal
+          isOpen={isViewingDetails}
+          onClose={() => setIsViewingDetails(false)}
+          vehicle={selectedVehicle}
+        />
+      )}
     </div>
   );
 }

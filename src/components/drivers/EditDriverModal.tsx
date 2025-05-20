@@ -1,5 +1,5 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { EditDriverForm } from "./EditDriverForm";
 import { Driver } from "@/types/driver";
 
@@ -16,6 +16,9 @@ export function EditDriverModal({ isOpen, onClose, driver, onSuccess }: EditDriv
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifier le chauffeur</DialogTitle>
+          <DialogDescription>
+            Modifiez les informations du chauffeur et ses qualifications
+          </DialogDescription>
         </DialogHeader>
         
         <EditDriverForm 

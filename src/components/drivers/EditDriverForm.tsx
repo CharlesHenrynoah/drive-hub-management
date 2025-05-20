@@ -163,6 +163,7 @@ export function EditDriverForm({
           console.error("Erreur lors du chargement des entreprises:", error);
           toast.error("Impossible de charger la liste des entreprises");
         } else {
+          console.log("Companies loaded:", data);
           setCompanies(data || []);
         }
       } catch (error) {
@@ -180,6 +181,7 @@ export function EditDriverForm({
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsSubmitting(true);
+      console.log("Submitting form with values:", values);
       
       // Mise à jour du chauffeur dans Supabase
       const { error } = await supabase
@@ -202,7 +204,12 @@ export function EditDriverForm({
         })
         .eq('id', driver.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating driver:", error);
+        throw error;
+      }
+      
+      console.log("Driver updated successfully");
       
       // Mise à jour des types de véhicules
       // D'abord, supprimer toutes les anciennes associations
@@ -352,7 +359,7 @@ export function EditDriverForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Ville</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionnez une ville" />
@@ -423,7 +430,7 @@ export function EditDriverForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Entreprise</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionnez une entreprise" />
