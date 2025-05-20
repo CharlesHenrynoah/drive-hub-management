@@ -15,13 +15,23 @@ import {
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download, Loader2, Plus } from "lucide-react";
+import { Download, Loader2, Plus, Trash2 } from "lucide-react";
 import { AddCompanyForm } from "./AddCompanyForm";
 import { CompanyDetailModal } from "./CompanyDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Types for companies
 export type Company = {
@@ -45,6 +55,9 @@ export function CompaniesManagement() {
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const isMobile = useIsMobile();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch companies from Supabase with related counts
   useEffect(() => {
@@ -221,6 +234,97 @@ export function CompaniesManagement() {
     toast.success('Entreprise ajoutée avec succès');
   };
 
+  // Handle delete confirmation
+  const handleDeleteClick = (company: Company, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCompanyToDelete(company);
+    setDeleteDialogOpen(true);
+  };
+
+  // Handle delete action
+  const handleDelete = async () => {
+    if (!companyToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      
+      // Check if there are any fleets associated with this company
+      const { data: fleets, error: fleetError } = await supabase
+        .from('fleets')
+        .select('id')
+        .eq('company_id', companyToDelete.id);
+        
+      if (fleetError) {
+        console.error('Error checking fleets:', fleetError);
+        toast.error("Erreur lors de la vérification des flottes associées");
+        return;
+      }
+      
+      // If there are fleets, delete all fleet associations first
+      if (fleets && fleets.length > 0) {
+        const fleetIds = fleets.map(fleet => fleet.id);
+        
+        // Delete fleet_vehicles associations
+        const { error: vehicleError } = await supabase
+          .from('fleet_vehicles')
+          .delete()
+          .in('fleet_id', fleetIds);
+          
+        if (vehicleError) {
+          console.error('Error deleting fleet vehicles:', vehicleError);
+          toast.error("Erreur lors de la suppression des véhicules associés aux flottes");
+          return;
+        }
+        
+        // Delete fleet_drivers associations
+        const { error: driverError } = await supabase
+          .from('fleet_drivers')
+          .delete()
+          .in('fleet_id', fleetIds);
+          
+        if (driverError) {
+          console.error('Error deleting fleet drivers:', driverError);
+          toast.error("Erreur lors de la suppression des chauffeurs associés aux flottes");
+          return;
+        }
+        
+        // Delete all fleets
+        const { error: deleteFleetError } = await supabase
+          .from('fleets')
+          .delete()
+          .eq('company_id', companyToDelete.id);
+          
+        if (deleteFleetError) {
+          console.error('Error deleting fleets:', deleteFleetError);
+          toast.error("Erreur lors de la suppression des flottes");
+          return;
+        }
+      }
+      
+      // Finally, delete the company
+      const { error: deleteCompanyError } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', companyToDelete.id);
+        
+      if (deleteCompanyError) {
+        console.error('Error deleting company:', deleteCompanyError);
+        toast.error("Erreur lors de la suppression de l'entreprise");
+        return;
+      }
+      
+      toast.success("Entreprise supprimée avec succès");
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast.error("Une erreur est survenue lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setCompanyToDelete(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -297,7 +401,7 @@ export function CompaniesManagement() {
                     <TableCell className="text-center">{company.vehicle_count || 0}</TableCell>
                     <TableCell className="text-center">{company.driver_count || 0}</TableCell>
                     <TableCell>
-                      <div className="flex justify-center">
+                      <div className="flex justify-center gap-2">
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(company)}>
@@ -311,6 +415,15 @@ export function CompaniesManagement() {
                             />
                           )}
                         </Dialog>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => handleDeleteClick(company, e)} 
+                          className="text-destructive hover:text-destructive/80"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Supprimer
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -320,6 +433,41 @@ export function CompaniesManagement() {
           </Table>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette entreprise?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement l'entreprise "{companyToDelete?.name}" et toutes ses associations avec les flottes, véhicules et chauffeurs.
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setCompanyToDelete(null);
+            }}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
