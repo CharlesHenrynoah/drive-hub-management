@@ -11,7 +11,7 @@ import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import DriversPage from "./pages/DriversPage";
-import FleetsPage from "./pages/FleetsPage";
+import VehiclesPage from "./pages/FleetsPage";
 import MissionsPage from "./pages/MissionsPage";
 import MissionsAPI from "./pages/MissionsAPI";
 import LandingPage from "./pages/LandingPage";
@@ -38,7 +38,7 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/chauffeurs" element={<ProtectedRoute><DriversPage /></ProtectedRoute>} />
-                <Route path="/flottes" element={<ProtectedRoute><FleetsPage /></ProtectedRoute>} />
+                <Route path="/vehicules" element={<ProtectedRoute><VehiclesPage /></ProtectedRoute>} />
                 <Route path="/entreprises" element={<ProtectedRoute><CompaniesPage /></ProtectedRoute>} />
                 <Route path="/missions" element={<ProtectedRoute><MissionsPage /></ProtectedRoute>} />
                 <Route path="/api-missions" element={<ProtectedRoute><MissionsAPI /></ProtectedRoute>} />
