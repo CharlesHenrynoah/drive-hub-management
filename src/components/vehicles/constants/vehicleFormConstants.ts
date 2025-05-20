@@ -20,30 +20,33 @@ export const cities = [
   "Saint-Étienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nîmes", "Clermont-Ferrand"
 ];
 
-// Liste des types de véhicules - UNIQUEMENT les 6 types de la partie chauffeur
+// Liste des types de véhicules avec les capacités correctes
 export const vehicleTypes = [
-  { value: "Minibus", label: "Minibus" },
-  { value: "Minicar", label: "Minicar" },
-  { value: "Autocar Standard", label: "Autocar Standard" },
-  { value: "Autocar Grand Tourisme", label: "Autocar Grand Tourisme" },
-  { value: "VTC", label: "VTC" },
-  { value: "Berline", label: "Berline" }
+  { value: "Berline", label: "Berline (3 à 4 passagers)" },
+  { value: "Van", label: "Van (6 à 8 passagers)" },
+  { value: "Minibus", label: "Minibus (8 à 19 passagers)" },
+  { value: "Minicar", label: "Minicar (20 à 38 passagers)" },
+  { value: "Autocar Standard", label: "Autocar Standard (38 à 55 passagers)" },
+  { value: "Autocar Grand Tourisme", label: "Autocar Grand Tourisme (66 à 93 passagers - double étage)" },
+  { value: "VTC", label: "VTC (3 à 4 passagers)" }
 ];
 
-// Capacités par défaut pour chaque type de véhicule
+// Capacités par défaut pour chaque type de véhicule (valeur médiane de la plage)
 export const getDefaultCapacityByType = (vehicleType: string): number => {
   switch(vehicleType) {
-    case "Minibus":
-      return 18;
-    case "Minicar":
-      return 25;
-    case "Autocar Standard":
-      return 50;
-    case "Autocar Grand Tourisme":
-      return 45;
-    case "VTC":
-      return 4;
     case "Berline":
+      return 4;
+    case "Van":
+      return 7;
+    case "Minibus":
+      return 14;
+    case "Minicar":
+      return 29;
+    case "Autocar Standard":
+      return 46;
+    case "Autocar Grand Tourisme":
+      return 80;
+    case "VTC":
       return 4;
     default:
       return 0;

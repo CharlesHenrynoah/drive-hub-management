@@ -1,11 +1,12 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useVehicleTypes } from "@/hooks/useVehicleTypes";
 import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { vehicleTypes } from "./constants/vehicleFormConstants";
 
 export interface VehicleTypeSelectorProps {
   selectedType?: string;
@@ -22,7 +23,7 @@ export function VehicleTypeSelector({
   onChange,
   maxSelections = 1,
 }: VehicleTypeSelectorProps) {
-  const { data: vehicleTypes = [], isLoading } = useVehicleTypes();
+  const { data: vehicleTypesFromDB = [], isLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
   
   const isMultiSelect = maxSelections > 1;
@@ -68,21 +69,8 @@ export function VehicleTypeSelector({
     }
   };
 
-  // Filter valid vehicle types
-  const validVehicleTypes = vehicleTypes.filter(vt => 
-    vt && 
-    typeof vt.type === 'string' && 
-    vt.type.trim() !== '' &&
-    vt.id !== null && 
-    vt.id !== undefined
-  );
-
   if (isLoading) {
     return <div>Chargement des types de véhicules...</div>;
-  }
-
-  if (!validVehicleTypes || validVehicleTypes.length === 0) {
-    return <div>Aucun type de véhicule disponible</div>;
   }
 
   return (
@@ -119,24 +107,19 @@ export function VehicleTypeSelector({
       
       <ScrollArea className="h-[220px] pr-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {validVehicleTypes.map((vehicleType) => {
-            // Ensure type is non-empty to prevent errors
-            if (!vehicleType.type || vehicleType.type.trim() === '') {
-              return null;
-            }
-            
+          {vehicleTypes.map((vehicleType, index) => {
             const isSelected = isMultiSelect 
-              ? selectedTypes.includes(vehicleType.type)
-              : selectedType === vehicleType.type;
+              ? selectedTypes.includes(vehicleType.value)
+              : selectedType === vehicleType.value;
               
             return (
               <Button
-                key={vehicleType.id}
+                key={index}
                 type="button"
                 variant="outline"
                 onClick={() => isMultiSelect 
-                  ? handleMultiTypeClick(vehicleType.type)
-                  : handleSingleTypeClick(vehicleType.type)
+                  ? handleMultiTypeClick(vehicleType.value)
+                  : handleSingleTypeClick(vehicleType.value)
                 }
                 className={cn(
                   "flex items-start justify-between p-3 h-auto",
@@ -144,13 +127,7 @@ export function VehicleTypeSelector({
                 )}
               >
                 <div className="flex flex-col items-start text-left">
-                  <span className="font-medium">{vehicleType.type}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {vehicleType.description}
-                  </span>
-                  <span className="text-xs mt-1">
-                    Capacité: {vehicleType.capacity_min} - {vehicleType.capacity_max} passagers
-                  </span>
+                  <span className="font-medium">{vehicleType.label}</span>
                 </div>
                 {isSelected && (
                   <CheckIcon className="h-4 w-4 text-primary" />
