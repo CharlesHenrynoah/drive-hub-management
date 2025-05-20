@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, RefreshCcw, MapPin, Truck } from "lucide-react";
+import { PlusCircle, RefreshCcw, MapPin, Truck, Trash2 } from "lucide-react";
 import { VehiclesAddModal } from "./VehiclesAddModal";
 import { VehiclesEditModal } from "./VehiclesEditModal";
 import { VehicleDetailModal } from "./VehicleDetailModal";
@@ -16,6 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
@@ -27,6 +37,9 @@ export function VehiclesManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [isViewingDetails, setIsViewingDetails] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchVehicles = async () => {
     try {
@@ -62,6 +75,80 @@ export function VehiclesManagement() {
   const handleViewDetails = (vehicle: any) => {
     setSelectedVehicle(vehicle);
     setIsViewingDetails(true);
+  };
+
+  const handleDeleteClick = (vehicle: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVehicleToDelete(vehicle);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteVehicle = async () => {
+    if (!vehicleToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      
+      // Check if the vehicle is associated with any fleets first
+      const { data: fleetVehicles, error: fleetError } = await supabase
+        .from('fleet_vehicles')
+        .select('id')
+        .eq('vehicle_id', vehicleToDelete.id);
+        
+      if (fleetError) {
+        throw fleetError;
+      }
+      
+      // If vehicle is assigned to fleets, remove those associations first
+      if (fleetVehicles && fleetVehicles.length > 0) {
+        const { error: deleteAssocError } = await supabase
+          .from('fleet_vehicles')
+          .delete()
+          .eq('vehicle_id', vehicleToDelete.id);
+          
+        if (deleteAssocError) {
+          throw deleteAssocError;
+        }
+        console.log(`Removed ${fleetVehicles.length} fleet associations for vehicle ${vehicleToDelete.id}`);
+      }
+      
+      // Check if vehicle is assigned to any missions
+      const { data: missionVehicles, error: missionError } = await supabase
+        .from('missions')
+        .select('id')
+        .eq('vehicle_id', vehicleToDelete.id);
+        
+      if (missionError) {
+        throw missionError;
+      }
+      
+      // If vehicle is used in missions, warn user but proceed with deletion
+      if (missionVehicles && missionVehicles.length > 0) {
+        console.log(`Warning: Deleting vehicle used in ${missionVehicles.length} missions`);
+        // We could update mission vehicle_id to null here if needed
+      }
+      
+      // Now delete the vehicle
+      const { error: deleteError } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicleToDelete.id);
+        
+      if (deleteError) throw deleteError;
+      
+      toast.success("Véhicule supprimé avec succès");
+      
+      // Refresh the vehicles list
+      fetchVehicles();
+      
+    } catch (error: any) {
+      console.error("Error deleting vehicle:", error);
+      toast.error(`Erreur lors de la suppression: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setVehicleToDelete(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -199,6 +286,15 @@ export function VehiclesManagement() {
                       >
                         Modifier
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive/80"
+                        onClick={(e) => handleDeleteClick(vehicle, e)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Supprimer
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -242,6 +338,41 @@ export function VehiclesManagement() {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce véhicule?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action supprimera définitivement le véhicule {vehicleToDelete?.brand} {vehicleToDelete?.model} ({vehicleToDelete?.registration}).
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setVehicleToDelete(null);
+            }}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteVehicle}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                "Supprimer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
