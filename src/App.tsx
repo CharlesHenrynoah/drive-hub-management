@@ -17,7 +17,6 @@ import MissionsAPI from "./pages/MissionsAPI";
 import LandingPage from "./pages/LandingPage";
 import ChatbotOtto from "./pages/ChatbotOtto";
 import CompaniesPage from "./pages/CompaniesPage";
-import VehiclesPage from "./pages/VehiclesPage";
 
 // Import des pages d'administration spécifiques
 import AdminApiPage from "./pages/admin/AdminApiPage";
@@ -45,7 +44,6 @@ function App() {
                 <Route path="/api-missions" element={<ProtectedRoute><MissionsAPI /></ProtectedRoute>} />
                 <Route path="/site-web" element={<ProtectedRoute><LandingPage /></ProtectedRoute>} />
                 <Route path="/chatbotOtto" element={<ProtectedRoute><ChatbotOtto /></ProtectedRoute>} />
-                <Route path="/vehicules" element={<ProtectedRoute><VehiclesPage /></ProtectedRoute>} />
                 
                 {/* Nouvelle route d'administration */}
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminApiPage /></ProtectedRoute>} />
