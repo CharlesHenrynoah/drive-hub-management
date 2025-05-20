@@ -1,3 +1,4 @@
+
 export interface VehicleType {
   id: number;
   type: string;
@@ -17,8 +18,8 @@ export interface Vehicle {
   capacity: number;
   fuel_type: string;
   ecological_score: number;
-  mileage: number;
   emissions: number;
+  mileage: number;
   year: number;
   last_maintenance: string;
   vehicle_type?: string;

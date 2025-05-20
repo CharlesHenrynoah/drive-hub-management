@@ -144,13 +144,21 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
         console.log("Logo URL:", logoUrl);
       }
       
-      // Insert company data into Supabase
+      // Générer un ID unique pour l'entreprise
+      const companyId = `E-${Math.floor(Math.random() * 10000)}`;
+      
+      // Insert company data into Supabase with all form fields
       const { error } = await supabase
         .from('companies')
         .insert({
-          id: `E-${Math.floor(Math.random() * 1000)}`,
+          id: companyId,
           name: values.nom,
-          logo_url: logoUrl
+          logo_url: logoUrl,
+          // Ajout des coordonnées de l'entreprise
+          address: values.adresse,
+          contact_name: values.contactPrincipal,
+          email: values.email,
+          phone: values.telephone
         });
         
       if (error) {
@@ -159,7 +167,7 @@ export function AddCompanyForm({ onCompanyAdded, buttonText = "Ajouter une entre
       }
       
       toast.success("Entreprise ajoutée avec succès", {
-        description: `L'entreprise "${values.nom}" a été créée.`,
+        description: `L'entreprise "${values.nom}" a été créée avec toutes ses coordonnées.`,
       });
       
       // Clean up
