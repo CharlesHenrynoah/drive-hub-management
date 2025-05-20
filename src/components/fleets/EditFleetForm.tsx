@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Driver } from "@/types/driver";
 
 // Form schema for validation
 const formSchema = z.object({
@@ -55,13 +55,6 @@ interface Vehicle {
   model: string;
 }
 
-interface Driver {
-  id: string;
-  id_chauffeur: string;
-  nom: string;
-  prenom: string;
-}
-
 interface EditFleetFormProps {
   fleet: Fleet;
   companies: Record<string, string>;
@@ -72,7 +65,7 @@ interface EditFleetFormProps {
 export function EditFleetForm({ fleet, companies, onFleetUpdated, onCancel }: EditFleetFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [drivers, setDrivers] = useState<Partial<Driver>[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

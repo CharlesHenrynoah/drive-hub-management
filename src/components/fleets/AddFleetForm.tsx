@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -19,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { calculateEcologicalScore } from "@/utils/ecologicalScoreCalculator";
 import { vehicleTypes, fuelTypes } from "@/components/vehicles/constants/vehicleFormConstants";
 import { VehicleTypeField } from "@/components/vehicles/VehicleTypeField";
+import { Driver } from "@/types/driver";
 
 // Type for vehicles
 type Vehicle = {
@@ -26,18 +26,6 @@ type Vehicle = {
   registration: string;
   brand: string;
   model: string;
-};
-
-// Type for drivers
-type Driver = {
-  id: string;
-  id_chauffeur: string;
-  nom: string;
-  prenom: string;
-  ville?: string;
-  email: string;
-  telephone: string;
-  piece_identite: string;
 };
 
 // Type for new vehicle creation
@@ -89,7 +77,7 @@ export function AddFleetForm({
 }: AddFleetFormProps) {
   const [open, setOpen] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [drivers, setDrivers] = useState<Partial<Driver>[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("existing");
@@ -126,6 +114,8 @@ export function AddFleetForm({
       if (!selectedCompanyId) {
         setVehicles([]);
         setDrivers([]);
+        form.setValue('vehicleIds', []);
+        form.setValue('driverIds', []);
         return;
       }
       setLoading(true);
@@ -161,7 +151,7 @@ export function AddFleetForm({
       }
     }
     loadCompanyResources();
-  }, [selectedCompanyId]);
+  }, [selectedCompanyId, form]);
 
   // Calculate ecological score when relevant fields change
   useEffect(() => {
@@ -258,12 +248,15 @@ export function AddFleetForm({
         company_id: values.entrepriseId,
         description: values.description
       }).select('id').single();
+      
       if (fleetError) {
         console.error('Error creating fleet:', fleetError);
         toast.error('Erreur lors de la création de la flotte');
         return;
       }
+      
       const fleetId = fleetData.id;
+      console.log('Created fleet with ID:', fleetId);
 
       // Create new vehicles if any
       if (newVehicles.length > 0) {
@@ -276,67 +269,90 @@ export function AddFleetForm({
           fuel_type: vehicle.fuel_type,
           company_id: values.entrepriseId,
           ecological_score: vehicle.ecological_score || 50,
-          emissions: 0,
-          // Valeur par défaut
+          emissions: 0, // Valeur par défaut
           year: vehicle.year,
           mileage: vehicle.mileage,
           last_maintenance: new Date().toISOString().split('T')[0] // Date actuelle comme valeur par défaut
         }));
+        
         const {
           data: createdVehicles,
           error: createVehiclesError
         } = await supabase.from('vehicles').insert(vehiclesToCreate).select('id');
+        
         if (createVehiclesError) {
           console.error('Error creating vehicles:', createVehiclesError);
           toast.error('Erreur lors de la création des véhicules');
         } else if (createdVehicles) {
+          console.log('Created vehicles:', createdVehicles);
+          
           // Associate newly created vehicles with the fleet
           const newVehicleRelations = createdVehicles.map(vehicle => ({
             fleet_id: fleetId,
             vehicle_id: vehicle.id
           }));
+          
           const {
             error: newVehiclesAssocError
           } = await supabase.from('fleet_vehicles').insert(newVehicleRelations);
+          
           if (newVehiclesAssocError) {
             console.error('Error associating new vehicles:', newVehiclesAssocError);
             toast.error('Erreur lors de l\'association des nouveaux véhicules');
+          } else {
+            console.log('Associated new vehicles with fleet');
           }
         }
       }
 
       // Associate existing vehicles if any selected
       if (values.vehicleIds.length > 0) {
+        console.log('Selected vehicle IDs:', values.vehicleIds);
+        
         const vehicleRelations = values.vehicleIds.map(vehicleId => ({
           fleet_id: fleetId,
           vehicle_id: vehicleId
         }));
+        
         const {
-          error: vehiclesError
-        } = await supabase.from('fleet_vehicles').insert(vehicleRelations);
+          error: vehiclesError,
+          data: vehicleRelationData
+        } = await supabase.from('fleet_vehicles').insert(vehicleRelations).select();
+        
         if (vehiclesError) {
           console.error('Error associating vehicles:', vehiclesError);
           toast.error('Erreur lors de l\'association des véhicules');
+        } else {
+          console.log('Associated existing vehicles:', vehicleRelationData);
         }
       }
 
       // Associate drivers if any selected
       if (values.driverIds.length > 0) {
+        console.log('Selected driver IDs:', values.driverIds);
+        
         const driverRelations = values.driverIds.map(driverId => ({
           fleet_id: fleetId,
           driver_id: driverId
         }));
+        
         const {
-          error: driversError
-        } = await supabase.from('fleet_drivers').insert(driverRelations);
+          error: driversError,
+          data: driverRelationData
+        } = await supabase.from('fleet_drivers').insert(driverRelations).select();
+        
         if (driversError) {
           console.error('Error associating drivers:', driversError);
           toast.error('Erreur lors de l\'association des chauffeurs');
+        } else {
+          console.log('Associated drivers:', driverRelationData);
         }
       }
+      
       toast.success("Flotte ajoutée avec succès", {
         description: `La flotte "${values.nomFlotte}" a été créée.`
       });
+      
       form.reset();
       vehicleForm.reset();
       setNewVehicles([]);

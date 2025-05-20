@@ -43,7 +43,7 @@ export type Fleet = {
   created_at: string;
   updated_at: string;
   vehicles?: { id: string; registration: string }[];
-  drivers?: Driver[];
+  drivers?: Partial<Driver>[];
   companyName?: string;
   vehicleCount?: number;
   driverCount?: number;
@@ -136,12 +136,12 @@ export function FleetsManagement() {
               console.error('Error fetching fleet drivers:', fleetDriversError);
             }
             
-            let drivers: Driver[] = [];
+            let drivers: Partial<Driver>[] = [];
             if (fleetDriversData && fleetDriversData.length > 0) {
               const driverIds = fleetDriversData.map(fd => fd.driver_id);
               const { data: driversData, error: driversError } = await supabase
                 .from('drivers')
-                .select('id, nom, prenom, ville')
+                .select('id, nom, prenom, id_chauffeur, ville')
                 .in('id', driverIds);
                 
               if (driversError) {
@@ -254,7 +254,7 @@ export function FleetsManagement() {
   );
 
   // Format driver information for display
-  const formatDriverInfo = (drivers: Driver[] | undefined) => {
+  const formatDriverInfo = (drivers: Partial<Driver>[] | undefined) => {
     if (!drivers || drivers.length === 0) return "Aucun chauffeur";
     
     // Show only the first 2 drivers with their names and locations
