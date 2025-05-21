@@ -80,7 +80,7 @@ export function Overview() {
         });
         
         const missionsInProgress = missionsByDate.filter(m => m.status === 'en_cours').length;
-        // Correction ici: utiliser 'planifiee' ou 'confirmé' pour les missions planifiées
+        // Compter correctement toutes les missions planifiées (confirmé ou planifiee)
         const missionsPlanned = missionsByDate.filter(m => m.status === 'planifiee' || m.status === 'confirmé').length;
         const missionsCompleted = missionsByDate.filter(m => m.status === 'terminee').length;
 
@@ -124,6 +124,7 @@ export function Overview() {
     switch (status) {
       case "en_cours": return "En cours";
       case "planifiee": return "Planifiée";
+      case "confirmé": return "Confirmée";
       case "terminee": return "Terminée";
       case "annulee": return "Annulée";
       default: return status;
@@ -134,7 +135,8 @@ export function Overview() {
   const getMissionStatusClass = (status) => {
     switch (status) {
       case "en_cours": return "bg-info text-info-foreground";
-      case "planifiee": return "bg-warning text-warning-foreground";
+      case "planifiee": 
+      case "confirmé": return "bg-warning text-warning-foreground";
       case "terminee": return "bg-success text-success-foreground";
       case "annulee": return "bg-destructive text-destructive-foreground";
       default: return "";
