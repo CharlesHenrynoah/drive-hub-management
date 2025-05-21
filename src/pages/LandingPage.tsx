@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,7 +48,7 @@ const LandingPage = () => {
     name: "",
     email: "",
     phone: "",
-    company: "", // Ajout du champ entreprise
+    company: "",
   });
   
   const navigate = useNavigate();
@@ -85,23 +84,13 @@ const LandingPage = () => {
       return;
     }
 
-    if (!contactInfo.name) {
-      toast.error("Veuillez indiquer votre nom");
+    if (!destination) {
+      toast.error("Veuillez sélectionner une destination");
       return;
     }
 
-    if (!contactInfo.email) {
-      toast.error("Veuillez indiquer votre email");
-      return;
-    }
-
-    if (!contactInfo.phone) {
-      toast.error("Veuillez indiquer votre téléphone");
-      return;
-    }
-
-    if (!contactInfo.company) {
-      toast.error("Veuillez indiquer le nom de votre entreprise");
+    if (!passengerCount || parseInt(passengerCount) <= 0) {
+      toast.error("Veuillez indiquer un nombre de passagers valide");
       return;
     }
     
@@ -400,59 +389,6 @@ const LandingPage = () => {
                   emptyMessage="Aucune destination trouvée"
                   className="w-full"
                 />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Nom et Prénom <span className="text-red-500">*</span></label>
-                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
-                  <User className="h-4 w-4 mx-2 text-gray-500" />
-                  <Input 
-                    placeholder="Votre nom complet" 
-                    value={contactInfo.name}
-                    onChange={(e) => handleContactInfoChange("name", e.target.value)}
-                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Nom Entreprise <span className="text-red-500">*</span></label>
-                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
-                  <Building className="h-4 w-4 mx-2 text-gray-500" />
-                  <Input 
-                    placeholder="Nom de votre entreprise" 
-                    value={contactInfo.company}
-                    onChange={(e) => handleContactInfoChange("company", e.target.value)}
-                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Email <span className="text-red-500">*</span></label>
-                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
-                  <Mail className="h-4 w-4 mx-2 text-gray-500" />
-                  <Input 
-                    type="email"
-                    placeholder="Votre email" 
-                    value={contactInfo.email}
-                    onChange={(e) => handleContactInfoChange("email", e.target.value)}
-                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Téléphone <span className="text-red-500">*</span></label>
-                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
-                  <Phone className="h-4 w-4 mx-2 text-gray-500" />
-                  <Input 
-                    placeholder="Votre téléphone" 
-                    value={contactInfo.phone}
-                    onChange={(e) => handleContactInfoChange("phone", e.target.value)}
-                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    required
-                  />
-                </div>
               </div>
             </div>
             <div className="mb-4">

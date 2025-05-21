@@ -41,21 +41,22 @@ export function ContactDetailsForm({ contactInfo, setContactInfo }: ContactDetai
             value={contactInfo.name} 
             onChange={(e) => handleChange("name", e.target.value)} 
             placeholder="Jean Dupont"
-            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10"
+            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10 bg-white"
             required
           />
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="contactCompany" className="text-gray-800 font-medium">
-            Entreprise
+          <Label htmlFor="contactCompany" className="text-gray-800 font-medium flex items-center">
+            Entreprise <span className="text-red-500 ml-1">*</span>
           </Label>
           <Input 
             id="contactCompany" 
             value={contactInfo.company} 
             onChange={(e) => handleChange("company", e.target.value)} 
             placeholder="Nom de votre entreprise"
-            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10"
+            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10 bg-white"
+            required
           />
         </div>
         
@@ -69,7 +70,7 @@ export function ContactDetailsForm({ contactInfo, setContactInfo }: ContactDetai
             value={contactInfo.email} 
             onChange={(e) => handleChange("email", e.target.value)} 
             placeholder="email@example.com"
-            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10"
+            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10 bg-white"
             required
           />
         </div>
@@ -83,7 +84,7 @@ export function ContactDetailsForm({ contactInfo, setContactInfo }: ContactDetai
             value={contactInfo.phone} 
             onChange={(e) => handleChange("phone", e.target.value)} 
             placeholder="0601020304"
-            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10"
+            className="border-gray-300 focus:ring-2 focus:ring-blue-500 h-10 bg-white"
             required
           />
         </div>

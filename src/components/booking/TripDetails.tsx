@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -193,7 +192,7 @@ export function TripDetails({
           </CardContent>
         </Card>
         
-        <Card className="bg-white border-2 border-gray-300">
+        <Card className="bg-white border-2 border-gray-300 shadow-md">
           <CardContent className="pt-6">
             <ContactDetailsForm 
               contactInfo={contactInfo}
