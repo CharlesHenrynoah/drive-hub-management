@@ -135,6 +135,8 @@ Deno.serve(async (req) => {
       };
     });
     
+    console.log("Véhicules disponibles trouvés:", enrichedVehicles.length);
+    
     return new Response(
       JSON.stringify({ 
         date: formattedDate,
@@ -151,6 +153,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
+    console.error("Erreur dans vehicles-available:", err);
     return new Response(
       JSON.stringify({ error: 'Erreur de serveur interne', details: err.message }),
       {

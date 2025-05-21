@@ -73,6 +73,8 @@ Deno.serve(async (req) => {
     const busyDriverIds = missions.map(mission => mission.driver_id);
     let availableDrivers = allDrivers.filter(driver => !busyDriverIds.includes(driver.id));
     
+    console.log("Chauffeurs disponibles avant filtrage par type:", availableDrivers.length);
+    
     // Si un type de véhicule est spécifié, filtrer les chauffeurs par type de véhicule qu'ils peuvent conduire
     if (vehicleTypeParam) {
       const { data: driverVehicleTypes, error: dvtError } = await supabase
@@ -86,6 +88,8 @@ Deno.serve(async (req) => {
       
       const eligibleDriverIds = driverVehicleTypes.map(dvt => dvt.driver_id);
       availableDrivers = availableDrivers.filter(driver => eligibleDriverIds.includes(driver.id));
+      
+      console.log(`Chauffeurs disponibles pour le type ${vehicleTypeParam}:`, availableDrivers.length);
     }
     
     return new Response(
@@ -102,6 +106,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
+    console.error("Erreur dans drivers-available:", err);
     return new Response(
       JSON.stringify({ error: 'Erreur de serveur interne', details: err.message }),
       {
