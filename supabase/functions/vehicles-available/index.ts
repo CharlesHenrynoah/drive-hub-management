@@ -20,20 +20,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Vérifier l'authentification de l'API
-    const authResult = await checkApiAuth(req);
-    if (!authResult.valid) {
-      return authResult.response;
-    }
-    
     // Récupérer les paramètres depuis l'URL
     const url = new URL(req.url);
     const dateParam = url.searchParams.get('date');
     const typeParam = url.searchParams.get('type');
     const fleetIdParam = url.searchParams.get('fleet_id');
     const vehicleTypeParam = url.searchParams.get('vehicle_type');
-    const locationParam = url.searchParams.get('location'); // Nouveau paramètre pour le lieu
-    const passengersParam = url.searchParams.get('passengers'); // Nouveau paramètre pour le nombre de passagers
+    const locationParam = url.searchParams.get('location'); // Paramètre pour le lieu
+    const passengersParam = url.searchParams.get('passengers'); // Paramètre pour le nombre de passagers
     
     const searchDate = dateParam ? new Date(dateParam) : new Date();
     
@@ -45,7 +39,7 @@ Deno.serve(async (req) => {
     // Construire la requête pour récupérer les véhicules
     let query = supabase
       .from('vehicles')
-      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status, vehicle_type, location')
+      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status, vehicle_type, location, company_id')
       .eq('status', 'Disponible');
       
     // Filtrer par type classique (champ 'type')
@@ -166,68 +160,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-// Fonction utilitaire pour vérifier l'authentification de l'API
-async function checkApiAuth(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return {
-      valid: false,
-      response: new Response(
-        JSON.stringify({ error: 'Token API manquant ou invalide' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    };
-  }
-  
-  const apiKey = authHeader.split(' ')[1];
-  
-  // Créer un client Supabase
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  
-  // Vérifier si le token existe et n'est pas révoqué
-  const { data, error } = await supabase
-    .from('api_keys')
-    .select('id, revoked')
-    .eq('api_key', apiKey)
-    .single();
-    
-  if (error || !data) {
-    return {
-      valid: false,
-      response: new Response(
-        JSON.stringify({ error: 'Token API invalide' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    };
-  }
-  
-  if (data.revoked) {
-    return {
-      valid: false,
-      response: new Response(
-        JSON.stringify({ error: 'Ce token API a été révoqué' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    };
-  }
-  
-  // Mettre à jour la date de dernière utilisation
-  await supabase
-    .from('api_keys')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', data.id);
-  
-  return { valid: true, keyId: data.id };
-}

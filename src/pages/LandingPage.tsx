@@ -100,8 +100,9 @@ const LandingPage = () => {
       const vehiclesResponse = await fetch(
         `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/vehicles-available?date=${formattedDate}&location=${departure}&passengers=${passengerCount}`, 
         {
+          method: 'GET',
           headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
+            'Content-Type': 'application/json'
           }
         }
       );
@@ -109,6 +110,8 @@ const LandingPage = () => {
       if (!vehiclesResponse.ok) throw new Error("Échec de récupération des véhicules disponibles");
       const vehiclesData = await vehiclesResponse.json();
       const availableVehicles = vehiclesData.vehicles || [];
+      
+      console.log("Véhicules disponibles:", availableVehicles);
       
       if (availableVehicles.length === 0) {
         setRecommendations([]);
@@ -180,14 +183,17 @@ const LandingPage = () => {
             const driversResponse = await fetch(
               `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=${formattedDate}&location=${departure}&vehicle_type=${vehicleType}&company_id=${companyId}`,
               {
+                method: 'GET',
                 headers: {
-                  Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
+                  'Content-Type': 'application/json'
                 }
               }
             );
             
             if (!driversResponse.ok) continue;
             const driversData = await driversResponse.json();
+            
+            console.log("Chauffeurs disponibles pour type", vehicleType, ":", driversData.drivers);
             
             // Filtrer les chauffeurs associés à cette flotte
             const { data: fleetDriversData } = await supabase
