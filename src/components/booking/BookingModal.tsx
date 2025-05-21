@@ -35,11 +35,8 @@ export function BookingModal({
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const [tripDetails, setTripDetails] = useState({
-    duration: "",
-    arrivalTime: "",
-    price: 0
-  });
+  const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
   
   const steps = ["Véhicule", "Chauffeur", "Détails", "Paiement"];
   
@@ -59,12 +56,7 @@ export function BookingModal({
     setCurrentStep(2);
   };
   
-  const handleContinueToPayment = (details: {
-    duration: string;
-    arrivalTime: string;
-    price: number;
-  }) => {
-    setTripDetails(details);
+  const handleContinueToPayment = () => {
     setCurrentStep(3);
   };
   
@@ -113,8 +105,11 @@ export function BookingModal({
               destinationLocation={destinationLocation}
               departureDate={departureDate}
               passengerCount={passengerCount}
+              additionalInfo={additionalInfo}
               onContinue={handleContinueToPayment}
               onBack={() => setCurrentStep(1)}
+              setEstimatedDuration={setEstimatedDuration}
+              setEstimatedPrice={setEstimatedPrice}
             />
           );
         }
@@ -123,17 +118,17 @@ export function BookingModal({
         if (selectedVehicle && selectedDriver) {
           return (
             <PaymentForm
-              price={tripDetails.price}
-              vehicle={selectedVehicle}
+              onPaymentComplete={handleBookingSuccess}
+              onBack={() => setCurrentStep(2)}
               driver={selectedDriver}
+              vehicle={selectedVehicle}
               departureLocation={departureLocation}
               destinationLocation={destinationLocation}
               departureDate={departureDate}
-              arrivalTime={tripDetails.arrivalTime}
               passengerCount={passengerCount}
+              estimatedDuration={estimatedDuration}
+              estimatedPrice={estimatedPrice}
               additionalInfo={additionalInfo}
-              onBack={() => setCurrentStep(2)}
-              onSuccess={handleBookingSuccess}
             />
           );
         }

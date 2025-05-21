@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Driver } from "@/types/driver";
 import { Vehicle } from "@/types/vehicle";
+import { AlertCircle } from "lucide-react";
 
 interface PaymentFormProps {
   onPaymentComplete: () => void;
@@ -38,10 +39,10 @@ export function PaymentForm({
   estimatedPrice,
   additionalInfo
 }: PaymentFormProps) {
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardName, setCardName] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCVC, setCardCVC] = useState("");
+  const [cardNumber, setCardNumber] = useState("4970 4709 7803 7229");
+  const [cardName, setCardName] = useState("Charles-Henry Noah");
+  const [cardExpiry, setCardExpiry] = useState("09/25");
+  const [cardCVC, setCardCVC] = useState("123");
   const [isProcessing, setIsProcessing] = useState(false);
   
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,6 +167,14 @@ export function PaymentForm({
         </p>
       </div>
       
+      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4 flex items-start">
+        <AlertCircle className="h-5 w-5 text-blue-500 mr-2 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-blue-800">Mode simulation</p>
+          <p className="text-xs text-blue-600">Les données de carte sont préchargées pour test. Aucune transaction réelle n'est effectuée.</p>
+        </div>
+      </div>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardContent className="pt-6">
@@ -204,7 +213,7 @@ export function PaymentForm({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="cardCVC">CVC</Label>
+                  <Label htmlFor="cardCVC">CVV</Label>
                   <Input 
                     id="cardCVC"
                     placeholder="123"

@@ -36,8 +36,8 @@ export function TripDetails({
   setEstimatedPrice
 }: TripDetailsProps) {
   const [loading, setLoading] = useState(true);
-  const [estimatedDuration, setEstimatedDuration] = useState("2h 30");
-  const [estimatedPrice, setEstimatedPrice] = useState(450);
+  const [estimatedDuration, setLocalEstimatedDuration] = useState("2h 30");
+  const [estimatedPrice, setLocalEstimatedPrice] = useState(450);
   const [arrivalTime, setArrivalTime] = useState<Date>(new Date());
   
   // Calculate estimated duration and price
@@ -128,8 +128,8 @@ export function TripDetails({
         arrival.setHours(arrival.getHours() + hours);
         arrival.setMinutes(arrival.getMinutes() + minutes);
         
-        setEstimatedDuration(duration);
-        setEstimatedPrice(price);
+        setLocalEstimatedDuration(duration);
+        setLocalEstimatedPrice(price);
         setArrivalTime(arrival);
         
         // Pass values to parent component
@@ -143,7 +143,7 @@ export function TripDetails({
     };
     
     calculateEstimates();
-  }, [departureLocation, destinationLocation, departureDate, passengerCount, vehicle.type]);
+  }, [departureLocation, destinationLocation, departureDate, passengerCount, vehicle.type, setEstimatedDuration, setEstimatedPrice]);
 
   return (
     <div className="space-y-6">
