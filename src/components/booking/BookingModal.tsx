@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { BookingSteps } from "./BookingSteps";
 import { VehicleSelection } from "./VehicleSelection";
@@ -10,6 +9,7 @@ import { BookingSuccessMessage } from "./BookingSuccessMessage";
 import { Vehicle } from "@/types/vehicle";
 import { Driver } from "@/types/driver";
 import { FleetRecommendation } from "@/pages/LandingPage";
+import { addDays } from "date-fns";
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -32,6 +32,10 @@ export function BookingModal({
   passengerCount,
   additionalInfo
 }: BookingModalProps) {
+  // Set default departure date to tomorrow
+  const defaultDepartureDate = addDays(new Date(), 1);
+  defaultDepartureDate.setHours(0, 0, 0, 0);
+
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -44,6 +48,14 @@ export function BookingModal({
     email: "",
     phone: ""
   });
+  
+  // Initialize departureDate to tomorrow if it's not already set
+  useEffect(() => {
+    if (!departureDate || departureDate < defaultDepartureDate) {
+      // This is just for local state as we can't modify the prop directly
+      // The parent component should handle this update if needed
+    }
+  }, [departureDate, defaultDepartureDate]);
   
   const steps = ["Véhicule", "Chauffeur", "Détails", "Paiement"];
   
@@ -110,7 +122,7 @@ export function BookingModal({
               driver={selectedDriver}
               departureLocation={departureLocation}
               destinationLocation={destinationLocation}
-              departureDate={departureDate}
+              departureDate={departureDate || defaultDepartureDate}
               departureTime={departureTime}
               setDepartureTime={setDepartureTime}
               passengerCount={passengerCount}
@@ -134,7 +146,7 @@ export function BookingModal({
               vehicle={selectedVehicle}
               departureLocation={departureLocation}
               destinationLocation={destinationLocation}
-              departureDate={departureDate}
+              departureDate={departureDate || defaultDepartureDate}
               departureTime={departureTime}
               passengerCount={passengerCount}
               estimatedDuration={estimatedDuration}

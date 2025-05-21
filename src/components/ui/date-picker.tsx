@@ -44,6 +44,13 @@ export function DatePicker({
     return propMinDate && propMinDate > defaultMinDate ? propMinDate : defaultMinDate;
   }, [propMinDate, defaultMinDate]);
 
+  // Set default date to tomorrow if no date is provided
+  React.useEffect(() => {
+    if (!date && !disabled && setDate) {
+      setDate(defaultMinDate);
+    }
+  }, [date, disabled, setDate, defaultMinDate]);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
