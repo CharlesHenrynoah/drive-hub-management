@@ -32,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { DotsHorizontalIcon } from "@radix-ui/react-icons"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,22 +53,16 @@ export function DriversManagement() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
-  
-  const [availableFilter, setAvailableFilter] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchDrivers();
-  }, [availableFilter]);
+  }, []);
 
   const fetchDrivers = async () => {
     try {
       let query = supabase
         .from('drivers')
         .select('*');
-        
-      if (availableFilter !== null) {
-        query = query.eq('disponible', availableFilter);
-      }
 
       const { data: driversData, error } = await query;
 
@@ -106,7 +99,7 @@ export function DriversManagement() {
     }
   };
 
-  // Fonction pour supprimer un chauffeur
+  // Function to delete a driver
   const deleteDriver = async (driverId: string) => {
     try {
       const { error } = await supabase
@@ -121,7 +114,7 @@ export function DriversManagement() {
       }
 
       toast.success("Chauffeur supprimé avec succès");
-      fetchDrivers(); // Actualiser la liste après suppression
+      fetchDrivers(); // Refresh the list after deletion
       setIsDeleteDialogOpen(false);
       setDriverToDelete(null);
     } catch (error) {
@@ -130,9 +123,9 @@ export function DriversManagement() {
     }
   };
 
-  // Fonction pour ouvrir la boîte de dialogue de confirmation de suppression
+  // Function to open the delete confirmation dialog
   const confirmDelete = (driver: Driver, e: React.MouseEvent) => {
-    e.stopPropagation(); // Empêcher le déclenchement du clic sur la ligne
+    e.stopPropagation(); // Prevent triggering the row click
     setDriverToDelete(driver);
     setIsDeleteDialogOpen(true);
   };
@@ -216,7 +209,7 @@ export function DriversManagement() {
     },
   ]
 
-  // Filtrer les données en fonction de la recherche
+  // Filter data based on search
   const filteredData = search
     ? data.filter((item) =>
         item.nom.toLowerCase().includes(search.toLowerCase()) ||
@@ -266,20 +259,6 @@ export function DriversManagement() {
         <Button onClick={() => setIsAddModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Ajouter un chauffeur
         </Button>
-      </div>
-
-      <div className="flex items-center space-x-2 mb-4">
-        <label
-          htmlFor="available"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          Afficher seulement les chauffeurs disponibles
-        </label>
-        <Checkbox
-          id="available"
-          checked={availableFilter === true}
-          onCheckedChange={(checked) => setAvailableFilter(checked === true ? true : null)}
-        />
       </div>
 
       {filteredData.length === 0 ? (
@@ -352,7 +331,7 @@ export function DriversManagement() {
         }}
       />
 
-      {/* Boîte de dialogue de confirmation de suppression */}
+      {/* Delete confirmation dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
