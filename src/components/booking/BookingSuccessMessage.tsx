@@ -1,19 +1,12 @@
 
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Calendar } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { CheckCircle } from "lucide-react";
 
 interface BookingSuccessMessageProps {
   onClose: () => void;
 }
 
 export function BookingSuccessMessage({ onClose }: BookingSuccessMessageProps) {
-  const navigate = useNavigate();
-  
-  const viewCalendar = () => {
-    navigate("/missions");
-  };
-  
   return (
     <div className="text-center space-y-6 py-6">
       <div className="flex justify-center">
@@ -26,12 +19,7 @@ export function BookingSuccessMessage({ onClose }: BookingSuccessMessageProps) {
         Votre réservation a été confirmée et votre mission a été créée. Vous pouvez consulter les détails de votre mission dans le calendrier.
       </p>
       
-      <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-        <Button onClick={viewCalendar} className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          Voir le calendrier
-        </Button>
-        
+      <div className="flex justify-center pt-4">
         <Button onClick={onClose} variant="outline">
           Retour à l'accueil
         </Button>
