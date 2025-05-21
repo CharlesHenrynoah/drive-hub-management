@@ -26,9 +26,13 @@ Deno.serve(async (req) => {
       return authResult.response;
     }
     
-    // Récupérer la date depuis les paramètres de requête
+    // Récupérer les paramètres depuis l'URL
     const url = new URL(req.url);
     const dateParam = url.searchParams.get('date');
+    const vehicleTypeParam = url.searchParams.get('vehicle_type'); // Nouveau paramètre pour filtrer par type de véhicule
+    const locationParam = url.searchParams.get('location'); // Nouveau paramètre pour le lieu des chauffeurs
+    const companyIdParam = url.searchParams.get('company_id'); // Nouveau paramètre pour l'entreprise
+    
     const searchDate = dateParam ? new Date(dateParam) : new Date();
     
     // Créer un client Supabase
@@ -37,10 +41,22 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Récupérer tous les chauffeurs disponibles
-    const { data: allDrivers, error: driversError } = await supabase
+    let query = supabase
       .from('drivers')
-      .select('id, nom, prenom, email, telephone, disponible, photo')
+      .select('id, nom, prenom, email, telephone, disponible, photo, ville, id_entreprise')
       .eq('disponible', true);
+      
+    // Filtrer par lieu du chauffeur si spécifié
+    if (locationParam) {
+      query = query.eq('ville', locationParam);
+    }
+    
+    // Filtrer par entreprise si spécifié
+    if (companyIdParam) {
+      query = query.eq('id_entreprise', companyIdParam);
+    }
+    
+    const { data: allDrivers, error: driversError } = await query;
       
     if (driversError) {
       throw new Error(`Erreur lors de la récupération des chauffeurs: ${driversError.message}`);
@@ -61,11 +77,29 @@ Deno.serve(async (req) => {
     
     // Filtrer les chauffeurs qui sont déjà assignés à une mission à cette date
     const busyDriverIds = missions.map(mission => mission.driver_id);
-    const availableDrivers = allDrivers.filter(driver => !busyDriverIds.includes(driver.id));
+    let availableDrivers = allDrivers.filter(driver => !busyDriverIds.includes(driver.id));
+    
+    // Si un type de véhicule est spécifié, filtrer les chauffeurs par type de véhicule qu'ils peuvent conduire
+    if (vehicleTypeParam) {
+      const { data: driverVehicleTypes, error: dvtError } = await supabase
+        .from('driver_vehicle_types')
+        .select('driver_id, vehicle_type')
+        .eq('vehicle_type', vehicleTypeParam);
+        
+      if (dvtError) {
+        throw new Error(`Erreur lors de la récupération des types de véhicules des chauffeurs: ${dvtError.message}`);
+      }
+      
+      const eligibleDriverIds = driverVehicleTypes.map(dvt => dvt.driver_id);
+      availableDrivers = availableDrivers.filter(driver => eligibleDriverIds.includes(driver.id));
+    }
     
     return new Response(
       JSON.stringify({ 
         date: formattedDate,
+        location: locationParam || null,
+        vehicle_type: vehicleTypeParam || null,
+        company_id: companyIdParam || null,
         drivers: availableDrivers
       }),
       {

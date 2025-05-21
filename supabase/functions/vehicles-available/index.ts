@@ -31,7 +31,9 @@ Deno.serve(async (req) => {
     const dateParam = url.searchParams.get('date');
     const typeParam = url.searchParams.get('type');
     const fleetIdParam = url.searchParams.get('fleet_id');
-    const vehicleTypeParam = url.searchParams.get('vehicle_type'); // Nouveau paramètre pour filtrer par type énuméré
+    const vehicleTypeParam = url.searchParams.get('vehicle_type');
+    const locationParam = url.searchParams.get('location'); // Nouveau paramètre pour le lieu
+    const passengersParam = url.searchParams.get('passengers'); // Nouveau paramètre pour le nombre de passagers
     
     const searchDate = dateParam ? new Date(dateParam) : new Date();
     
@@ -43,7 +45,7 @@ Deno.serve(async (req) => {
     // Construire la requête pour récupérer les véhicules
     let query = supabase
       .from('vehicles')
-      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status, vehicle_type')
+      .select('id, brand, model, type, capacity, registration, fuel_type, photo_url, status, vehicle_type, location')
       .eq('status', 'Disponible');
       
     // Filtrer par type classique (champ 'type')
@@ -54,6 +56,19 @@ Deno.serve(async (req) => {
     // Filtrer par type énuméré (nouveau champ 'vehicle_type')
     if (vehicleTypeParam) {
       query = query.eq('vehicle_type', vehicleTypeParam);
+    }
+    
+    // Filtrer par localisation
+    if (locationParam) {
+      query = query.eq('location', locationParam);
+    }
+    
+    // Filtrer par nombre de passagers
+    if (passengersParam) {
+      const passengers = parseInt(passengersParam, 10);
+      if (!isNaN(passengers)) {
+        query = query.gte('capacity', passengers);
+      }
     }
     
     // Si un fleet_id est fourni, filtrer par flotte
@@ -131,6 +146,8 @@ Deno.serve(async (req) => {
         date: formattedDate,
         type: typeParam || 'all',
         vehicle_type: vehicleTypeParam || 'all',
+        location: locationParam || null,
+        passengers: passengersParam ? parseInt(passengersParam, 10) : null,
         fleet_id: fleetIdParam || null,
         vehicles: enrichedVehicles
       }),

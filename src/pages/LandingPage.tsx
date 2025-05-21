@@ -84,6 +84,11 @@ const LandingPage = () => {
       return;
     }
 
+    if (!departure) {
+      toast.error("Veuillez sélectionner un lieu de départ");
+      return;
+    }
+
     setLoading(true);
     setSearchPerformed(true);
     
@@ -91,9 +96,9 @@ const LandingPage = () => {
       // Formatage de la date pour l'API
       const formattedDate = format(departureDate, "yyyy-MM-dd");
       
-      // 1. Récupérer les chauffeurs disponibles à cette date
-      const driversResponse = await fetch(
-        `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=${formattedDate}`, 
+      // 1. Récupérer les véhicules disponibles à cette date, dans ce lieu, avec capacité suffisante
+      const vehiclesResponse = await fetch(
+        `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/vehicles-available?date=${formattedDate}&location=${departure}&passengers=${passengerCount}`, 
         {
           headers: {
             Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
@@ -101,68 +106,118 @@ const LandingPage = () => {
         }
       );
       
-      if (!driversResponse.ok) throw new Error("Échec de récupération des chauffeurs disponibles");
-      const driversData = await driversResponse.json();
-      const availableDrivers = driversData.drivers || [];
+      if (!vehiclesResponse.ok) throw new Error("Échec de récupération des véhicules disponibles");
+      const vehiclesData = await vehiclesResponse.json();
+      const availableVehicles = vehiclesData.vehicles || [];
       
-      // 2. Récupérer les flottes et leurs véhicules
-      const { data: fleets, error: fleetError } = await supabase
-        .from('fleets')
-        .select('id, name, description, company_id');
+      if (availableVehicles.length === 0) {
+        setRecommendations([]);
+        setLoading(false);
+        return;
+      }
       
-      if (fleetError) throw fleetError;
+      // Regrouper les véhicules par entreprise
+      const vehiclesByCompany = {};
+      for (const vehicle of availableVehicles) {
+        if (vehicle.company_id) {
+          if (!vehiclesByCompany[vehicle.company_id]) {
+            vehiclesByCompany[vehicle.company_id] = [];
+          }
+          vehiclesByCompany[vehicle.company_id].push(vehicle);
+        }
+      }
       
-      // 3. Pour chaque flotte, récupérer le nom de l'entreprise et les véhicules
       const fleetRecommendations: FleetRecommendation[] = [];
       
-      for (const fleet of fleets) {
-        // Récupérer les véhicules de la flotte
-        const vehiclesResponse = await fetch(
-          `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/fleets-vehicles/${fleet.id}/vehicles`,
-          {
-            headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
-            }
-          }
-        );
+      // Pour chaque entreprise ayant des véhicules disponibles
+      for (const companyId in vehiclesByCompany) {
+        const companyVehicles = vehiclesByCompany[companyId];
         
-        if (!vehiclesResponse.ok) continue;
-        const vehiclesData = await vehiclesResponse.json();
-        
-        // Récupérer le nom de l'entreprise
+        // Récupérer les informations de l'entreprise
         const { data: company } = await supabase
           .from('companies')
-          .select('name')
-          .eq('id', fleet.company_id)
+          .select('id, name')
+          .eq('id', companyId)
           .single();
         
-        // Filtrer les véhicules qui ont une capacité suffisante
-        const filteredVehicles = vehiclesData.vehicles.filter(
-          (v: Vehicle) => v.capacity >= parseInt(passengerCount)
-        );
+        if (!company) continue;
         
-        // Récupérer les chauffeurs associés à cette flotte
-        const { data: fleetDriversData } = await supabase
-          .from('fleet_drivers')
-          .select('driver_id')
-          .eq('fleet_id', fleet.id);
+        // Récupérer les flottes liées à cette entreprise
+        const { data: fleets } = await supabase
+          .from('fleets')
+          .select('id, name, description')
+          .eq('company_id', companyId);
         
-        // Filtrer les chauffeurs disponibles pour cette flotte
-        const fleetDriverIds = fleetDriversData?.map(d => d.driver_id) || [];
-        const fleetAvailableDrivers = availableDrivers.filter(
-          (driver: Driver) => fleetDriverIds.includes(driver.id)
-        );
+        if (!fleets || fleets.length === 0) continue;
         
-        // Ajouter la recommandation seulement si nous avons des véhicules et des chauffeurs disponibles
-        if (filteredVehicles.length > 0 && fleetAvailableDrivers.length > 0) {
-          fleetRecommendations.push({
-            fleet: {
-              ...fleet,
-              company_name: company?.name || "Entreprise inconnue"
-            },
-            availableDrivers: fleetAvailableDrivers,
-            availableVehicles: filteredVehicles
-          });
+        // Pour chaque flotte, vérifier quels véhicules lui appartiennent
+        for (const fleet of fleets) {
+          const { data: fleetVehiclesData } = await supabase
+            .from('fleet_vehicles')
+            .select('vehicle_id')
+            .eq('fleet_id', fleet.id);
+          
+          if (!fleetVehiclesData || fleetVehiclesData.length === 0) continue;
+          
+          const fleetVehicleIds = fleetVehiclesData.map(fv => fv.vehicle_id);
+          const fleetAvailableVehicles = companyVehicles.filter(vehicle => 
+            fleetVehicleIds.includes(vehicle.id)
+          );
+          
+          if (fleetAvailableVehicles.length === 0) continue;
+          
+          // Pour chaque véhicule disponible, trouver des chauffeurs qui peuvent le conduire
+          const vehicleTypes = [...new Set(fleetAvailableVehicles.map(v => v.vehicle_type))].filter(Boolean);
+          
+          // Si aucun type de véhicule n'est défini, passer au suivant
+          if (vehicleTypes.length === 0) continue;
+          
+          let fleetDrivers = [];
+          
+          // Pour chaque type de véhicule, récupérer les chauffeurs qui peuvent le conduire
+          for (const vehicleType of vehicleTypes) {
+            // Récupérer les chauffeurs disponibles pour ce lieu et ce type de véhicule
+            const driversResponse = await fetch(
+              `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=${formattedDate}&location=${departure}&vehicle_type=${vehicleType}&company_id=${companyId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${import.meta.env.VITE_API_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zZnBoeWdpaGtsdWNxaml3bmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MzIyNzIsImV4cCI6MjA2MTUwODI3Mn0.Ms15OGYl01a9zK8WuiEOKzUflMipxESJ_u3PI4cFMbc"}`
+                }
+              }
+            );
+            
+            if (!driversResponse.ok) continue;
+            const driversData = await driversResponse.json();
+            
+            // Filtrer les chauffeurs associés à cette flotte
+            const { data: fleetDriversData } = await supabase
+              .from('fleet_drivers')
+              .select('driver_id')
+              .eq('fleet_id', fleet.id);
+            
+            if (!fleetDriversData || fleetDriversData.length === 0) continue;
+            
+            const fleetDriverIds = fleetDriversData.map(fd => fd.driver_id);
+            const typeDrivers = driversData.drivers.filter(driver => fleetDriverIds.includes(driver.id));
+            
+            fleetDrivers = [...fleetDrivers, ...typeDrivers];
+          }
+          
+          // Dédupliquer les chauffeurs par ID
+          fleetDrivers = fleetDrivers.filter((driver, index, self) => 
+            index === self.findIndex(d => d.id === driver.id)
+          );
+          
+          if (fleetDrivers.length > 0) {
+            fleetRecommendations.push({
+              fleet: {
+                ...fleet,
+                company_name: company.name
+              },
+              availableDrivers: fleetDrivers,
+              availableVehicles: fleetAvailableVehicles
+            });
+          }
         }
       }
       
@@ -377,7 +432,10 @@ const LandingPage = () => {
           ) : (
             <div className="text-center max-w-md mx-auto">
               <p className="mb-4">
-                Aucune flotte disponible ne correspond à vos critères. Veuillez modifier votre recherche ou contacter notre service client.
+                {departure ? 
+                  `Aucun véhicule n'est disponible à ${departure} pour ${passengerCount} passagers à cette date. Veuillez modifier votre recherche ou contacter notre service client.` : 
+                  "Veuillez sélectionner un lieu de départ pour votre recherche."
+                }
               </p>
               <Button onClick={handleChatWithOtto}>
                 <MessageSquare className="mr-2 h-4 w-4" />
