@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { cities } from "@/components/vehicles/constants/vehicleFormConstants";
+import { europeanCapitals } from "@/constants/locations";
 
 interface Fleet {
   id: string;
@@ -63,6 +64,14 @@ const LandingPage = () => {
     label: city,
     value: city
   }));
+  
+  // Combine French cities and European capitals for destination options
+  const destinationOptions = [...cities, ...europeanCapitals]
+    .sort((a, b) => a.localeCompare(b, 'fr'))
+    .map(city => ({
+      label: city,
+      value: city
+    }));
 
   const handleChatWithOtto = () => {
     const message = `Je souhaite effectuer un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes. ${additionalInfo}`;
@@ -225,10 +234,13 @@ const LandingPage = () => {
               </div>
               <div>
                 <label className="block text-gray-700 mb-1 font-medium">Destination</label>
-                <Input 
-                  placeholder="Ville ou adresse d'arrivée" 
+                <Combobox 
+                  items={destinationOptions}
                   value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
+                  onChange={setDestination}
+                  placeholder="Sélectionnez une destination" 
+                  emptyMessage="Aucune destination trouvée"
+                  className="w-full"
                 />
               </div>
             </div>
