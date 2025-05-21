@@ -56,8 +56,9 @@ export function TripDetails({
 }: TripDetailsProps) {
   // Calculate minimum date (24 hours from now)
   const minDate = useMemo(() => {
-    const now = new Date();
-    return addDays(now, 1);
+    const tomorrow = addDays(new Date(), 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
   }, []);
   
   // Estimate distance and duration
@@ -67,7 +68,7 @@ export function TripDetails({
   
   // We'll use a rough estimate: 1km = 1 minute on average, but minimum 15 minutes
   const duration = useMemo(() => {
-    const minutes = Math.max(Math.round(estimatedDistance), 15);
+    const minutes = Math.max(Math.round(Number(estimatedDistance)), 15);
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}` : ''}`;
@@ -78,7 +79,7 @@ export function TripDetails({
   const basePrice = 25; // Starting fee in EUR
   const ratePerKm = 1.5; // EUR per km
   const estimatedPrice = useMemo(() => {
-    return basePrice + (estimatedDistance * ratePerKm);
+    return basePrice + (Number(estimatedDistance) * ratePerKm);
   }, [estimatedDistance]);
   
   // Update parent component's state when our calculations change

@@ -33,7 +33,10 @@ export function DatePicker({
 }: DatePickerProps) {
   // Calculate default minimum date (1 day from now)
   const defaultMinDate = React.useMemo(() => {
-    return addDays(new Date(), 1);
+    const tomorrow = addDays(new Date(), 1);
+    // Set time to start of day to ensure full day comparison
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow;
   }, []);
   
   // Use provided minDate or the default minimum date
