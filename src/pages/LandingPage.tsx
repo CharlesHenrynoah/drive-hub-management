@@ -1,7 +1,8 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus, Phone, User, Mail } from "lucide-react";
+import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus, Phone, User, Mail, Building } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -48,6 +49,7 @@ const LandingPage = () => {
     name: "",
     email: "",
     phone: "",
+    company: "", // Ajout du champ entreprise
   });
   
   const navigate = useNavigate();
@@ -72,6 +74,7 @@ const LandingPage = () => {
   };
 
   const handleSearch = async () => {
+    // Validation des champs obligatoires
     if (!departureDate) {
       toast.error("Veuillez sélectionner une date de départ");
       return;
@@ -82,6 +85,26 @@ const LandingPage = () => {
       return;
     }
 
+    if (!contactInfo.name) {
+      toast.error("Veuillez indiquer votre nom");
+      return;
+    }
+
+    if (!contactInfo.email) {
+      toast.error("Veuillez indiquer votre email");
+      return;
+    }
+
+    if (!contactInfo.phone) {
+      toast.error("Veuillez indiquer votre téléphone");
+      return;
+    }
+
+    if (!contactInfo.company) {
+      toast.error("Veuillez indiquer le nom de votre entreprise");
+      return;
+    }
+    
     setLoading(true);
     setSearchPerformed(true);
     
@@ -332,11 +355,11 @@ const LandingPage = () => {
           <div className="max-w-3xl mx-auto bg-white rounded-lg p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Date de départ</label>
+                <label className="block text-gray-700 mb-1 font-medium">Date de départ <span className="text-red-500">*</span></label>
                 <DatePicker date={departureDate} setDate={setDepartureDate} placeholder="Sélectionnez une date" className="w-full" />
               </div>
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Heure de départ</label>
+                <label className="block text-gray-700 mb-1 font-medium">Heure de départ <span className="text-red-500">*</span></label>
                 <TimePicker 
                   time={departureTime} 
                   setTime={setDepartureTime} 
@@ -346,17 +369,18 @@ const LandingPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Nombre de passagers</label>
+                <label className="block text-gray-700 mb-1 font-medium">Nombre de passagers <span className="text-red-500">*</span></label>
                 <Input 
                   type="number" 
                   placeholder="Nombre de passagers" 
                   value={passengerCount}
                   onChange={(e) => setPassengerCount(e.target.value)}
                   min="1"
+                  required
                 />
               </div>
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Lieu de départ</label>
+                <label className="block text-gray-700 mb-1 font-medium">Lieu de départ <span className="text-red-500">*</span></label>
                 <Combobox 
                   items={cityOptions}
                   value={departure}
@@ -367,7 +391,7 @@ const LandingPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-gray-700 mb-1 font-medium">Destination</label>
+                <label className="block text-gray-700 mb-1 font-medium">Destination <span className="text-red-500">*</span></label>
                 <Combobox 
                   items={destinationOptions}
                   value={destination}
@@ -386,6 +410,20 @@ const LandingPage = () => {
                     value={contactInfo.name}
                     onChange={(e) => handleContactInfoChange("name", e.target.value)}
                     className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Nom Entreprise <span className="text-red-500">*</span></label>
+                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+                  <Building className="h-4 w-4 mx-2 text-gray-500" />
+                  <Input 
+                    placeholder="Nom de votre entreprise" 
+                    value={contactInfo.company}
+                    onChange={(e) => handleContactInfoChange("company", e.target.value)}
+                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    required
                   />
                 </div>
               </div>
@@ -399,6 +437,7 @@ const LandingPage = () => {
                     value={contactInfo.email}
                     onChange={(e) => handleContactInfoChange("email", e.target.value)}
                     className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    required
                   />
                 </div>
               </div>
@@ -411,6 +450,7 @@ const LandingPage = () => {
                     value={contactInfo.phone}
                     onChange={(e) => handleContactInfoChange("phone", e.target.value)}
                     className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    required
                   />
                 </div>
               </div>
@@ -440,6 +480,9 @@ const LandingPage = () => {
                 Discuter avec Otto
               </Button>
             </div>
+            <p className="text-sm text-gray-500 italic mt-4">
+              <span className="text-red-500">*</span> champs obligatoires
+            </p>
           </div>
         </div>
       </section>
