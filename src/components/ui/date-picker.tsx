@@ -59,22 +59,15 @@ export function DatePicker({
     }
   }, [date, disabled, setDate, defaultMinDate]);
 
-  // Handle time change
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (setTime) {
-      setTime(e.target.value);
-    }
-  };
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       <Popover>
         <PopoverTrigger asChild>
           <FormControl>
             <Button
               variant={"outline"}
               className={cn(
-                "w-full pl-3 text-left font-normal border border-gray-300 min-h-10",
+                "w-full pl-3 text-left font-normal border border-gray-300 min-h-10 bg-white",
                 !date && "text-muted-foreground",
                 className
               )}
@@ -85,7 +78,7 @@ export function DatePicker({
             </Button>
           </FormControl>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto p-0 z-50" align="start">
           <Calendar
             mode="single"
             selected={date}
@@ -112,8 +105,8 @@ export function DatePicker({
             <Input
               type="time"
               value={time}
-              onChange={handleTimeChange}
-              className="border-0 focus:ring-0 p-0 h-8"
+              onChange={(e) => setTime(e.target.value)}
+              className="border-0 focus:ring-0 p-0 h-8 bg-transparent"
               disabled={disabled}
               placeholder="HH:MM"
             />

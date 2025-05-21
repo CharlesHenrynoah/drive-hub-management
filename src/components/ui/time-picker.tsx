@@ -44,20 +44,20 @@ export function TimePicker({
   }, []);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 w-full">
       {label && (
         <label className="text-base mb-2 block font-medium text-gray-800">
           {label}
         </label>
       )}
-      <div className="relative">
+      <div className="relative w-full">
         <Popover>
           <PopoverTrigger asChild>
             <FormControl>
               <Button
                 variant={"outline"}
                 className={cn(
-                  "w-full pl-3 text-left font-normal border border-gray-300 min-h-10",
+                  "w-full pl-3 text-left font-normal border border-gray-300 min-h-10 bg-white",
                   !time && "text-muted-foreground",
                   className
                 )}
@@ -68,8 +68,8 @@ export function TimePicker({
               </Button>
             </FormControl>
           </PopoverTrigger>
-          <PopoverContent className="w-60 p-0" align="start">
-            <ScrollArea className="h-60">
+          <PopoverContent className="w-60 p-0 z-50" align="start">
+            <ScrollArea className="h-60 pointer-events-auto">
               <div className="p-1">
                 {timeOptions.map((timeOption) => (
                   <Button

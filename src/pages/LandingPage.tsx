@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus } from "lucide-react";
+import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus, Phone, User, Mail } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -17,6 +17,7 @@ import { europeanCapitals } from "@/constants/locations";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { Vehicle } from "@/types/vehicle";
 import { Driver } from "@/types/driver";
+import { TimePicker } from "@/components/ui/time-picker";
 
 export interface Fleet {
   id: string;
@@ -33,6 +34,7 @@ export interface FleetRecommendation {
 
 const LandingPage = () => {
   const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date());
+  const [departureTime, setDepartureTime] = useState<string>("09:00");
   const [passengerCount, setPassengerCount] = useState<string>("20");
   const [departure, setDeparture] = useState<string>("");
   const [destination, setDestination] = useState<string>("");
@@ -42,6 +44,11 @@ const LandingPage = () => {
   const [searchPerformed, setSearchPerformed] = useState<boolean>(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<FleetRecommendation | null>(null);
+  const [contactInfo, setContactInfo] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
   
   const navigate = useNavigate();
 
@@ -285,6 +292,13 @@ const LandingPage = () => {
     setIsBookingModalOpen(true);
   };
 
+  const handleContactInfoChange = (field: string, value: string) => {
+    setContactInfo({
+      ...contactInfo,
+      [field]: value
+    });
+  };
+
   return (
     <div className="min-h-screen bg-white text-black">
       {/* Header */}
@@ -322,6 +336,16 @@ const LandingPage = () => {
                 <DatePicker date={departureDate} setDate={setDepartureDate} placeholder="Sélectionnez une date" className="w-full" />
               </div>
               <div>
+                <label className="block text-gray-700 mb-1 font-medium">Heure de départ</label>
+                <TimePicker 
+                  time={departureTime} 
+                  setTime={setDepartureTime} 
+                  placeholder="Sélectionnez une heure" 
+                  label=""
+                  className="w-full"
+                />
+              </div>
+              <div>
                 <label className="block text-gray-700 mb-1 font-medium">Nombre de passagers</label>
                 <Input 
                   type="number" 
@@ -353,6 +377,43 @@ const LandingPage = () => {
                   className="w-full"
                 />
               </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Nom et Prénom <span className="text-red-500">*</span></label>
+                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+                  <User className="h-4 w-4 mx-2 text-gray-500" />
+                  <Input 
+                    placeholder="Votre nom complet" 
+                    value={contactInfo.name}
+                    onChange={(e) => handleContactInfoChange("name", e.target.value)}
+                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Email <span className="text-red-500">*</span></label>
+                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+                  <Mail className="h-4 w-4 mx-2 text-gray-500" />
+                  <Input 
+                    type="email"
+                    placeholder="Votre email" 
+                    value={contactInfo.email}
+                    onChange={(e) => handleContactInfoChange("email", e.target.value)}
+                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1 font-medium">Téléphone <span className="text-red-500">*</span></label>
+                <div className="flex items-center border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+                  <Phone className="h-4 w-4 mx-2 text-gray-500" />
+                  <Input 
+                    placeholder="Votre téléphone" 
+                    value={contactInfo.phone}
+                    onChange={(e) => handleContactInfoChange("phone", e.target.value)}
+                    className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+              </div>
             </div>
             <div className="mb-4">
               <label className="block text-gray-700 mb-1 font-medium">Informations supplémentaires</label>
@@ -360,7 +421,7 @@ const LandingPage = () => {
                 placeholder="Précisez vos besoins (durée, équipements souhaités, etc.)" 
                 value={additionalInfo}
                 onChange={(e) => setAdditionalInfo(e.target.value)}
-                className="resize-none"
+                className="resize-none border-gray-300 focus:ring-blue-500"
                 rows={3}
               />
             </div>
