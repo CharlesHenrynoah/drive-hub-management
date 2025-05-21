@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -32,25 +32,11 @@ export interface FleetRecommendation {
 }
 
 const LandingPage = () => {
-  // Calculate minimum date (24 hours from now)
-  const minDate = useMemo(() => {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    return tomorrow;
-  }, []);
-  
-  const [departureDate, setDepartureDate] = useState<Date | undefined>(minDate);
-  const [departureTime, setDepartureTime] = useState<string>("09:00");
+  const [departureDate, setDepartureDate] = useState<Date | undefined>(new Date());
   const [passengerCount, setPassengerCount] = useState<string>("20");
   const [departure, setDeparture] = useState<string>("");
   const [destination, setDestination] = useState<string>("");
-  const [contactInfo, setContactInfo] = useState({
-    name: "",
-    company: "",
-    email: "",
-    phone: ""
-  });
+  const [additionalInfo, setAdditionalInfo] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [recommendations, setRecommendations] = useState<FleetRecommendation[]>([]);
   const [searchPerformed, setSearchPerformed] = useState<boolean>(false);
@@ -74,7 +60,7 @@ const LandingPage = () => {
     }));
 
   const handleChatWithOtto = () => {
-    const message = `Je souhaite effectuer un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes.`;
+    const message = `Je souhaite effectuer un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes. ${additionalInfo}`;
     navigate("/chatbotOtto", { state: { initialMessage: message } });
   };
 
@@ -333,22 +319,7 @@ const LandingPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-gray-700 mb-1 font-medium">Date de départ</label>
-                <DatePicker 
-                  date={departureDate} 
-                  setDate={setDepartureDate} 
-                  placeholder="Sélectionnez une date" 
-                  className="w-full" 
-                  minDate={minDate}
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Heure de départ</label>
-                <TimePicker
-                  time={departureTime}
-                  setTime={setDepartureTime}
-                  placeholder="Sélectionnez une heure"
-                  className="w-full"
-                />
+                <DatePicker date={departureDate} setDate={setDepartureDate} placeholder="Sélectionnez une date" className="w-full" />
               </div>
               <div>
                 <label className="block text-gray-700 mb-1 font-medium">Nombre de passagers</label>
@@ -384,9 +355,13 @@ const LandingPage = () => {
               </div>
             </div>
             <div className="mb-4">
-              <ContactDetailsForm
-                contactInfo={contactInfo}
-                setContactInfo={setContactInfo}
+              <label className="block text-gray-700 mb-1 font-medium">Informations supplémentaires</label>
+              <Textarea 
+                placeholder="Précisez vos besoins (durée, équipements souhaités, etc.)" 
+                value={additionalInfo}
+                onChange={(e) => setAdditionalInfo(e.target.value)}
+                className="resize-none"
+                rows={3}
               />
             </div>
             <div className="flex flex-col md:flex-row gap-3 justify-center">
@@ -783,9 +758,9 @@ const LandingPage = () => {
           recommendation={selectedRecommendation}
           departureLocation={departure}
           destinationLocation={destination}
-          departureDate={departureDate || minDate}
+          departureDate={departureDate || new Date()}
           passengerCount={passengerCount}
-          additionalInfo=""
+          additionalInfo={additionalInfo}
         />
       )}
     </div>

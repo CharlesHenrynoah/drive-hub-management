@@ -30,17 +30,6 @@ export function DatePicker({
   className,
   minDate
 }: DatePickerProps) {
-  // Calculate default minimum date (24 hours from now) if not provided
-  const defaultMinDate = React.useMemo(() => {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(now.getDate() + 1);
-    return tomorrow;
-  }, []);
-  
-  // Use provided minDate or default
-  const effectiveMinDate = minDate || defaultMinDate;
-  
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -67,8 +56,9 @@ export function DatePicker({
           initialFocus
           className="pointer-events-auto"
           disabled={(date) => {
-            // Disable dates before effectiveMinDate
-            return date < effectiveMinDate;
+            if (!minDate) return false;
+            // Disable dates before minDate
+            return date < minDate;
           }}
         />
       </PopoverContent>
