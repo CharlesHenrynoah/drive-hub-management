@@ -132,7 +132,7 @@ export function PaymentForm({
           start_location: departureLocation,
           end_location: destinationLocation,
           client: cardName, // Utiliser le nom sur la carte comme nom du client
-          status: 'confirmé',
+          status: 'en_cours', // Changed from 'confirmé' to 'en_cours' to match the allowed values
           company_id: vehicle.company_id
         });
       
