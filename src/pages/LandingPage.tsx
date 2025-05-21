@@ -14,34 +14,18 @@ import { toast } from "sonner";
 import { Combobox } from "@/components/ui/combobox";
 import { cities } from "@/components/vehicles/constants/vehicleFormConstants";
 import { europeanCapitals } from "@/constants/locations";
+import { BookingModal } from "@/components/booking/BookingModal";
+import { Vehicle } from "@/types/vehicle";
+import { Driver } from "@/types/driver";
 
-interface Fleet {
+export interface Fleet {
   id: string;
   name: string;
   description?: string;
   company_name?: string;
 }
 
-interface Vehicle {
-  id: string;
-  brand: string;
-  model: string;
-  type: string;
-  capacity: number;
-  registration: string;
-  photo_url?: string;
-}
-
-interface Driver {
-  id: string;
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  photo?: string;
-}
-
-interface FleetRecommendation {
+export interface FleetRecommendation {
   fleet: Fleet;
   availableDrivers: Driver[];
   availableVehicles: Vehicle[];
@@ -56,6 +40,8 @@ const LandingPage = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [recommendations, setRecommendations] = useState<FleetRecommendation[]>([]);
   const [searchPerformed, setSearchPerformed] = useState<boolean>(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<FleetRecommendation | null>(null);
   
   const navigate = useNavigate();
 
@@ -120,7 +106,7 @@ const LandingPage = () => {
       }
       
       // Regrouper les véhicules par entreprise
-      const vehiclesByCompany = {};
+      const vehiclesByCompany: Record<string, Vehicle[]> = {};
       for (const vehicle of availableVehicles) {
         if (vehicle.company_id) {
           if (!vehiclesByCompany[vehicle.company_id]) {
@@ -226,7 +212,7 @@ const LandingPage = () => {
             
             if (fleetDriversData && fleetDriversData.length > 0) {
               const fleetDriverIds = fleetDriversData.map(fd => fd.driver_id);
-              typeDrivers = driversData.drivers.filter(driver => fleetDriverIds.includes(driver.id));
+              typeDrivers = driversData.drivers.filter((driver: Driver) => fleetDriverIds.includes(driver.id));
             } else {
               // Si aucun chauffeur n'est associé à cette flotte, utiliser tous les chauffeurs disponibles
               typeDrivers = driversData.drivers;
@@ -236,8 +222,8 @@ const LandingPage = () => {
           }
           
           // Dédupliquer les chauffeurs par ID
-          fleetDrivers = fleetDrivers.filter((driver, index, self) => 
-            index === self.findIndex(d => d.id === driver.id)
+          fleetDrivers = fleetDrivers.filter((driver: Driver, index: number, self: Driver[]) => 
+            index === self.findIndex((d: Driver) => d.id === driver.id)
           );
           
           if (fleetAvailableVehicles.length > 0) {
@@ -292,6 +278,11 @@ const LandingPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleBookNow = (recommendation: FleetRecommendation) => {
+    setSelectedRecommendation(recommendation);
+    setIsBookingModalOpen(true);
   };
 
   return (
@@ -407,7 +398,7 @@ const LandingPage = () => {
                     <div className="p-2">
                       <Card className="h-full">
                         <CardContent className="p-6 flex flex-col h-full">
-                          <div className="mb-4">
+                          <div className="mb-4 border-b pb-3">
                             <h3 className="text-xl font-bold">{recommendation.fleet.name}</h3>
                             <p className="text-gray-500">{recommendation.fleet.company_name}</p>
                             {recommendation.fleet.description && <p className="mt-2">{recommendation.fleet.description}</p>}
@@ -446,41 +437,11 @@ const LandingPage = () => {
                             </div>
                           </div>
                           
-                          <div className="mb-4">
-                            <h4 className="font-medium mb-2 flex items-center">
-                              <Users className="h-4 w-4 mr-1" /> 
-                              Chauffeurs disponibles ({recommendation.availableDrivers.length})
-                            </h4>
-                            <div className="flex flex-wrap gap-2">
-                              {recommendation.availableDrivers.slice(0, 3).map((driver, idx) => (
-                                <div key={idx} className="flex items-center">
-                                  {driver.photo ? (
-                                    <img 
-                                      src={driver.photo} 
-                                      alt={`${driver.prenom} ${driver.nom}`}
-                                      className="h-8 w-8 rounded-full mr-1"
-                                    />
-                                  ) : (
-                                    <div className="h-8 w-8 bg-gray-200 rounded-full mr-1 flex items-center justify-center">
-                                      <Users className="h-4 w-4 text-gray-500" />
-                                    </div>
-                                  )}
-                                  <span className="text-sm">{driver.prenom} {driver.nom.charAt(0)}.</span>
-                                </div>
-                              ))}
-                              {recommendation.availableDrivers.length > 3 && (
-                                <span className="text-xs text-gray-500 italic">
-                                  + {recommendation.availableDrivers.length - 3} autres
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <Button className="mt-auto" onClick={() => {
-                            const message = `Je souhaite réserver avec la flotte ${recommendation.fleet.name} pour un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes. ${additionalInfo}`;
-                            navigate("/chatbotOtto", { state: { initialMessage: message } });
-                          }}>
-                            Demander un devis
+                          <Button
+                            className="mt-auto bg-hermes-green hover:bg-hermes-green/80 text-black"
+                            onClick={() => handleBookNow(recommendation)}
+                          >
+                            Réserver maintenant
                           </Button>
                         </CardContent>
                       </Card>
@@ -788,6 +749,20 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
+      
+      {/* Booking Modal */}
+      {selectedRecommendation && (
+        <BookingModal
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          recommendation={selectedRecommendation}
+          departureLocation={departure}
+          destinationLocation={destination}
+          departureDate={departureDate || new Date()}
+          passengerCount={passengerCount}
+          additionalInfo={additionalInfo}
+        />
+      )}
     </div>
   );
 };
