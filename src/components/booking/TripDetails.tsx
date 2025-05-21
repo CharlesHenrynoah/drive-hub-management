@@ -1,9 +1,8 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
-import { TimePicker } from "@/components/ui/time-picker";
 import { Driver } from "@/types/driver";
 import { Vehicle } from "@/types/vehicle";
 import { useMemo, useEffect } from "react";
@@ -75,7 +74,6 @@ export function TripDetails({
   }, [estimatedDistance]);
   
   // Calculate estimated price: Base price + (distance × rate per km)
-  // Here we use a simple model, but it could be more complex in a real app
   const basePrice = 25; // Starting fee in EUR
   const ratePerKm = 1.5; // EUR per km
   const estimatedPrice = useMemo(() => {
@@ -95,6 +93,12 @@ export function TripDetails({
       return;
     }
     
+    // Validate time is set
+    if (!departureTime) {
+      alert("Veuillez sélectionner une heure de départ.");
+      return;
+    }
+    
     // Validate contact info
     if (!contactInfo.name || !contactInfo.email || !contactInfo.phone) {
       alert("Veuillez remplir tous les champs obligatoires des coordonnées.");
@@ -110,31 +114,23 @@ export function TripDetails({
       <h2 className="text-xl font-bold mb-4">Détails du trajet</h2>
       
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="departureDate">Date de départ</Label>
-            <DatePicker
-              date={departureDate}
-              setDate={() => {}}  // Read-only in this context
-              placeholder="Sélectionner une date"
-              disabled={true}
-              minDate={minDate}
-            />
-            {departureDate < minDate && (
-              <p className="text-sm text-red-500 mt-1">
-                La date de départ doit être au moins 24 heures dans le futur.
-              </p>
-            )}
-          </div>
-          
-          <div>
-            <Label htmlFor="departureTime">Heure de départ</Label>
-            <TimePicker 
-              time={departureTime}
-              setTime={setDepartureTime}
-              placeholder="Sélectionner une heure"
-            />
-          </div>
+        <div>
+          <Label htmlFor="departureDateTime">Date et heure de départ</Label>
+          <DatePicker
+            date={departureDate}
+            setDate={() => {}}  // Read-only in this context
+            placeholder="Sélectionner une date"
+            disabled={true}
+            minDate={minDate}
+            showTimeInput={true}
+            time={departureTime}
+            setTime={setDepartureTime}
+          />
+          {departureDate < minDate && (
+            <p className="text-sm text-red-500 mt-1">
+              La date de départ doit être au moins 24 heures dans le futur.
+            </p>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -184,6 +180,10 @@ export function TripDetails({
               <div className="grid grid-cols-2">
                 <span className="text-gray-500">Nombre de passagers:</span>
                 <span>{passengerCount}</span>
+              </div>
+              <div className="grid grid-cols-2">
+                <span className="text-gray-500">Heure de départ:</span>
+                <span>{departureTime}</span>
               </div>
             </div>
           </CardContent>

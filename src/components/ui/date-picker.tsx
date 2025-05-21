@@ -1,7 +1,7 @@
 
 import * as React from "react"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Clock } from "lucide-react"
 import { addDays } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { FormControl } from "./form"
+import { Input } from "./input"
 
 interface DatePickerProps {
   date: Date | undefined
@@ -21,6 +22,9 @@ interface DatePickerProps {
   disabled?: boolean
   className?: string
   minDate?: Date
+  showTimeInput?: boolean
+  time?: string
+  setTime?: (time: string) => void
 }
 
 export function DatePicker({ 
@@ -29,7 +33,10 @@ export function DatePicker({
   placeholder = "Sélectionner une date", 
   disabled = false,
   className,
-  minDate: propMinDate
+  minDate: propMinDate,
+  showTimeInput = false,
+  time = "",
+  setTime
 }: DatePickerProps) {
   // Calculate default minimum date (1 day from now)
   const defaultMinDate = React.useMemo(() => {
@@ -51,37 +58,60 @@ export function DatePicker({
     }
   }, [date, disabled, setDate, defaultMinDate]);
 
+  // Handle time change
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (setTime) {
+      setTime(e.target.value);
+    }
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <FormControl>
-          <Button
-            variant={"outline"}
-            className={cn(
-              "w-full pl-3 text-left font-normal border-dashed border-gray-300 min-h-10",
-              !date && "text-muted-foreground",
-              className
-            )}
+    <div className="space-y-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <FormControl>
+            <Button
+              variant={"outline"}
+              className={cn(
+                "w-full pl-3 text-left font-normal border-dashed border-gray-300 min-h-10",
+                !date && "text-muted-foreground",
+                className
+              )}
+              disabled={disabled}
+            >
+              {date ? format(date, "dd/MM/yyyy") : <span>{placeholder}</span>}
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            initialFocus
+            className="pointer-events-auto"
+            disabled={(date) => {
+              // Disable dates before minimum date
+              return date < minDate;
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+
+      {showTimeInput && setTime && (
+        <div className="flex items-center">
+          <Clock className="mr-2 h-4 w-4 opacity-50" />
+          <Input
+            type="time"
+            value={time}
+            onChange={handleTimeChange}
+            className="max-w-[120px]"
             disabled={disabled}
-          >
-            {date ? format(date, "dd/MM/yyyy") : <span>{placeholder}</span>}
-            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-          </Button>
-        </FormControl>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          initialFocus
-          className="pointer-events-auto"
-          disabled={(date) => {
-            // Disable dates before minimum date
-            return date < minDate;
-          }}
-        />
-      </PopoverContent>
-    </Popover>
+            placeholder="HH:MM"
+          />
+        </div>
+      )}
+    </div>
   )
 }
