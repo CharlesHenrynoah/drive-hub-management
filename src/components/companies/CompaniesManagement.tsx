@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Table,
@@ -336,11 +335,6 @@ export function CompaniesManagement() {
         />
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button variant="outline" className="w-full sm:w-auto">
-            <Download className="mr-2 h-4 w-4" />
-            Exporter
-          </Button>
-          
           <AddCompanyForm onCompanyAdded={handleCompanyAdded} />
         </div>
       </div>
