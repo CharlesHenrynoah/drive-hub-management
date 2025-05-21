@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   ColumnDef,
@@ -46,7 +45,7 @@ import { Driver } from "@/types/driver";
 
 export function DriversManagement() {
   const [data, setData] = useState<Driver[]>([]);
-  const [search, setSearch] = useState("");
+  const [searchValue, setSearchValue] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -210,14 +209,14 @@ export function DriversManagement() {
   ]
 
   // Filter data based on search
-  const filteredData = search
+  const filteredData = searchValue
     ? data.filter((item) =>
-        item.nom.toLowerCase().includes(search.toLowerCase()) ||
-        item.prenom.toLowerCase().includes(search.toLowerCase()) ||
-        item.id_chauffeur.toLowerCase().includes(search.toLowerCase()) ||
-        (item.ville && item.ville.toLowerCase().includes(search.toLowerCase())) ||
-        (item.telephone && item.telephone.toLowerCase().includes(search.toLowerCase())) ||
-        (item.email && item.email.toLowerCase().includes(search.toLowerCase()))
+        item.nom.toLowerCase().includes(searchValue.toLowerCase()) ||
+        item.prenom.toLowerCase().includes(searchValue.toLowerCase()) ||
+        item.id_chauffeur.toLowerCase().includes(searchValue.toLowerCase()) ||
+        (item.ville && item.ville.toLowerCase().includes(searchValue.toLowerCase())) ||
+        (item.telephone && item.telephone.toLowerCase().includes(searchValue.toLowerCase())) ||
+        (item.email && item.email.toLowerCase().includes(searchValue.toLowerCase()))
       )
     : data;
 
@@ -240,7 +239,7 @@ export function DriversManagement() {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
+    setSearchValue(e.target.value);
   };
 
   return (
@@ -249,10 +248,10 @@ export function DriversManagement() {
         <div className="relative max-w-md w-full">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            type="search"
+            type="text"
             placeholder="Rechercher un chauffeur..."
             className="pl-10 max-w-md"
-            value={search}
+            value={searchValue}
             onChange={handleSearchChange}
           />
         </div>
