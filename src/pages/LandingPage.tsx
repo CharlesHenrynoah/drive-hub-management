@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -152,7 +151,22 @@ const LandingPage = () => {
           .select('id, name, description')
           .eq('company_id', companyId);
         
-        if (!fleets || fleets.length === 0) continue;
+        if (!fleets || fleets.length === 0) {
+          // Si l'entreprise n'a pas de flotte, créer une "flotte par défaut" pour afficher les véhicules quand même
+          fleetRecommendations.push({
+            fleet: {
+              id: `default-${companyId}`,
+              name: `${company.name} - Services`,
+              description: "Véhicules disponibles",
+              company_name: company.name
+            },
+            availableDrivers: [], // Nous allons chercher des chauffeurs pour cette flotte ci-dessous
+            availableVehicles: companyVehicles
+          });
+          continue;
+        }
+        
+        let anyVehicleAssigned = false;
         
         // Pour chaque flotte, vérifier quels véhicules lui appartiennent
         for (const fleet of fleets) {
@@ -161,25 +175,31 @@ const LandingPage = () => {
             .select('vehicle_id')
             .eq('fleet_id', fleet.id);
           
-          if (!fleetVehiclesData || fleetVehiclesData.length === 0) continue;
+          let fleetAvailableVehicles = [];
           
-          const fleetVehicleIds = fleetVehiclesData.map(fv => fv.vehicle_id);
-          const fleetAvailableVehicles = companyVehicles.filter(vehicle => 
-            fleetVehicleIds.includes(vehicle.id)
-          );
+          if (fleetVehiclesData && fleetVehiclesData.length > 0) {
+            const fleetVehicleIds = fleetVehiclesData.map(fv => fv.vehicle_id);
+            fleetAvailableVehicles = companyVehicles.filter(vehicle => 
+              fleetVehicleIds.includes(vehicle.id)
+            );
+            
+            if (fleetAvailableVehicles.length > 0) {
+              anyVehicleAssigned = true;
+            }
+          } else {
+            // Si aucun véhicule n'est associé à cette flotte spécifique, continuer
+            continue;
+          }
           
           if (fleetAvailableVehicles.length === 0) continue;
           
           // Pour chaque véhicule disponible, trouver des chauffeurs qui peuvent le conduire
           const vehicleTypes = [...new Set(fleetAvailableVehicles.map(v => v.vehicle_type))].filter(Boolean);
           
-          // Si aucun type de véhicule n'est défini, passer au suivant
-          if (vehicleTypes.length === 0) continue;
-          
           let fleetDrivers = [];
           
           // Pour chaque type de véhicule, récupérer les chauffeurs qui peuvent le conduire
-          for (const vehicleType of vehicleTypes) {
+          for (const vehicleType of vehicleTypes.length > 0 ? vehicleTypes : ['standard']) {
             // Récupérer les chauffeurs disponibles pour ce lieu et ce type de véhicule
             const driversResponse = await fetch(
               `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=${formattedDate}&location=${departure}&vehicle_type=${vehicleType}&company_id=${companyId}`,
@@ -202,10 +222,15 @@ const LandingPage = () => {
               .select('driver_id')
               .eq('fleet_id', fleet.id);
             
-            if (!fleetDriversData || fleetDriversData.length === 0) continue;
+            let typeDrivers = [];
             
-            const fleetDriverIds = fleetDriversData.map(fd => fd.driver_id);
-            const typeDrivers = driversData.drivers.filter(driver => fleetDriverIds.includes(driver.id));
+            if (fleetDriversData && fleetDriversData.length > 0) {
+              const fleetDriverIds = fleetDriversData.map(fd => fd.driver_id);
+              typeDrivers = driversData.drivers.filter(driver => fleetDriverIds.includes(driver.id));
+            } else {
+              // Si aucun chauffeur n'est associé à cette flotte, utiliser tous les chauffeurs disponibles
+              typeDrivers = driversData.drivers;
+            }
             
             fleetDrivers = [...fleetDrivers, ...typeDrivers];
           }
@@ -215,7 +240,7 @@ const LandingPage = () => {
             index === self.findIndex(d => d.id === driver.id)
           );
           
-          if (fleetDrivers.length > 0) {
+          if (fleetAvailableVehicles.length > 0) {
             fleetRecommendations.push({
               fleet: {
                 ...fleet,
@@ -226,9 +251,41 @@ const LandingPage = () => {
             });
           }
         }
+        
+        // Si aucun véhicule n'est assigné à aucune flotte, créer une recommandation par défaut
+        if (!anyVehicleAssigned) {
+          // Récupérer les chauffeurs pour l'entreprise
+          const driversResponse = await fetch(
+            `https://nsfphygihklucqjiwngl.supabase.co/functions/v1/drivers-available?date=${formattedDate}&location=${departure}&company_id=${companyId}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          let companyDrivers = [];
+          if (driversResponse.ok) {
+            const driversData = await driversResponse.json();
+            companyDrivers = driversData.drivers || [];
+          }
+          
+          fleetRecommendations.push({
+            fleet: {
+              id: `default-${companyId}`,
+              name: `${company.name} - Services`,
+              description: "Véhicules disponibles",
+              company_name: company.name
+            },
+            availableDrivers: companyDrivers,
+            availableVehicles: companyVehicles
+          });
+        }
       }
       
       setRecommendations(fleetRecommendations);
+      console.log("Recommandations générées:", fleetRecommendations);
     } catch (error) {
       console.error("Erreur lors de la recherche:", error);
       toast.error("Une erreur est survenue lors de la recherche");
