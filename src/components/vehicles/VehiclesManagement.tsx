@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -186,10 +185,6 @@ export function VehiclesManagement() {
           />
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={fetchVehicles}>
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
           <Button onClick={handleAddVehicle}>
             <PlusCircle className="h-4 w-4 mr-2" />
             Ajouter un véhicule
