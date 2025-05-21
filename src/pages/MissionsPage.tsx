@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MissionsCalendar } from "@/components/missions/MissionsCalendar";
@@ -158,8 +157,9 @@ export default function MissionsPage() {
   }, []);
 
   const handleMissionCreated = () => {
-    // Trigger a refresh of the missions list
-    setRefreshTrigger(prev => prev + 1);
+    // Just close the modal for now
+    setIsNewMissionModalOpen(false);
+    toast.info("La création de missions est temporairement désactivée");
   };
 
   return (

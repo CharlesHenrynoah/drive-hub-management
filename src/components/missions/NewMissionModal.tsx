@@ -6,7 +6,6 @@ import {
   DialogTitle,
   DialogDescription
 } from "@/components/ui/dialog";
-import { NewMissionForm } from "./NewMissionForm";
 
 interface NewMissionModalProps {
   isOpen: boolean;
@@ -19,21 +18,24 @@ export function NewMissionModal({
   onClose,
   onSuccess 
 }: NewMissionModalProps) {
-  const handleSuccess = () => {
-    onSuccess();
-    onClose();
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Nouvelle mission</DialogTitle>
           <DialogDescription>
-            Remplissez le formulaire pour créer une nouvelle mission.
+            Le formulaire de création de mission a été temporairement désactivé.
           </DialogDescription>
         </DialogHeader>
-        <NewMissionForm onSuccess={handleSuccess} />
+        <div className="py-6 text-center">
+          <p>Cette fonctionnalité est en cours de maintenance.</p>
+          <button 
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
+            onClick={onClose}
+          >
+            Fermer
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );
