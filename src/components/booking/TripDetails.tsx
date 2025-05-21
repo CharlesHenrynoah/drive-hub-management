@@ -7,7 +7,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Driver } from "@/types/driver";
 import { Vehicle } from "@/types/vehicle";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { calculateDistance } from "@/utils/distanceCalculator";
 import { addDays } from "date-fns";
 import { ContactDetailsForm } from "./ContactDetailsForm";
@@ -61,12 +61,27 @@ export function TripDetails({
     return addDays(now, 1);
   }, []);
   
-  // Estimate distance and duration
-  const estimatedDistance = useMemo(() => {
-    return calculateDistance(departureLocation, destinationLocation);
+  // State to store the estimated distance
+  const [estimatedDistance, setEstimatedDistance] = useState<number>(0);
+  
+  // Fetch the distance when locations change
+  useEffect(() => {
+    const fetchDistance = async () => {
+      try {
+        const distance = await calculateDistance(departureLocation, destinationLocation);
+        setEstimatedDistance(distance);
+      } catch (error) {
+        console.error("Failed to calculate distance:", error);
+        setEstimatedDistance(0);
+      }
+    };
+    
+    if (departureLocation && destinationLocation) {
+      fetchDistance();
+    }
   }, [departureLocation, destinationLocation]);
   
-  // We'll use a rough estimate: 1km = 1 minute on average, but minimum 15 minutes
+  // Calculate duration based on distance
   const duration = useMemo(() => {
     const minutes = Math.max(Math.round(estimatedDistance), 15);
     const hours = Math.floor(minutes / 60);
@@ -75,7 +90,6 @@ export function TripDetails({
   }, [estimatedDistance]);
   
   // Calculate estimated price: Base price + (distance × rate per km)
-  // Here we use a simple model, but it could be more complex in a real app
   const basePrice = 25; // Starting fee in EUR
   const ratePerKm = 1.5; // EUR per km
   const estimatedPrice = useMemo(() => {
