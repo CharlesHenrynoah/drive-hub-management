@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +80,8 @@ export function Overview() {
         });
         
         const missionsInProgress = missionsByDate.filter(m => m.status === 'en_cours').length;
-        const missionsPlanned = missionsByDate.filter(m => m.status === 'planifiee').length;
+        // Correction ici: utiliser 'planifiee' ou 'confirmé' pour les missions planifiées
+        const missionsPlanned = missionsByDate.filter(m => m.status === 'planifiee' || m.status === 'confirmé').length;
         const missionsCompleted = missionsByDate.filter(m => m.status === 'terminee').length;
 
         const availableVehicles = vehiclesData.filter(v => v.status === 'Disponible').length;
