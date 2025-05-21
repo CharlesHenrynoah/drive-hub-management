@@ -78,7 +78,7 @@ export function VehicleTypeSelector({
       {/* Show selected types */}
       <div className="flex flex-wrap gap-2 mb-2">
         {isMultiSelect ? (
-          selectedTypes.length > 0 ? (
+          selectedTypes && selectedTypes.length > 0 ? (
             selectedTypes.map(type => (
               <Badge key={type} variant="outline" className="bg-primary/10">
                 {type}
@@ -109,7 +109,7 @@ export function VehicleTypeSelector({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {vehicleTypes.map((vehicleType, index) => {
             const isSelected = isMultiSelect 
-              ? selectedTypes.includes(vehicleType.value)
+              ? selectedTypes && selectedTypes.includes(vehicleType.value)
               : selectedType === vehicleType.value;
               
             return (

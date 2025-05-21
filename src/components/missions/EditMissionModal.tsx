@@ -3,7 +3,8 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { EditMissionForm } from "./EditMissionForm";
 import { Mission } from "@/types/mission";
@@ -31,6 +32,9 @@ export function EditMissionModal({
       <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifier la mission</DialogTitle>
+          <DialogDescription>
+            Modifiez les détails de la mission ci-dessous.
+          </DialogDescription>
         </DialogHeader>
         <EditMissionForm
           mission={mission}
