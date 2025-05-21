@@ -1,21 +1,38 @@
 
-import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Star, Clock, MapPin, Users, Calendar, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { Driver } from "@/types/driver";
 import { Vehicle } from "@/types/vehicle";
-import { format } from "date-fns";
-import { fr } from 'date-fns/locale';
+import { useMemo, useEffect } from "react";
+import { calculateDistance } from "@/utils/distanceCalculator";
+import { addDays } from "date-fns";
+import { ContactDetailsForm } from "./ContactDetailsForm";
 
 interface TripDetailsProps {
-  driver: Driver;
   vehicle: Vehicle;
+  driver: Driver;
   departureLocation: string;
   destinationLocation: string;
   departureDate: Date;
+  departureTime: string;
+  setDepartureTime: (time: string) => void;
   passengerCount: string;
-  additionalInfo: string;
+  contactInfo: {
+    name: string;
+    company: string;
+    email: string;
+    phone: string;
+  };
+  setContactInfo: (info: {
+    name: string;
+    company: string;
+    email: string;
+    phone: string;
+  }) => void;
   onContinue: () => void;
   onBack: () => void;
   setEstimatedDuration: (duration: string) => void;
@@ -23,283 +40,196 @@ interface TripDetailsProps {
 }
 
 export function TripDetails({
-  driver,
   vehicle,
+  driver,
   departureLocation,
   destinationLocation,
   departureDate,
+  departureTime,
+  setDepartureTime,
   passengerCount,
-  additionalInfo,
+  contactInfo,
+  setContactInfo,
   onContinue,
   onBack,
   setEstimatedDuration,
   setEstimatedPrice
 }: TripDetailsProps) {
-  const [loading, setLoading] = useState(true);
-  const [estimatedDuration, setLocalEstimatedDuration] = useState("2h 30");
-  const [estimatedPrice, setLocalEstimatedPrice] = useState(450);
-  const [arrivalTime, setArrivalTime] = useState<Date>(new Date());
+  // Calculate minimum date (24 hours from now)
+  const minDate = useMemo(() => {
+    const now = new Date();
+    return addDays(now, 1);
+  }, []);
   
-  // Calculate estimated duration and price
+  // Estimate distance and duration
+  const estimatedDistance = useMemo(() => {
+    return calculateDistance(departureLocation, destinationLocation);
+  }, [departureLocation, destinationLocation]);
+  
+  // We'll use a rough estimate: 1km = 1 minute on average, but minimum 15 minutes
+  const duration = useMemo(() => {
+    const minutes = Math.max(Math.round(estimatedDistance), 15);
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}` : ''}`;
+  }, [estimatedDistance]);
+  
+  // Calculate estimated price: Base price + (distance × rate per km)
+  // Here we use a simple model, but it could be more complex in a real app
+  const basePrice = 25; // Starting fee in EUR
+  const ratePerKm = 1.5; // EUR per km
+  const estimatedPrice = useMemo(() => {
+    return basePrice + (estimatedDistance * ratePerKm);
+  }, [estimatedDistance]);
+  
+  // Update parent component's state when our calculations change
   useEffect(() => {
-    const calculateEstimates = async () => {
-      try {
-        setLoading(true);
-        
-        // Simulate API call to get estimates - NOTA: à remplacer par un appel à Gemini API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Calculate based on locations
-        let duration = "2h 30";
-        let price = 450;
-        
-        // Simple distance-based calculation
-        const distanceMap: Record<string, Record<string, number>> = {
-          "Paris": {
-            "Lyon": 465,
-            "Marseille": 775,
-            "Bordeaux": 585,
-            "Toulouse": 675,
-            "Lille": 220,
-            "Strasbourg": 490,
-            "Nantes": 380,
-            "Nice": 930,
-          },
-          "Lyon": {
-            "Paris": 465,
-            "Marseille": 315,
-            "Bordeaux": 550,
-            "Toulouse": 540,
-            "Lille": 690,
-            "Strasbourg": 500,
-            "Nantes": 630,
-            "Nice": 470,
-          },
-          "Marseille": {
-            "Paris": 775,
-            "Lyon": 315,
-            "Bordeaux": 645,
-            "Toulouse": 400,
-            "Lille": 1000,
-            "Strasbourg": 815,
-            "Nantes": 970,
-            "Nice": 200,
-          },
-          "Bordeaux": {
-            "Paris": 585,
-            "Lyon": 550,
-            "Marseille": 645,
-            "Toulouse": 250,
-            "Lille": 800,
-            "Strasbourg": 1050,
-            "Nantes": 340,
-            "Nice": 800,
-          }
-        };
-        
-        // Get distance if available
-        let distance = 500; // Default distance in km
-        if (distanceMap[departureLocation]?.[destinationLocation]) {
-          distance = distanceMap[departureLocation][destinationLocation];
-        } else if (distanceMap[destinationLocation]?.[departureLocation]) {
-          distance = distanceMap[destinationLocation][departureLocation];
-        }
-        
-        // Calculate duration (average speed 90 km/h)
-        const hours = Math.floor(distance / 90);
-        const minutes = Math.round((distance / 90 - hours) * 60);
-        duration = `${hours}h ${minutes}`;
-        
-        // Calculate price based on distance, vehicle type and passengers
-        const basePricePerKm = 1.5;
-        const capacityFactor = parseInt(passengerCount) > 30 ? 1.5 : 1.2;
-        const vehicleTypeFactor = vehicle.type === "Luxe" ? 2 : 
-                                vehicle.type === "Tourisme" ? 1.5 : 
-                                vehicle.type === "Minicar" ? 1.2 : 1;
-        
-        // Seasonal factor (summer months cost more)
-        const month = departureDate.getMonth();
-        const seasonalFactor = (month >= 5 && month <= 8) ? 1.2 : 1;
-        
-        price = Math.round(distance * basePricePerKm * capacityFactor * vehicleTypeFactor * seasonalFactor);
-        
-        // Calculate arrival time
-        const arrival = new Date(departureDate);
-        arrival.setHours(arrival.getHours() + hours);
-        arrival.setMinutes(arrival.getMinutes() + minutes);
-        
-        setLocalEstimatedDuration(duration);
-        setLocalEstimatedPrice(price);
-        setArrivalTime(arrival);
-        
-        // Pass values to parent component
-        setEstimatedDuration(duration);
-        setEstimatedPrice(price);
-      } catch (error) {
-        console.error("Error calculating estimates:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    setEstimatedDuration(duration);
+    setEstimatedPrice(estimatedPrice);
+  }, [duration, estimatedPrice, setEstimatedDuration, setEstimatedPrice]);
+  
+  // Update departure date to be at least minDate if it's earlier
+  useEffect(() => {
+    // Check if departureDate is before minimum date
+    if (departureDate < minDate) {
+      // You could set the date to minDate here if you want to automatically adjust it
+      // However, leaving it as is and displaying validation warnings is often better UX
+      console.log("Warning: Selected date is earlier than the minimum allowed date.");
+    }
+  }, [departureDate, minDate]);
+  
+  const handleNextStep = () => {
+    // Validate that the departure date is not before the minimum date
+    if (departureDate < minDate) {
+      alert("La date de départ doit être au moins 24 heures dans le futur.");
+      return;
+    }
     
-    calculateEstimates();
-  }, [departureLocation, destinationLocation, departureDate, passengerCount, vehicle.type, setEstimatedDuration, setEstimatedPrice]);
+    // Validate contact info
+    if (!contactInfo.name || !contactInfo.email || !contactInfo.phone) {
+      alert("Veuillez remplir tous les champs obligatoires des coordonnées.");
+      return;
+    }
+    
+    // If validation passes, continue to next step
+    onContinue();
+  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold mb-4">Détails du trajet</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <h3 className="font-bold text-lg">Informations de voyage</h3>
-            
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <MapPin className="h-5 w-5 mr-2 text-hermes-green" />
-                <div>
-                  <p className="text-sm text-gray-500">Départ</p>
-                  <p className="font-medium">{departureLocation}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <MapPin className="h-5 w-5 mr-2 text-red-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Arrivée</p>
-                  <p className="font-medium">{destinationLocation}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2" />
-                <div>
-                  <p className="text-sm text-gray-500">Date et heure de départ</p>
-                  <p className="font-medium">{format(departureDate, "d MMMM yyyy 'à' HH:mm", { locale: fr })}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <Users className="h-5 w-5 mr-2" />
-                <div>
-                  <p className="text-sm text-gray-500">Nombre de passagers</p>
-                  <p className="font-medium">{passengerCount} personnes</p>
-                </div>
-              </div>
-              
-              {additionalInfo && (
-                <div className="flex items-start">
-                  <Info className="h-5 w-5 mr-2 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-gray-500">Informations supplémentaires</p>
-                    <p className="font-medium">{additionalInfo}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <h3 className="font-bold text-lg">Estimations</h3>
-            
-            {loading ? (
-              <p className="text-sm text-gray-500">Calcul des estimations en cours...</p>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2" />
-                  <div>
-                    <p className="text-sm text-gray-500">Durée estimée</p>
-                    <p className="font-medium">{estimatedDuration}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2" />
-                  <div>
-                    <p className="text-sm text-gray-500">Heure d'arrivée estimée</p>
-                    <p className="font-medium">{format(arrivalTime, "d MMMM yyyy 'à' HH:mm", { locale: fr })}</p>
-                  </div>
-                </div>
-                
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Prix total estimé</p>
-                  <p className="text-2xl font-bold">{estimatedPrice} €</p>
-                  <p className="text-xs text-gray-500 mt-1">Tous frais inclus, TTC</p>
-                </div>
-              </div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="departureDate">Date de départ</Label>
+            <DatePicker
+              date={departureDate}
+              setDate={() => {}}  // Read-only in this context
+              placeholder="Sélectionner une date"
+              disabled={true}
+              minDate={minDate}
+            />
+            {departureDate < minDate && (
+              <p className="text-sm text-red-500 mt-1">
+                La date de départ doit être au moins 24 heures dans le futur.
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+          
+          <div>
+            <Label htmlFor="departureTime">Heure de départ</Label>
+            <TimePicker 
+              time={departureTime}
+              setTime={setDepartureTime}
+              placeholder="Sélectionner une heure"
+            />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="font-medium mb-3">Véhicule sélectionné</h3>
+              <p className="text-sm">
+                {vehicle.brand} {vehicle.model}<br />
+                Type: {vehicle.vehicle_type || vehicle.type}<br />
+                Capacité: {vehicle.capacity} passagers
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="font-medium mb-3">Chauffeur sélectionné</h3>
+              <p className="text-sm">
+                {driver.prenom} {driver.nom}<br />
+                Note: {driver.note_chauffeur}/5<br />
+                Expérience: {new Date().getFullYear() - new Date(driver.date_debut_activite).getFullYear()} ans
+              </p>
+            </CardContent>
+          </Card>
+        </div>
         
         <Card>
-          <CardContent className="p-4 space-y-2">
-            <h3 className="font-bold">Chauffeur sélectionné</h3>
-            
-            <div className="flex items-center">
-              {driver.photo ? (
-                <img 
-                  src={driver.photo} 
-                  alt={`${driver.prenom} ${driver.nom}`}
-                  className="h-12 w-12 object-cover rounded-full mr-3"
-                />
-              ) : (
-                <div className="h-12 w-12 bg-gray-200 rounded-full mr-3 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-gray-500" />
-                </div>
-              )}
-              <div>
-                <p className="font-medium">{driver.prenom} {driver.nom}</p>
-                <div className="flex items-center text-sm text-yellow-500">
-                  <Star className="h-4 w-4 fill-current mr-1" />
-                  <span>{driver.note_chauffeur || "N/A"}/5</span>
-                </div>
+          <CardContent className="pt-6">
+            <h3 className="font-medium mb-3">Détails de la course</h3>
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2">
+                <span className="text-gray-500">Départ:</span>
+                <span>{departureLocation}</span>
+              </div>
+              <div className="grid grid-cols-2">
+                <span className="text-gray-500">Destination:</span>
+                <span>{destinationLocation}</span>
+              </div>
+              <div className="grid grid-cols-2">
+                <span className="text-gray-500">Distance estimée:</span>
+                <span>{estimatedDistance} km</span>
+              </div>
+              <div className="grid grid-cols-2">
+                <span className="text-gray-500">Durée estimée:</span>
+                <span>{duration}</span>
+              </div>
+              <div className="grid grid-cols-2">
+                <span className="text-gray-500">Nombre de passagers:</span>
+                <span>{passengerCount}</span>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-4 space-y-2">
-            <h3 className="font-bold">Véhicule sélectionné</h3>
-            
-            <div className="flex items-center">
-              {vehicle.photo_url ? (
-                <img 
-                  src={vehicle.photo_url} 
-                  alt={`${vehicle.brand} ${vehicle.model}`}
-                  className="h-12 w-16 object-cover mr-3 rounded"
-                />
-              ) : (
-                <div className="h-12 w-16 bg-gray-200 mr-3 rounded flex items-center justify-center">
-                  <Users className="h-5 w-5 text-gray-500" />
-                </div>
-              )}
-              <div>
-                <p className="font-medium">{vehicle.brand} {vehicle.model}</p>
-                <p className="text-sm text-gray-500">Capacité: {vehicle.capacity} passagers</p>
-              </div>
+          <CardContent className="pt-6">
+            <ContactDetailsForm 
+              contactInfo={contactInfo}
+              setContactInfo={setContactInfo}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-slate-50">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <h3 className="font-medium">Prix estimé:</h3>
+              <span className="text-xl font-bold">{estimatedPrice.toFixed(2)} €</span>
             </div>
           </CardContent>
         </Card>
-      </div>
-      
-      <div className="flex justify-between pt-4">
-        <Button 
-          onClick={onBack}
-          variant="outline"
-        >
-          Retour
-        </Button>
-        <Button 
-          onClick={onContinue}
-          disabled={loading}
-          className="bg-hermes-green hover:bg-hermes-green/80 text-black"
-        >
-          Continuer vers le paiement
-        </Button>
+        
+        <div className="flex justify-between pt-4">
+          <Button 
+            onClick={onBack}
+            variant="outline"
+          >
+            Retour
+          </Button>
+          <Button 
+            onClick={handleNextStep}
+          >
+            Continuer
+          </Button>
+        </div>
       </div>
     </div>
   );

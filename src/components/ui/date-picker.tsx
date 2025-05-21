@@ -19,6 +19,7 @@ interface DatePickerProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  minDate?: Date
 }
 
 export function DatePicker({ 
@@ -26,7 +27,8 @@ export function DatePicker({
   setDate, 
   placeholder = "Sélectionner une date", 
   disabled = false,
-  className 
+  className,
+  minDate
 }: DatePickerProps) {
   return (
     <Popover>
@@ -53,6 +55,11 @@ export function DatePicker({
           onSelect={setDate}
           initialFocus
           className="pointer-events-auto"
+          disabled={(date) => {
+            if (!minDate) return false;
+            // Disable dates before minDate
+            return date < minDate;
+          }}
         />
       </PopoverContent>
     </Popover>

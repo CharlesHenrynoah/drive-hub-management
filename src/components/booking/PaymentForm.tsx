@@ -19,10 +19,16 @@ interface PaymentFormProps {
   departureLocation: string;
   destinationLocation: string;
   departureDate: Date;
+  departureTime: string;
   passengerCount: string;
   estimatedDuration: string;
   estimatedPrice: number;
-  additionalInfo: string;
+  contactInfo: {
+    name: string;
+    company: string;
+    email: string;
+    phone: string;
+  };
 }
 
 export function PaymentForm({
@@ -33,10 +39,11 @@ export function PaymentForm({
   departureLocation,
   destinationLocation,
   departureDate,
+  departureTime,
   passengerCount,
   estimatedDuration,
   estimatedPrice,
-  additionalInfo
+  contactInfo
 }: PaymentFormProps) {
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
@@ -109,26 +116,29 @@ export function PaymentForm({
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Créer la mission
-      const formattedDate = format(departureDate, "yyyy-MM-dd'T'HH:mm:ss");
+      const combinedDateTime = new Date(departureDate);
+      const [hours, minutes] = departureTime.split(':').map(Number);
+      combinedDateTime.setHours(hours, minutes, 0, 0);
+      const formattedDate = combinedDateTime.toISOString();
       
       // Estimer l'heure d'arrivée en fonction de la durée
-      const [hours, minutes] = estimatedDuration.split("h").map(part => parseInt(part.trim()));
-      const arrivalDate = new Date(departureDate);
-      arrivalDate.setHours(arrivalDate.getHours() + hours);
-      if (minutes) {
-        arrivalDate.setMinutes(arrivalDate.getMinutes() + minutes);
+      const [durationHours, durationMinutes] = estimatedDuration.split("h").map(part => parseInt(part.trim()));
+      const arrivalDate = new Date(combinedDateTime);
+      arrivalDate.setHours(arrivalDate.getHours() + durationHours);
+      if (durationMinutes) {
+        arrivalDate.setMinutes(arrivalDate.getMinutes() + durationMinutes);
       }
       
       // Déterminer le statut initial de la mission
       // Si la date de départ est dans le futur, statut "confirmé", sinon "en_cours"
       const now = new Date();
-      const initialStatus = departureDate > now ? 'confirmé' : 'en_cours';
+      const initialStatus = combinedDateTime > now ? 'confirmé' : 'en_cours';
       
       const { error } = await supabase
         .from('missions')
         .insert({
           title: `Trajet ${departureLocation} > ${destinationLocation}`,
-          description: additionalInfo,
+          description: `Réservation par ${contactInfo.name} (${contactInfo.company})`,
           date: formattedDate,
           arrival_date: arrivalDate.toISOString(),
           driver_id: driver.id,
@@ -136,7 +146,10 @@ export function PaymentForm({
           passengers: parseInt(passengerCount),
           start_location: departureLocation,
           end_location: destinationLocation,
-          client: cardName, // Utiliser le nom sur la carte comme nom du client
+          client: contactInfo.name, // Utiliser le nom du contact
+          client_email: contactInfo.email, // Utiliser l'email du contact
+          client_phone: contactInfo.phone, // Utiliser le téléphone du contact
+          additional_details: `Société: ${contactInfo.company}`, // Nom de l'entreprise
           status: initialStatus, // Statut initial basé sur la date de départ
           company_id: vehicle.company_id
         });
@@ -166,8 +179,9 @@ export function PaymentForm({
         <h3 className="font-medium mb-2">Récapitulatif de la commande</h3>
         <p className="text-sm text-gray-600">
           Trajet {departureLocation} → {destinationLocation}<br />
-          {format(departureDate, "d MMMM yyyy 'à' HH:mm", { locale: fr })}<br />
+          {format(departureDate, "d MMMM yyyy", { locale: fr })} à {departureTime}<br />
           {passengerCount} passagers<br />
+          Contact: {contactInfo.name} ({contactInfo.email})<br />
           <span className="font-medium">Montant total: {estimatedPrice.toFixed(2)} €</span>
         </p>
       </div>

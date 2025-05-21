@@ -37,6 +37,13 @@ export function BookingModal({
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [departureTime, setDepartureTime] = useState("09:00");
+  const [contactInfo, setContactInfo] = useState({
+    name: "",
+    company: "",
+    email: "",
+    phone: ""
+  });
   
   const steps = ["Véhicule", "Chauffeur", "Détails", "Paiement"];
   
@@ -104,8 +111,11 @@ export function BookingModal({
               departureLocation={departureLocation}
               destinationLocation={destinationLocation}
               departureDate={departureDate}
+              departureTime={departureTime}
+              setDepartureTime={setDepartureTime}
               passengerCount={passengerCount}
-              additionalInfo={additionalInfo}
+              contactInfo={contactInfo}
+              setContactInfo={setContactInfo}
               onContinue={handleContinueToPayment}
               onBack={() => setCurrentStep(1)}
               setEstimatedDuration={setEstimatedDuration}
@@ -125,10 +135,11 @@ export function BookingModal({
               departureLocation={departureLocation}
               destinationLocation={destinationLocation}
               departureDate={departureDate}
+              departureTime={departureTime}
               passengerCount={passengerCount}
               estimatedDuration={estimatedDuration}
               estimatedPrice={estimatedPrice}
-              additionalInfo={additionalInfo}
+              contactInfo={contactInfo}
             />
           );
         }
