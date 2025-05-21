@@ -25,7 +25,16 @@ serve(async (req) => {
     );
     
     // Parse the request body
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
     const { city, passengers } = body;
 
     if (!city) {
@@ -46,43 +55,63 @@ serve(async (req) => {
       throw companiesError;
     }
 
+    // Return empty array if no companies found
+    if (!companies || companies.length === 0) {
+      return new Response(
+        JSON.stringify([]),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // For each company, get drivers and vehicles count
     const companiesWithResources = await Promise.all(companies.map(async (company) => {
-      // Get drivers for company and city
-      const { data: drivers, error: driversError } = await supabaseClient
-        .from('drivers')
-        .select('id')
-        .eq('id_entreprise', company.id)
-        .eq('ville', city)
-        .eq('disponible', true);
-      
-      if (driversError) throw driversError;
-      
-      // Get vehicles for company and city
-      let vehicleQuery = supabaseClient
-        .from('vehicles')
-        .select('id, capacity')
-        .eq('company_id', company.id)
-        .eq('location', city)
-        .eq('status', 'Disponible');
+      try {
+        // Get drivers for company and city
+        const { data: drivers, error: driversError } = await supabaseClient
+          .from('drivers')
+          .select('id')
+          .eq('id_entreprise', company.id)
+          .eq('ville', city)
+          .eq('disponible', true);
         
-      const { data: vehicles, error: vehiclesError } = await vehicleQuery;
-      
-      if (vehiclesError) throw vehiclesError;
-      
-      // Count vehicles that meet passenger capacity requirement
-      let suitableVehiclesCount = vehicles.length;
-      
-      if (passengers && passengers > 0) {
-        suitableVehiclesCount = vehicles.filter(v => v.capacity >= passengers).length;
+        if (driversError) throw driversError;
+        
+        // Get vehicles for company and city
+        let vehicleQuery = supabaseClient
+          .from('vehicles')
+          .select('id, capacity')
+          .eq('company_id', company.id)
+          .eq('location', city)
+          .eq('status', 'Disponible');
+          
+        const { data: vehicles, error: vehiclesError } = await vehicleQuery;
+        
+        if (vehiclesError) throw vehiclesError;
+        
+        // Count vehicles that meet passenger capacity requirement
+        const vehiclesArray = vehicles || []; // Ensure vehicles is an array
+        let suitableVehiclesCount = vehiclesArray.length;
+        
+        if (passengers && passengers > 0) {
+          suitableVehiclesCount = vehiclesArray.filter(v => v.capacity >= passengers).length;
+        }
+        
+        return {
+          ...company,
+          drivers_count: drivers ? drivers.length : 0,
+          vehicles_count: vehiclesArray.length,
+          suitable_vehicles_count: suitableVehiclesCount
+        };
+      } catch (error) {
+        console.error(`Error processing company ${company.id}:`, error);
+        // Return the company with zero counts on error
+        return {
+          ...company,
+          drivers_count: 0,
+          vehicles_count: 0,
+          suitable_vehicles_count: 0
+        };
       }
-      
-      return {
-        ...company,
-        drivers_count: drivers ? drivers.length : 0,
-        vehicles_count: vehicles ? vehicles.length : 0,
-        suitable_vehicles_count: suitableVehiclesCount
-      };
     }));
     
     // Filter companies that have both drivers and suitable vehicles
@@ -100,8 +129,9 @@ serve(async (req) => {
     );
     
   } catch (error) {
+    console.error("Edge function error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unknown error occurred" }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
     );
   }

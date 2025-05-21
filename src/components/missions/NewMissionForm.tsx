@@ -75,7 +75,7 @@ const fetchDriversByCompany = async (
     return filteredDrivers;
   } catch (error) {
     console.error("Erreur lors de la récupération des chauffeurs:", error);
-    throw error;
+    return []; // Return empty array on error to avoid undefined
   }
 };
 
@@ -117,7 +117,7 @@ const fetchVehiclesByCompany = async (
     return filteredVehicles;
   } catch (error) {
     console.error("Erreur lors de la récupération des véhicules:", error);
-    throw error;
+    return []; // Return empty array on error to avoid undefined
   }
 };
 
@@ -214,6 +214,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
     } catch (error) {
       console.error("Erreur lors de la récupération des entreprises:", error);
       toast.error("Erreur lors de la récupération des entreprises");
+      setCompanies([]); // Ensure companies is never undefined
     }
   };
 
@@ -233,6 +234,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
     } catch (error) {
       console.error("Erreur lors de la récupération des chauffeurs:", error);
       toast.error("Erreur lors de la récupération des chauffeurs");
+      setDrivers([]); // Ensure drivers is never undefined
     }
   };
 
@@ -253,6 +255,7 @@ export function NewMissionForm({ onSuccess }: { onSuccess: () => void }) {
     } catch (error) {
       console.error("Erreur lors de la récupération des véhicules:", error);
       toast.error("Erreur lors de la récupération des véhicules");
+      setVehicles([]); // Ensure vehicles is never undefined
     }
   };
 
