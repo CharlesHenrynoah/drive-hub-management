@@ -122,37 +122,35 @@ export function PaymentForm({
       const formattedDate = combinedDateTime.toISOString();
       
       // Estimer l'heure d'arrivée en fonction de la durée
-      const [durationHours, durationMinutes] = estimatedDuration.split("h").map(part => parseInt(part.trim()));
+      const [durationHours, durationMinutes] = estimatedDuration.split("h").map(part => parseInt(part.trim() || "0"));
       const arrivalDate = new Date(combinedDateTime);
       arrivalDate.setHours(arrivalDate.getHours() + durationHours);
       if (durationMinutes) {
         arrivalDate.setMinutes(arrivalDate.getMinutes() + durationMinutes);
       }
       
-      // Déterminer le statut initial de la mission
-      // Si la date de départ est dans le futur, statut "confirmé", sinon "en_cours"
-      const now = new Date();
-      const initialStatus = combinedDateTime > now ? 'confirmé' : 'en_cours';
+      // Déterminer le statut initial de la mission: "confirmé" pour toutes les futures réservations
+      const missionData = {
+        title: `Trajet ${departureLocation} > ${destinationLocation}`,
+        description: `Réservation par ${contactInfo.name} (${contactInfo.company})`,
+        date: formattedDate,
+        arrival_date: arrivalDate.toISOString(),
+        driver_id: driver.id,
+        vehicle_id: vehicle.id,
+        passengers: parseInt(passengerCount),
+        start_location: departureLocation,
+        end_location: destinationLocation,
+        client: contactInfo.name,
+        client_email: contactInfo.email,
+        client_phone: contactInfo.phone,
+        additional_details: `Société: ${contactInfo.company}`,
+        status: "confirmé",
+        company_id: vehicle.company_id
+      };
       
       const { error } = await supabase
         .from('missions')
-        .insert({
-          title: `Trajet ${departureLocation} > ${destinationLocation}`,
-          description: `Réservation par ${contactInfo.name} (${contactInfo.company})`,
-          date: formattedDate,
-          arrival_date: arrivalDate.toISOString(),
-          driver_id: driver.id,
-          vehicle_id: vehicle.id,
-          passengers: parseInt(passengerCount),
-          start_location: departureLocation,
-          end_location: destinationLocation,
-          client: contactInfo.name, // Utiliser le nom du contact
-          client_email: contactInfo.email, // Utiliser l'email du contact
-          client_phone: contactInfo.phone, // Utiliser le téléphone du contact
-          additional_details: `Société: ${contactInfo.company}`, // Nom de l'entreprise
-          status: initialStatus, // Statut initial basé sur la date de départ
-          company_id: vehicle.company_id
-        });
+        .insert(missionData);
       
       if (error) {
         console.error("Erreur lors de la création de la mission:", error);
