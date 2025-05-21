@@ -119,6 +119,11 @@ export function PaymentForm({
         arrivalDate.setMinutes(arrivalDate.getMinutes() + minutes);
       }
       
+      // Déterminer le statut initial de la mission
+      // Si la date de départ est dans le futur, statut "confirmé", sinon "en_cours"
+      const now = new Date();
+      const initialStatus = departureDate > now ? 'confirmé' : 'en_cours';
+      
       const { error } = await supabase
         .from('missions')
         .insert({
@@ -132,7 +137,7 @@ export function PaymentForm({
           start_location: departureLocation,
           end_location: destinationLocation,
           client: cardName, // Utiliser le nom sur la carte comme nom du client
-          status: 'en_cours', // Changed from 'confirmé' to 'en_cours' to match the allowed values
+          status: initialStatus, // Statut initial basé sur la date de départ
           company_id: vehicle.company_id
         });
       

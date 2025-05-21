@@ -6,7 +6,7 @@ export interface Mission {
   arrival_date?: Date;
   start_location?: string;
   end_location?: string;
-  status: "en_cours" | "terminee" | "annulee";
+  status: "confirmé" | "en_cours" | "terminee" | "annulee";
   description?: string;
   driver_id?: string;
   vehicle_id?: string;
