@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover"
 import { FormControl } from "./form"
 import { Input } from "./input"
+import { TimePicker } from "./time-picker"
 
 interface DatePickerProps {
   date: Date | undefined
@@ -73,7 +74,7 @@ export function DatePicker({
             <Button
               variant={"outline"}
               className={cn(
-                "w-full pl-3 text-left font-normal border-dashed border-gray-300 min-h-10",
+                "w-full pl-3 text-left font-normal border border-gray-300 min-h-10",
                 !date && "text-muted-foreground",
                 className
               )}
@@ -100,17 +101,19 @@ export function DatePicker({
       </Popover>
 
       {showTimeInput && setTime && (
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md p-2">
-          <Clock className="h-4 w-4 opacity-50" />
-          <div className="relative flex-1">
-            <label className="absolute left-0 -top-5 text-sm font-medium text-gray-700">
+        <div className="mt-4">
+          <div className="mb-2">
+            <label className="block text-sm font-medium text-gray-700">
               Heure de départ
             </label>
+          </div>
+          <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-md p-2">
+            <Clock className="h-4 w-4 opacity-50" />
             <Input
               type="time"
               value={time}
               onChange={handleTimeChange}
-              className="pl-2 pr-4 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="border-0 focus:ring-0 p-0 h-8"
               disabled={disabled}
               placeholder="HH:MM"
             />
@@ -118,5 +121,5 @@ export function DatePicker({
         </div>
       )}
     </div>
-  )
+  );
 }
