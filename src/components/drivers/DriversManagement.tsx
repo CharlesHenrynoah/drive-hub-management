@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, Search } from "lucide-react"
 import { AddDriverModal } from "./AddDriverModal"
 import { EditDriverModal } from "./EditDriverModal"
 import { DriverDetailModal } from "./DriverDetailModal";
@@ -216,12 +216,15 @@ export function DriversManagement() {
     },
   ]
 
+  // Filtrer les données en fonction de la recherche
   const filteredData = search
     ? data.filter((item) =>
         item.nom.toLowerCase().includes(search.toLowerCase()) ||
         item.prenom.toLowerCase().includes(search.toLowerCase()) ||
         item.id_chauffeur.toLowerCase().includes(search.toLowerCase()) ||
-        (item.ville && item.ville.toLowerCase().includes(search.toLowerCase()))
+        (item.ville && item.ville.toLowerCase().includes(search.toLowerCase())) ||
+        (item.telephone && item.telephone.toLowerCase().includes(search.toLowerCase())) ||
+        (item.email && item.email.toLowerCase().includes(search.toLowerCase()))
       )
     : data;
 
@@ -243,15 +246,23 @@ export function DriversManagement() {
     setSelectedDriver(null);
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <Input
-          type="search"
-          placeholder="Rechercher un chauffeur..."
-          className="max-w-md"
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="relative max-w-md w-full">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Rechercher un chauffeur..."
+            className="pl-10 max-w-md"
+            value={search}
+            onChange={handleSearchChange}
+          />
+        </div>
         <Button onClick={() => setIsAddModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Ajouter un chauffeur
         </Button>
@@ -271,13 +282,17 @@ export function DriversManagement() {
         />
       </div>
 
-      <Table>
-        <TableCaption>Liste des chauffeurs</TableCaption>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
+      {filteredData.length === 0 ? (
+        <div className="text-center py-10">
+          <p className="text-muted-foreground">Aucun chauffeur trouvé</p>
+        </div>
+      ) : (
+        <Table>
+          <TableCaption>Liste des chauffeurs</TableCaption>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
@@ -286,23 +301,23 @@ export function DriversManagement() {
                           header.getContext()
                         )}
                   </TableHead>
-                )
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id} onClick={() => handleRowClick(row.original)} className="cursor-pointer">
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id} onClick={() => handleRowClick(row.original)} className="cursor-pointer">
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Modals */}
       {selectedDriver && (
