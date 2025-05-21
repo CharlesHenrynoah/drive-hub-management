@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Combobox } from "@/components/ui/combobox";
+import { cities } from "@/components/vehicles/constants/vehicleFormConstants";
 
 interface Fleet {
   id: string;
@@ -56,6 +57,12 @@ const LandingPage = () => {
   const [searchPerformed, setSearchPerformed] = useState<boolean>(false);
   
   const navigate = useNavigate();
+
+  // Format cities for Combobox
+  const cityOptions = cities.map(city => ({
+    label: city,
+    value: city
+  }));
 
   const handleChatWithOtto = () => {
     const message = `Je souhaite effectuer un déplacement ${departure ? `de ${departure}` : ""} ${destination ? `à ${destination}` : ""} ${departureDate ? `le ${format(departureDate, "d MMMM yyyy", { locale: fr })}` : ""}, nous sommes un groupe de ${passengerCount} personnes. ${additionalInfo}`;
@@ -207,10 +214,13 @@ const LandingPage = () => {
               </div>
               <div>
                 <label className="block text-gray-700 mb-1 font-medium">Lieu de départ</label>
-                <Input 
-                  placeholder="Ville ou adresse de départ" 
+                <Combobox 
+                  items={cityOptions}
                   value={departure}
-                  onChange={(e) => setDeparture(e.target.value)}
+                  onChange={setDeparture}
+                  placeholder="Sélectionnez une ville de départ" 
+                  emptyMessage="Aucune ville trouvée"
+                  className="w-full"
                 />
               </div>
               <div>
