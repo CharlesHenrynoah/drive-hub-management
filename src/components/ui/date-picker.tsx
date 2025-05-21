@@ -66,7 +66,7 @@ export function DatePicker({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <Popover>
         <PopoverTrigger asChild>
           <FormControl>
@@ -100,16 +100,21 @@ export function DatePicker({
       </Popover>
 
       {showTimeInput && setTime && (
-        <div className="flex items-center">
-          <Clock className="mr-2 h-4 w-4 opacity-50" />
-          <Input
-            type="time"
-            value={time}
-            onChange={handleTimeChange}
-            className="max-w-[120px]"
-            disabled={disabled}
-            placeholder="HH:MM"
-          />
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 opacity-50" />
+          <div className="relative flex-1">
+            <Input
+              type="time"
+              value={time}
+              onChange={handleTimeChange}
+              className="pl-2 pr-4"
+              disabled={disabled}
+              placeholder="HH:MM"
+            />
+            <label className="absolute left-2 -top-5 text-xs text-gray-500">
+              Heure de départ
+            </label>
+          </div>
         </div>
       )}
     </div>
