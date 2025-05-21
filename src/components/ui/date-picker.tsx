@@ -100,20 +100,20 @@ export function DatePicker({
       </Popover>
 
       {showTimeInput && setTime && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md p-2">
           <Clock className="h-4 w-4 opacity-50" />
           <div className="relative flex-1">
+            <label className="absolute left-0 -top-5 text-sm font-medium text-gray-700">
+              Heure de départ
+            </label>
             <Input
               type="time"
               value={time}
               onChange={handleTimeChange}
-              className="pl-2 pr-4"
+              className="pl-2 pr-4 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={disabled}
               placeholder="HH:MM"
             />
-            <label className="absolute left-2 -top-5 text-xs text-gray-500">
-              Heure de départ
-            </label>
           </div>
         </div>
       )}

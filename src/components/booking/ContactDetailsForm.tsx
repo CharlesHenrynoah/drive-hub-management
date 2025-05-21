@@ -28,50 +28,58 @@ export function ContactDetailsForm({ contactInfo, setContactInfo }: ContactDetai
 
   return (
     <div className="space-y-4">
-      <h3 className="font-medium">Coordonnées du réservant</h3>
+      <h3 className="font-medium text-lg mb-4">Coordonnées du réservant</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="contactName">Nom et prénom</Label>
+        <div className="space-y-2">
+          <Label htmlFor="contactName" className="text-gray-800 font-medium">Nom et prénom *</Label>
           <Input 
             id="contactName" 
             value={contactInfo.name} 
             onChange={(e) => handleChange("name", e.target.value)} 
             placeholder="Jean Dupont"
+            className="border-gray-300 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            required
           />
         </div>
         
-        <div>
-          <Label htmlFor="contactCompany">Entreprise</Label>
+        <div className="space-y-2">
+          <Label htmlFor="contactCompany" className="text-gray-800 font-medium">Entreprise</Label>
           <Input 
             id="contactCompany" 
             value={contactInfo.company} 
             onChange={(e) => handleChange("company", e.target.value)} 
             placeholder="Nom de votre entreprise"
+            className="border-gray-300 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           />
         </div>
         
-        <div>
-          <Label htmlFor="contactEmail">Email</Label>
+        <div className="space-y-2">
+          <Label htmlFor="contactEmail" className="text-gray-800 font-medium">Email *</Label>
           <Input 
             id="contactEmail" 
             type="email" 
             value={contactInfo.email} 
             onChange={(e) => handleChange("email", e.target.value)} 
             placeholder="email@example.com"
+            className="border-gray-300 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            required
           />
         </div>
         
-        <div>
-          <Label htmlFor="contactPhone">Téléphone</Label>
+        <div className="space-y-2">
+          <Label htmlFor="contactPhone" className="text-gray-800 font-medium">Téléphone *</Label>
           <Input 
             id="contactPhone" 
             value={contactInfo.phone} 
             onChange={(e) => handleChange("phone", e.target.value)} 
             placeholder="0601020304"
+            className="border-gray-300 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            required
           />
         </div>
       </div>
+      <p className="text-sm text-gray-500 italic mt-2">* champs obligatoires</p>
     </div>
   );
 }
