@@ -2,6 +2,7 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
+import { addDays } from "date-fns"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -28,8 +29,18 @@ export function DatePicker({
   placeholder = "Sélectionner une date", 
   disabled = false,
   className,
-  minDate
+  minDate: propMinDate
 }: DatePickerProps) {
+  // Calculate default minimum date (1 day from now)
+  const defaultMinDate = React.useMemo(() => {
+    return addDays(new Date(), 1);
+  }, []);
+  
+  // Use provided minDate or the default minimum date
+  const minDate = React.useMemo(() => {
+    return propMinDate && propMinDate > defaultMinDate ? propMinDate : defaultMinDate;
+  }, [propMinDate, defaultMinDate]);
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -56,8 +67,7 @@ export function DatePicker({
           initialFocus
           className="pointer-events-auto"
           disabled={(date) => {
-            if (!minDate) return false;
-            // Disable dates before minDate
+            // Disable dates before minimum date
             return date < minDate;
           }}
         />

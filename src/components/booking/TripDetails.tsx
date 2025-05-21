@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,16 +86,6 @@ export function TripDetails({
     setEstimatedDuration(duration);
     setEstimatedPrice(estimatedPrice);
   }, [duration, estimatedPrice, setEstimatedDuration, setEstimatedPrice]);
-  
-  // Update departure date to be at least minDate if it's earlier
-  useEffect(() => {
-    // Check if departureDate is before minimum date
-    if (departureDate < minDate) {
-      // You could set the date to minDate here if you want to automatically adjust it
-      // However, leaving it as is and displaying validation warnings is often better UX
-      console.log("Warning: Selected date is earlier than the minimum allowed date.");
-    }
-  }, [departureDate, minDate]);
   
   const handleNextStep = () => {
     // Validate that the departure date is not before the minimum date
