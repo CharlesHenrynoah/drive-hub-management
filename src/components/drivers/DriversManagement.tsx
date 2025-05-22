@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -208,17 +208,22 @@ export function DriversManagement() {
     },
   ]
 
-  // Filter data based on search
-  const filteredData = searchValue
-    ? data.filter((item) =>
-        item.nom.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.prenom.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.id_chauffeur.toLowerCase().includes(searchValue.toLowerCase()) ||
-        (item.ville && item.ville.toLowerCase().includes(searchValue.toLowerCase())) ||
-        (item.telephone && item.telephone.toLowerCase().includes(searchValue.toLowerCase())) ||
-        (item.email && item.email.toLowerCase().includes(searchValue.toLowerCase()))
-      )
-    : data;
+  // Fonction de filtrage optimisée
+  const filteredData = useMemo(() => {
+    if (!searchValue.trim()) return data;
+    
+    const searchLower = searchValue.toLowerCase().trim();
+    return data.filter(item => {
+      return (
+        (item.nom && item.nom.toLowerCase().includes(searchLower)) ||
+        (item.prenom && item.prenom.toLowerCase().includes(searchLower)) ||
+        (item.id_chauffeur && item.id_chauffeur.toLowerCase().includes(searchLower)) ||
+        (item.ville && item.ville.toLowerCase().includes(searchLower)) ||
+        (item.telephone && item.telephone.toLowerCase().includes(searchLower)) ||
+        (item.email && item.email.toLowerCase().includes(searchLower))
+      );
+    });
+  }, [data, searchValue]);
 
   const table = useReactTable({
     data: filteredData,
@@ -239,6 +244,7 @@ export function DriversManagement() {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Mise à jour directe de la valeur pour permettre la saisie
     setSearchValue(e.target.value);
   };
 
@@ -253,6 +259,8 @@ export function DriversManagement() {
             className="pl-10 max-w-md"
             value={searchValue}
             onChange={handleSearchChange}
+            autoComplete="off"
+            data-test-id="driver-search"
           />
         </div>
         <Button onClick={() => setIsAddModalOpen(true)}>

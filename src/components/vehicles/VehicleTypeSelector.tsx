@@ -74,65 +74,89 @@ export function VehicleTypeSelector({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Show selected types */}
-      <div className="flex flex-wrap gap-2 mb-2">
-        {isMultiSelect ? (
-          selectedTypes && selectedTypes.length > 0 ? (
-            selectedTypes.map(type => (
-              <Badge key={type} variant="outline" className="bg-primary/10">
-                {type}
+    <div className="flex flex-col gap-4">
+      {/* Titre et sélections */}
+      <div>
+        <h3 className="text-base font-medium mb-2">Types de véhicules {maxSelections > 1 && <span className="text-sm font-normal text-muted-foreground">(max {maxSelections})</span>}</h3>
+        
+        {/* Types sélectionnés */}
+        <div className="flex flex-wrap gap-2 mb-1">
+          {isMultiSelect ? (
+            selectedTypes && selectedTypes.length > 0 ? (
+              selectedTypes.map(type => (
+                <Badge 
+                  key={type} 
+                  variant="outline" 
+                  className="bg-green-50 text-green-700 border-green-200 px-2.5 py-0.5 rounded-full font-medium hover:bg-green-100 transition-colors"
+                >
+                  {type}
+                </Badge>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500 italic">Aucun type sélectionné</div>
+            )
+          ) : (
+            selectedType ? (
+              <Badge 
+                key={selectedType} 
+                variant="outline" 
+                className="bg-green-50 text-green-700 border-green-200 px-2.5 py-0.5 rounded-full font-medium hover:bg-green-100 transition-colors"
+              >
+                {selectedType}
               </Badge>
-            ))
-          ) : (
-            <div className="text-sm text-muted-foreground">Aucun type sélectionné</div>
-          )
-        ) : (
-          selectedType ? (
-            <Badge key={selectedType} variant="outline" className="bg-primary/10">
-              {selectedType}
-            </Badge>
-          ) : (
-            <div className="text-sm text-muted-foreground">Aucun type sélectionné</div>
-          )
-        )}
+            ) : (
+              <div className="text-sm text-gray-500 italic">Aucun type sélectionné</div>
+            )
+          )}
+        </div>
       </div>
       
-      {/* Show error message if any */}
+      {/* Message d'erreur */}
       {error && (
-        <div className="text-sm text-red-500 mb-2">
+        <div className="text-sm text-red-500 bg-red-50 px-3 py-2 border border-red-100 rounded-md">
           {error}
         </div>
       )}
       
-      <ScrollArea className="h-[220px] pr-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {/* Liste des types de véhicules disponibles */}
+      <ScrollArea className="h-[300px] pr-4 overflow-y-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {vehicleTypes.map((vehicleType, index) => {
             const isSelected = isMultiSelect 
               ? selectedTypes && selectedTypes.includes(vehicleType.value)
               : selectedType === vehicleType.value;
               
             return (
-              <Button
+              <button
                 key={index}
                 type="button"
-                variant="outline"
                 onClick={() => isMultiSelect 
                   ? handleMultiTypeClick(vehicleType.value)
                   : handleSingleTypeClick(vehicleType.value)
                 }
                 className={cn(
-                  "flex items-start justify-between p-3 h-auto",
-                  isSelected && "border-primary ring-1 ring-primary"
+                  "relative flex items-center border rounded-lg p-4 h-auto transition-all",
+                  "hover:border-blue-300 hover:bg-blue-50/50",
+                  isSelected 
+                    ? "border-green-400 bg-green-50 shadow-sm" 
+                    : "border-gray-200 bg-white"
                 )}
               >
-                <div className="flex flex-col items-start text-left">
-                  <span className="font-medium">{vehicleType.label}</span>
+                <div className="flex flex-1 items-start text-left">
+                  <span className={cn(
+                    "font-medium",
+                    isSelected ? "text-green-700" : "text-gray-700"
+                  )}>
+                    {vehicleType.label}
+                  </span>
                 </div>
+                
                 {isSelected && (
-                  <CheckIcon className="h-4 w-4 text-primary" />
+                  <div className="absolute right-2 top-2 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
+                    <CheckIcon className="h-3 w-3 text-white" />
+                  </div>
                 )}
-              </Button>
+              </button>
             );
           })}
         </div>

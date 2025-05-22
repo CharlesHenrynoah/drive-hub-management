@@ -1,15 +1,16 @@
 
 import { useState, useEffect } from "react";
-import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 interface Company {
   id: string;
@@ -57,6 +58,7 @@ export function CompanyDetailModal({ company, onUpdate }: CompanyDetailModalProp
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   useEffect(() => {
     async function fetchCompanyDetails() {
@@ -158,35 +160,42 @@ export function CompanyDetailModal({ company, onUpdate }: CompanyDetailModalProp
   }, [company.id, onUpdate]);
 
   return (
-    <DialogContent className="sm:max-w-[700px] max-h-[80vh] p-0 overflow-hidden">
-      <ScrollArea className="max-h-[80vh] overflow-y-auto">
-        <div className="p-6">
-          <DialogHeader>
-            <div className="flex items-center gap-4">
-              <Avatar className="h-14 w-14">
-                {company.logo_url ? (
-                  <AvatarImage src={company.logo_url} alt={company.name} />
-                ) : (
-                  <AvatarFallback>{company.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                )}
-              </Avatar>
-              <div>
-                <DialogTitle className="text-xl">{company.name}</DialogTitle>
-                <DialogDescription>
-                  {company.id} {company.created_at ? ` - Entreprise créée le ${new Date(company.created_at).toLocaleDateString()}` : ''}
-                </DialogDescription>
+    <>
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] p-0 overflow-hidden">
+        <ScrollArea className="max-h-[80vh] overflow-y-auto">
+          <div className="p-6">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-14 w-14">
+                    {company.logo_url ? (
+                      <AvatarImage src={company.logo_url} alt={company.name} />
+                    ) : (
+                      <AvatarFallback>{company.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <DialogTitle className="text-xl">{company.name}</DialogTitle>
+                    <DialogDescription>
+                      {company.id} {company.created_at ? ` - Entreprise créée le ${new Date(company.created_at).toLocaleDateString()}` : ''}
+                    </DialogDescription>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Modifier
+                </Button>
               </div>
-            </div>
-          </DialogHeader>
+            </DialogHeader>
           
-          <Tabs defaultValue="details" className="mt-2">
-            <TabsList>
-              <TabsTrigger value="details">Détails</TabsTrigger>
-              <TabsTrigger value="flottes">Flottes</TabsTrigger>
-              <TabsTrigger value="ressources">Ressources</TabsTrigger>
-            </TabsList>
+          <div className="mt-6">
             
-            <TabsContent value="details" className="space-y-4 pt-4">
+            <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Informations générales</h3>
                 <Separator className="my-2" />
@@ -228,124 +237,164 @@ export function CompanyDetailModal({ company, onUpdate }: CompanyDetailModalProp
                   </div>
                 </dl>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="flottes" className="pt-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-medium">Flottes de l'entreprise</h3>
-                <Button size="sm">Ajouter une flotte</Button>
-              </div>
-              
-              {loading ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span>Chargement des flottes...</span>
-                </div>
-              ) : fleets.length > 0 ? (
-                <div className="space-y-3">
-                  {fleets.map((fleet) => (
-                    <Card key={fleet.id}>
-                      <CardHeader className="py-3">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-base">{fleet.name}</CardTitle>
-                          <Badge variant="outline">{fleet.id.substring(0, 8)}...</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        <p className="text-sm text-muted-foreground">{fleet.description || 'Pas de description'}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Aucune flotte n'est associée à cette entreprise</p>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="ressources" className="space-y-6 pt-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">Véhicules ({vehicles.length})</h3>
-                
-                {loading ? (
-                  <div className="flex justify-center items-center py-4">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    <span>Chargement des véhicules...</span>
-                  </div>
-                ) : vehicles.length > 0 ? (
-                  <div className="rounded-md border overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-secondary">
-                        <tr>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">ID</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Immatriculation</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Marque</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Modèle</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Type</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {vehicles.map((vehicle) => (
-                          <tr key={vehicle.id} className="border-b last:border-0">
-                            <td className="p-2 text-sm">{vehicle.id.substring(0, 8)}...</td>
-                            <td className="p-2 text-sm">{vehicle.registration}</td>
-                            <td className="p-2 text-sm">{vehicle.brand}</td>
-                            <td className="p-2 text-sm">{vehicle.model}</td>
-                            <td className="p-2 text-sm">{vehicle.type}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-4 bg-secondary/30 rounded-md">
-                    <p className="text-muted-foreground">Aucun véhicule associé</p>
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">Chauffeurs ({drivers.length})</h3>
-                
-                {loading ? (
-                  <div className="flex justify-center items-center py-4">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    <span>Chargement des chauffeurs...</span>
-                  </div>
-                ) : drivers.length > 0 ? (
-                  <div className="rounded-md border overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-secondary">
-                        <tr>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">ID</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Matricule</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Nom</th>
-                          <th className="text-left p-2 text-xs font-medium text-muted-foreground">Prénom</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {drivers.map((driver) => (
-                          <tr key={driver.id} className="border-b last:border-0">
-                            <td className="p-2 text-sm">{driver.id.substring(0, 8)}...</td>
-                            <td className="p-2 text-sm">{driver.id_chauffeur}</td>
-                            <td className="p-2 text-sm">{driver.nom}</td>
-                            <td className="p-2 text-sm">{driver.prenom}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-4 bg-secondary/30 rounded-md">
-                    <p className="text-muted-foreground">Aucun chauffeur associé</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
         </div>
       </ScrollArea>
     </DialogContent>
+
+      {/* Modale d'édition */}
+      {isEditModalOpen && (
+        <EditCompanyModal 
+          company={company} 
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdate={() => {
+            if (onUpdate) onUpdate();
+            setIsEditModalOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+interface EditCompanyModalProps {
+  company: Company;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: () => void;
+}
+
+function EditCompanyModal({ company, isOpen, onClose, onUpdate }: EditCompanyModalProps) {
+  const [formData, setFormData] = useState({
+    name: company.name,
+    contact_name: company.contact_name || '',
+    address: company.address || '',
+    email: company.email || '',
+    phone: company.phone || ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({
+          name: formData.name,
+          contact_name: formData.contact_name,
+          address: formData.address,
+          email: formData.email,
+          phone: formData.phone
+        })
+        .eq('id', company.id);
+
+      if (error) {
+        console.error('Erreur lors de la mise à jour:', error);
+        toast.error("Une erreur est survenue lors de la mise à jour des informations");
+        throw error;
+      }
+
+      toast.success("Les informations de l'entreprise ont été mises à jour avec succès");
+      onUpdate();
+    } catch (error) {
+      console.error('Erreur:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Modifier l'entreprise</DialogTitle>
+          <DialogDescription>
+            Modifiez les informations de {company.name}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-medium">Nom de l'entreprise</label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="contact_name" className="text-sm font-medium">Contact principal</label>
+            <Input
+              id="contact_name"
+              name="contact_name"
+              value={formData.contact_name}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="address" className="text-sm font-medium">Adresse</label>
+            <Input
+              id="address"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="phone" className="text-sm font-medium">Téléphone</label>
+            <Input
+              id="phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+            />
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button variant="outline" type="button" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={loading} className="ml-2">
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                "Enregistrer"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

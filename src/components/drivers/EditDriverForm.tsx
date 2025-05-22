@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Upload, Camera, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -83,11 +83,15 @@ const formSchema = z.object({
   id_entreprise: z.string().min(1, "L'entreprise est requise"),
   disponible: z.boolean(),
   ville: z.string().optional(),
-  piece_identite: z.string().min(1, "La pièce d'identité est requise"),
-  certificat_medical: z.string().min(1, "Le certificat médical est requis"),
-  justificatif_domicile: z.string().min(1, "Le justificatif de domicile est requis"),
+  permis_conduire: z.string().min(1, "Le permis de conduire est requis"),
+  carte_vtc: z.string().min(1, "La carte VTC est requise"),
   photo: z.string().optional(),
   note_chauffeur: z.number(),
+  
+  // Garder ces champs pour la compatibilité mais ils ne seront plus visibles dans le formulaire
+  piece_identite: z.string().optional(),
+  certificat_medical: z.string().optional(),
+  justificatif_domicile: z.string().optional(),
 });
 
 // Type VehicleType basé sur l'enum de la base de données
@@ -116,11 +120,13 @@ export function EditDriverForm({
       id_entreprise: driver.id_entreprise,
       disponible: driver.disponible,
       ville: driver.ville || "",
+      permis_conduire: driver.piece_identite || "", // Utiliser piece_identite comme valeur par défaut
+      carte_vtc: "", // Nouveau champ, pas de valeur par défaut
+      photo: driver.photo || "",
+      note_chauffeur: driver.note_chauffeur,
       piece_identite: driver.piece_identite,
       certificat_medical: driver.certificat_medical,
       justificatif_domicile: driver.justificatif_domicile,
-      photo: driver.photo || "",
-      note_chauffeur: driver.note_chauffeur,
     },
   });
 
@@ -197,9 +203,10 @@ export function EditDriverForm({
           id_entreprise: values.id_entreprise,
           disponible: values.disponible,
           ville: values.ville,
-          piece_identite: values.piece_identite,
-          certificat_medical: values.certificat_medical,
-          justificatif_domicile: values.justificatif_domicile,
+          // Stocker les nouveaux champs dans les anciens champs pour compatibilité
+          piece_identite: values.permis_conduire,  // Utiliser permis_conduire comme nouvelle pièce d'identité
+          certificat_medical: values.carte_vtc,    // Utiliser carte_vtc comme nouveau certificat médical
+          justificatif_domicile: "",               // Vider ce champ car il n'est plus utilisé
           photo: values.photo,
           note_chauffeur: values.note_chauffeur,
         })
@@ -480,67 +487,148 @@ export function EditDriverForm({
               name="photo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Photo (URL)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="URL de la photo" {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                  {field.value && (
-                    <div className="mt-2 p-2 border rounded-md">
-                      <img 
-                        src={field.value} 
-                        alt="Aperçu" 
-                        className="w-full h-40 object-cover rounded-md" 
+                  <FormLabel>Photo</FormLabel>
+                  <div className="space-y-4">
+                    {/* Zone d'importation de photo */}
+                    <div className="border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors rounded-xl overflow-hidden">
+                      <label 
+                        htmlFor="photo-upload" 
+                        className="cursor-pointer flex flex-col items-center justify-center"
+                      >
+                        {field.value ? (
+                          <div className="relative w-full">
+                            <img 
+                              src={field.value} 
+                              alt="Aperçu" 
+                              className="w-full h-48 object-cover" 
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Camera className="h-8 w-8 text-white" />
+                              <span className="text-white font-medium ml-2">Changer la photo</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-6 flex flex-col items-center">
+                            <Camera className="h-10 w-10 text-blue-500 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">Ajouter une photo</p>
+                            <p className="text-xs text-gray-500 mt-1">Glissez et déposez ou cliquez pour sélectionner</p>
+                            <p className="text-xs text-gray-500">PNG, JPG, WEBP (max 5MB)</p>
+                          </div>
+                        )}
+                      </label>
+                      <input 
+                        type="file" 
+                        id="photo-upload" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Créer une URL temporaire pour l'aperçu
+                            const url = URL.createObjectURL(file);
+                            field.onChange(url);
+                          }
+                        }} 
                       />
                     </div>
-                  )}
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="piece_identite"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pièce d'identité</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Référence pièce d'identité" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="certificat_medical"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Certificat médical</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Référence certificat médical" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="justificatif_domicile"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Justificatif de domicile</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Référence justificatif de domicile" {...field} />
-                  </FormControl>
+                    
+                    {/* Zone de saisie d'URL (alternative) */}
+                    <div className="relative">
+                      <FormControl>
+                        <Input 
+                          placeholder="Ou entrez une URL d'image" 
+                          value={field.value || ""} 
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
+                      {field.value && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-2"
+                          onClick={() => field.onChange("")}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Documents</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="permis_conduire"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Permis de conduire</FormLabel>
+                      <FormControl>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors">
+                          <input 
+                            type="file" 
+                            id="permis_conduire_file"
+                            className="hidden" 
+                            accept="image/png,image/jpeg,image/webp,application/pdf"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                // Stocker le nom du fichier dans le champ
+                                field.onChange(e.target.files[0].name);
+                              }
+                            }}
+                          />
+                          <label htmlFor="permis_conduire_file" className="w-full h-full flex flex-col items-center cursor-pointer">
+                            <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                            <p className="text-sm font-medium">{field.value || "Aucun fichier sélectionné"}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Cliquez ou glissez-déposez</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, PDF (max 5MB)</p>
+                          </label>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="carte_vtc"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Carte VTC</FormLabel>
+                      <FormControl>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors">
+                          <input 
+                            type="file" 
+                            id="carte_vtc_file"
+                            className="hidden" 
+                            accept="image/png,image/jpeg,image/webp,application/pdf"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                // Stocker le nom du fichier dans le champ
+                                field.onChange(e.target.files[0].name);
+                              }
+                            }}
+                          />
+                          <label htmlFor="carte_vtc_file" className="w-full h-full flex flex-col items-center cursor-pointer">
+                            <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                            <p className="text-sm font-medium">{field.value || "Aucun fichier sélectionné"}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Cliquez ou glissez-déposez</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, PDF (max 5MB)</p>
+                          </label>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
             
             <FormField
               control={form.control}

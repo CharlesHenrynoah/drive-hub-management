@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Leaf, Clock, Medal, Scale, CheckCircle, MessageSquare, Calendar, Users, Bus, Phone, User, Mail, Building } from "lucide-react";
+import backgroundImage from "@/pages/background/background.png";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -51,13 +52,111 @@ const LandingPage = () => {
     company: "",
   });
   
+  // Calcul de la date par défaut (demain)
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0]; // Format YYYY-MM-DD
+  };
+
+  // États pour le formulaire de devis
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState<boolean>(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState<boolean>(false);
+  const [quoteFormData, setQuoteFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    departure: "",
+    destination: "",
+    departureDate: getTomorrowDate(),
+    departureTime: "09:00",
+    passengers: "1",
+    message: ""
+  });
+  
   const navigate = useNavigate();
 
   // Format cities for Combobox
-  const cityOptions = cities.map(city => ({
+  const cityOptions = cities.map((city) => ({
+    value: city,
     label: city,
-    value: city
   }));
+  
+  // Fonctions pour gérer le formulaire de devis
+  const handleQuoteFormOpen = () => {
+    setIsQuoteModalOpen(true);
+  };
+  
+  const handleQuoteFormClose = () => {
+    setIsQuoteModalOpen(false);
+  };
+  
+  const handleQuoteFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    // Validations spécifiques selon le type de champ
+    let validatedValue = value;
+    
+    switch (name) {
+      case 'name':
+        // Accepte uniquement les lettres, espaces, tirets, apostrophes
+        validatedValue = value.replace(/[^a-zA-Z\u00C0-\u017F\s\-']/g, '');
+        break;
+      
+      case 'phone':
+        // Accepte uniquement les chiffres, +, espaces et parenthèses
+        validatedValue = value.replace(/[^0-9+()\s]/g, '');
+        break;
+      
+      case 'departure':
+      case 'destination':
+        // Accepte les lettres, chiffres, espaces, tirets (pour les noms de villes composés)
+        validatedValue = value.replace(/[^a-zA-Z0-9\u00C0-\u017F\s\-]/g, '');
+        break;
+      
+      case 'passengers':
+        // S'assure que c'est un nombre positif
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 1) {
+          validatedValue = value === '' ? '' : '1';
+        }
+        break;
+        
+      default:
+        // Pas de validation spéciale pour les autres champs
+        break;
+    }
+    
+    setQuoteFormData(prev => ({
+      ...prev,
+      [name]: validatedValue
+    }));
+  };
+  
+  const handleQuoteFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Simulation d'envoi d'email au service client
+    // En production, vous utiliserez un service d'email réel
+    console.log("Demande de devis envoyée:", quoteFormData);
+    
+    // Fermeture du formulaire et ouverture de la confirmation
+    setIsQuoteModalOpen(false);
+    setIsConfirmationModalOpen(true);
+    
+    // Réinitialisation du formulaire
+    setQuoteFormData({
+      name: "",
+      email: "",
+      phone: "",
+      departure: "",
+      destination: "",
+      departureDate: getTomorrowDate(),
+      departureTime: "09:00",
+      passengers: "1",
+      message: ""
+    });
+  };
   
   // Combine French cities and European capitals for destination options
   const destinationOptions = [...cities, ...europeanCapitals]
@@ -335,88 +434,101 @@ const LandingPage = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative h-[500px] flex items-center justify-center bg-gray-300 bg-[url('/placeholder.svg')] bg-cover bg-center">
-        <div className="absolute inset-0 bg-black/30"></div>
+      <section className="relative bg-gray-300 md:bg-[url('/placeholder.svg')] bg-cover bg-center py-16">
+        <div 
+          className="absolute inset-0 md:bg-black/30"
+          style={{
+            background: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${backgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        ></div>
         <div className="container mx-auto px-4 relative z-10 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-8">
             Location autocar, bus, minibus avec chauffeur
           </h1>
-          <div className="max-w-3xl mx-auto bg-white rounded-lg p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Date de départ <span className="text-red-500">*</span></label>
-                <DatePicker date={departureDate} setDate={setDepartureDate} placeholder="Sélectionnez une date" className="w-full" />
+          <div className="max-w-3xl mx-auto bg-white rounded-lg p-6 shadow-lg">
+            <form className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-gray-700 font-medium">Date de départ <span className="text-red-500">*</span></label>
+                  <DatePicker 
+                    date={departureDate} 
+                    setDate={setDepartureDate} 
+                    placeholder="Sélectionnez une date" 
+                    className="w-full h-10" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-gray-700 font-medium">Heure de départ <span className="text-red-500">*</span></label>
+                  <TimePicker 
+                    time={departureTime} 
+                    setTime={setDepartureTime} 
+                    placeholder="Sélectionnez une heure" 
+                    label=""
+                    className="w-full h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-gray-700 font-medium">Nombre de passagers <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="number" 
+                    placeholder="Nombre de passagers" 
+                    value={passengerCount}
+                    onChange={(e) => setPassengerCount(e.target.value)}
+                    min="1"
+                    required
+                    className="w-full h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-gray-700 font-medium">Lieu de départ <span className="text-red-500">*</span></label>
+                  <Combobox 
+                    items={cityOptions}
+                    value={departure}
+                    onChange={setDeparture}
+                    placeholder="Sélectionnez une ville de départ" 
+                    emptyMessage="Aucune ville trouvée"
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="block text-gray-700 font-medium">Destination <span className="text-red-500">*</span></label>
+                  <Combobox 
+                    items={destinationOptions}
+                    value={destination}
+                    onChange={setDestination}
+                    placeholder="Sélectionnez une destination" 
+                    emptyMessage="Aucune destination trouvée"
+                    className="w-full"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Heure de départ <span className="text-red-500">*</span></label>
-                <TimePicker 
-                  time={departureTime} 
-                  setTime={setDepartureTime} 
-                  placeholder="Sélectionnez une heure" 
-                  label=""
-                  className="w-full"
+              
+              <div className="space-y-2">
+                <label className="block text-gray-700 font-medium">Informations supplémentaires</label>
+                <Textarea 
+                  placeholder="Précisez vos besoins (durée, équipements souhaités, etc.)" 
+                  value={additionalInfo}
+                  onChange={(e) => setAdditionalInfo(e.target.value)}
+                  className="resize-none w-full"
+                  rows={3}
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Nombre de passagers <span className="text-red-500">*</span></label>
-                <Input 
-                  type="number" 
-                  placeholder="Nombre de passagers" 
-                  value={passengerCount}
-                  onChange={(e) => setPassengerCount(e.target.value)}
-                  min="1"
-                  required
-                />
+              
+              <div className="flex justify-center pt-4">
+                <Button 
+                  type="button"
+                  className="w-full sm:w-auto bg-hermes-green text-black hover:bg-hermes-green/80 font-medium py-2 px-8"
+                  onClick={handleSearch}
+                  disabled={loading}
+                >
+                  {loading ? "Recherche en cours..." : "Rechercher"}
+                </Button>
               </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Lieu de départ <span className="text-red-500">*</span></label>
-                <Combobox 
-                  items={cityOptions}
-                  value={departure}
-                  onChange={setDeparture}
-                  placeholder="Sélectionnez une ville de départ" 
-                  emptyMessage="Aucune ville trouvée"
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-medium">Destination <span className="text-red-500">*</span></label>
-                <Combobox 
-                  items={destinationOptions}
-                  value={destination}
-                  onChange={setDestination}
-                  placeholder="Sélectionnez une destination" 
-                  emptyMessage="Aucune destination trouvée"
-                  className="w-full"
-                />
-              </div>
-            </div>
-            <div className="mb-4">
-              <label className="block text-gray-700 mb-1 font-medium">Informations supplémentaires</label>
-              <Textarea 
-                placeholder="Précisez vos besoins (durée, équipements souhaités, etc.)" 
-                value={additionalInfo}
-                onChange={(e) => setAdditionalInfo(e.target.value)}
-                className="resize-none border-gray-300 focus:ring-blue-500"
-                rows={3}
-              />
-            </div>
-            <div className="flex flex-col md:flex-row gap-3 justify-center">
-              <Button 
-                className="w-full md:w-auto bg-hermes-green text-black hover:bg-hermes-green/80"
-                onClick={handleSearch}
-                disabled={loading}
-              >
-                {loading ? "Recherche en cours..." : "Rechercher"}
-              </Button>
-              <Button 
-                className="w-full md:w-auto bg-gray-700 hover:bg-gray-600"
-                onClick={handleChatWithOtto}
-              >
-                Discuter avec Otto
-              </Button>
-            </div>
-            <p className="text-sm text-gray-500 italic mt-4">
+            </form>
+            
+            <p className="text-sm text-gray-500 italic mt-6">
               <span className="text-red-500">*</span> champs obligatoires
             </p>
           </div>
@@ -496,16 +608,12 @@ const LandingPage = () => {
             </Carousel>
           ) : (
             <div className="text-center max-w-md mx-auto">
-              <p className="mb-4">
+              <p>
                 {departure ? 
                   `Aucun véhicule n'est disponible à ${departure} pour ${passengerCount} passagers à cette date. Veuillez modifier votre recherche ou contacter notre service client.` : 
                   "Veuillez sélectionner un lieu de départ pour votre recherche."
                 }
               </p>
-              <Button onClick={handleChatWithOtto}>
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Discuter avec Otto
-              </Button>
             </div>
           )}
         </section>
@@ -714,7 +822,7 @@ const LandingPage = () => {
 
           <div className="text-center mt-8">
             <Button 
-              className="bg-gray-800 hover:bg-gray-700 text-white"
+              className="bg-black hover:bg-gray-900 text-white"
               onClick={() => navigate("/chatbotOtto")}
             >
               <MessageSquare className="mr-2 h-4 w-4" />
@@ -725,14 +833,17 @@ const LandingPage = () => {
       </section>
 
       {/* Call to Action */}
-      <section className="py-24 bg-gray-900 text-white text-center">
+      <section className="py-24 bg-black text-white text-center">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-4">Occasions très spéciales uniquement</h2>
           <p className="mb-8 max-w-2xl mx-auto">
             La demande de devis est réservée exclusivement pour les occasions très spéciales. Notre
             service premium est conçu pour rendre vos événements exceptionnels inoubliables.
           </p>
-          <Button className="bg-hermes-green hover:bg-hermes-green/80 text-black px-8 py-6 text-lg">
+          <Button 
+            className="bg-hermes-green hover:bg-hermes-green/80 text-black px-8 py-6 text-lg"
+            onClick={handleQuoteFormOpen}
+          >
             DEMANDER UN DEVIS
           </Button>
         </div>
@@ -802,6 +913,189 @@ const LandingPage = () => {
           passengerCount={passengerCount}
           additionalInfo={additionalInfo}
         />
+      )}
+
+      {/* Modal Formulaire de Devis */}
+      {isQuoteModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Demande de devis</h2>
+              <button onClick={handleQuoteFormClose} className="text-gray-500 hover:text-black">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={handleQuoteFormSubmit} className="space-y-4">
+              {/* Première rangée - Informations personnelles */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Nom et prénom <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="text" 
+                    name="name" 
+                    value={quoteFormData.name} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    className="w-full"
+                    placeholder="Votre nom et prénom"
+                    pattern="[A-Za-z\u00C0-\u017F\s\-']+"
+                    title="Veuillez saisir un nom valide (lettres, espaces, tirets et apostrophes uniquement)"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Email <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="email" 
+                    name="email" 
+                    value={quoteFormData.email} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    className="w-full"
+                    placeholder="example@email.com"
+                    pattern="[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
+                    title="Veuillez saisir une adresse email valide"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Numéro de téléphone <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="tel" 
+                    name="phone" 
+                    value={quoteFormData.phone} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    className="w-full"
+                    placeholder="+33 6 12 34 56 78"
+                    pattern="[0-9+()\s]{10,15}"
+                    title="Veuillez saisir un numéro de téléphone valide (chiffres, +, espaces)"
+                  />
+                </div>
+              </div>
+              
+              {/* Deuxième rangée - Informations de trajet */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Lieu de départ <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="text" 
+                    name="departure" 
+                    value={quoteFormData.departure} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    className="w-full"
+                    placeholder="Paris"
+                    pattern="[A-Za-z0-9\u00C0-\u017F\s\-]+"
+                    title="Veuillez saisir un nom de ville valide (lettres, chiffres, espaces, tirets)"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Destination <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="text" 
+                    name="destination" 
+                    value={quoteFormData.destination} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    className="w-full"
+                    placeholder="Lyon"
+                    pattern="[A-Za-z0-9\u00C0-\u017F\s\-]+"
+                    title="Veuillez saisir un nom de ville valide (lettres, chiffres, espaces, tirets)"
+                  />
+                </div>
+              </div>
+              
+              {/* Troisième rangée - Date, heure et nombre de voyageurs */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Date de départ <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="date" 
+                    name="departureDate" 
+                    value={quoteFormData.departureDate} 
+                    onChange={handleQuoteFormChange} 
+                    min={getTomorrowDate()} 
+                    required 
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Heure <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="time" 
+                    name="departureTime" 
+                    value={quoteFormData.departureTime} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1">Nombre de voyageurs <span className="text-red-500">*</span></label>
+                  <Input 
+                    type="number" 
+                    name="passengers" 
+                    value={quoteFormData.passengers} 
+                    onChange={handleQuoteFormChange} 
+                    required 
+                    min="1"
+                    max="100"
+                    className="w-full"
+                    title="Veuillez indiquer un nombre de voyageurs entre 1 et 100"
+                  />
+                </div>
+              </div>
+              
+              {/* Quatrième rangée - Message supplémentaire */}
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">Message supplémentaire</label>
+                <Textarea 
+                  name="message" 
+                  value={quoteFormData.message} 
+                  onChange={handleQuoteFormChange} 
+                  className="w-full h-24"
+                  placeholder="Précisez vos besoins ou questions spécifiques..."
+                />
+              </div>
+              
+              <Button type="submit" className="w-full bg-hermes-green hover:bg-hermes-green/80 text-black font-medium py-3">
+                Envoyer ma demande
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de confirmation */}
+      {isConfirmationModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md p-6 text-center">
+            <div className="mb-4 text-green-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-2">Demande envoyée !</h2>
+            <p className="text-gray-600 mb-6">
+              Notre service client a bien reçu votre demande de devis. Vous recevrez une réponse par email dans les plus brefs délais.
+            </p>
+            
+            <Button 
+              onClick={() => setIsConfirmationModalOpen(false)} 
+              className="bg-hermes-green hover:bg-hermes-green/80 text-black font-medium py-2 px-6"
+            >
+              Fermer
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

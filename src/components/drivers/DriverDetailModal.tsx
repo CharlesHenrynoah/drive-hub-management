@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useDriverVehicleTypes } from "@/hooks/useDriverVehicleTypes";
-import { Loader2 } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -142,14 +142,46 @@ export function DriverDetailModal({ driver, onEdit, onClose }: DriverDetailModal
               <h3 className="font-medium mb-2">Documents</h3>
             </div>
             
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Permis de conduire</p>
-              <p className="font-medium">{driver.piece_identite}</p>
-            </div>
-            
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Carte VTC</p>
-              <p className="font-medium">{driver.certificat_medical}</p>
+            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <div>
+                <h4 className="text-sm font-medium bg-blue-100 text-blue-800 px-3 py-1.5 rounded-t-lg inline-block mb-0">Permis de conduire</h4>
+                <div className="border border-gray-200 rounded-md rounded-tl-none shadow-sm p-4 bg-white hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0 h-14 w-14 rounded-lg bg-blue-50 flex items-center justify-center border-2 border-blue-100">
+                      <FileText className="h-7 w-7 text-blue-500" />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <p className="font-medium text-sm mb-1 text-gray-800 truncate">
+                        {driver.piece_identite || "Aucun document"}
+                      </p>
+                      <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 w-full" />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Document vérifié</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium bg-blue-100 text-blue-800 px-3 py-1.5 rounded-t-lg inline-block mb-0">Carte VTC</h4>
+                <div className="border border-gray-200 rounded-md rounded-tl-none shadow-sm p-4 bg-white hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0 h-14 w-14 rounded-lg bg-blue-50 flex items-center justify-center border-2 border-blue-100">
+                      <FileText className="h-7 w-7 text-blue-500" />
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <p className="font-medium text-sm mb-1 text-gray-800 truncate">
+                        {driver.certificat_medical || "Aucun document"}
+                      </p>
+                      <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 w-full" />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Document vérifié</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div className="col-span-2 flex justify-end space-x-2 pt-4">
